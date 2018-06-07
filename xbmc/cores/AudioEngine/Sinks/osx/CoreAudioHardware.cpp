@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include "CoreAudioHelpers.h"
 #include "utils/log.h"
-#include "osx/DarwinUtils.h"
+#include "platform/darwin/DarwinUtils.h"
 
 bool CCoreAudioHardware::GetAutoHogMode()
 {
@@ -66,7 +66,7 @@ void CCoreAudioHardware::ResetAudioDevices()
   {
     for (CoreAudioDeviceList::iterator it = list.begin(); it != list.end(); ++it)
     {
-      CCoreAudioDevice device = *it;
+      CCoreAudioDevice device(*it);
 
       AudioStreamIdList streams;
       if (device.GetStreams(&streams))

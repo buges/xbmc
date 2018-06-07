@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,8 +31,8 @@
 
 using namespace XFILE;
 
-CDAVDirectory::CDAVDirectory(void) {}
-CDAVDirectory::~CDAVDirectory(void) {}
+CDAVDirectory::CDAVDirectory(void) = default;
+CDAVDirectory::~CDAVDirectory(void) = default;
 
 /*
  * Parses a <response>
@@ -137,7 +137,7 @@ bool CDAVDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   std::string strResponse;
   dav.ReadData(strResponse);
 
-  std::string fileCharset(dav.GetServerReportedCharset());
+  std::string fileCharset(dav.GetProperty(XFILE::FILE_PROPERTY_CONTENT_CHARSET));
   CXBMCTinyXML davResponse;
   davResponse.Parse(strResponse, fileCharset);
 

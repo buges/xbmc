@@ -5,7 +5,7 @@
  *      http://www.plutinosoft.com/blog/category/platinum/
  *
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,12 +34,12 @@ namespace XFILE
 class CUPnPDirectory :  public IDirectory
 {
 public:
-    CUPnPDirectory(void) {}
-    virtual ~CUPnPDirectory(void) {}
+    CUPnPDirectory(void) = default;
+    ~CUPnPDirectory(void) override = default;
 
     // IDirectory methods
-    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
-    virtual bool AllowAll() const { return true; }
+    bool GetDirectory(const CURL& url, CFileItemList &items) override;
+    bool AllowAll() const override { return true; }
 
     // class methods
     static const char* GetFriendlyName(const CURL& url);

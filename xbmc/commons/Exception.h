@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,8 @@
 // a header.
 #include "utils/StringUtils.h"
 //---------------------------------------------------------
-#include "ilog.h"
 #include <stdarg.h>
+
 
 #ifdef __GNUC__
 // The 'this' pointer counts as a parameter on member methods.
@@ -61,9 +61,8 @@ namespace XbmcCommons
     std::string message;
 
   protected:
-    static ILogger* logger;
 
-    inline Exception(const char* classname_) : classname(classname_) { }
+    inline explicit Exception(const char* classname_) : classname(classname_) { }
     inline Exception(const char* classname_, const char* message_) : classname(classname_), message(message_) { }
     inline Exception(const Exception& other) : classname(other.classname), message(other.message) { }
 
@@ -91,21 +90,15 @@ namespace XbmcCommons
   public:
     virtual ~Exception();
 
-    inline virtual void LogThrowMessage(const char* prefix = NULL) const
-    {
-      if (logger)
-        logger->Log(LOGERROR,"EXCEPTION Thrown (%s) : %s", classname.c_str(), message.c_str());
-    }
+    virtual void LogThrowMessage(const char* prefix = NULL) const;
 
     inline virtual const char* GetMessage() const { return message.c_str(); }
-
-    inline static void SetLogger(ILogger* exceptionLogger) { logger = exceptionLogger; }
   };
 
   /**
    * This class forms the base class for unchecked exceptions. Unchecked exceptions
    * are those that really shouldn't be handled explicitly. For example, on windows
-   * when a access violaton is converted to a win32_exception, there's nothing
+   * when a access violation is converted to a win32_exception, there's nothing
    * that can be done in most code. The outer most stack frame might try to 
    * do some error logging prior to shutting down, but that's really it.
    */

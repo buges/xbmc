@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,9 @@
  *
  */
 
+#include <iostream>
+#include <string>
+
 #include "PlayListWPL.h"
 #include "Util.h"
 #include "utils/XBMCTinyXML.h"
@@ -29,7 +32,6 @@
 
 using namespace XFILE;
 using namespace PLAYLIST;
-using namespace std;
 
 /* ------------------------ example wpl playlist file ---------------------------------
   <?wpl version="1.0"?>
@@ -50,14 +52,12 @@ using namespace std;
 ------------------------ end of example wpl playlist file ---------------------------------*/
 //Note: File is utf-8 encoded by default
 
-CPlayListWPL::CPlayListWPL(void)
-{}
+CPlayListWPL::CPlayListWPL(void) = default;
 
-CPlayListWPL::~CPlayListWPL(void)
-{}
+CPlayListWPL::~CPlayListWPL(void) = default;
 
 
-bool CPlayListWPL::LoadData(istream& stream)
+bool CPlayListWPL::LoadData(std::istream& stream)
 {
   CXBMCTinyXML xmlDoc;
 

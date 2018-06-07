@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  *
  */
 
+#include <atomic>
 #include <stdint.h>
 
 #include "input/touch/ITouchInputHandling.h"
@@ -28,6 +29,7 @@
  * \brief Touch input event
  */
 typedef enum {
+  TouchInputUnchanged = 0,
   TouchInputAbort,
   TouchInputDown,
   TouchInputUp,
@@ -49,7 +51,7 @@ public:
   ITouchInputHandler()
     : m_dpi(160.0f)
   { }
-  virtual ~ITouchInputHandler() { }
+  ~ITouchInputHandler() override = default;
 
   /*!
    * \brief Handle a touch event
@@ -57,7 +59,7 @@ public:
    * Handles the given touch event at the given location.
    * This takes into account all the currently active pointers
    * which need to be updated before calling this method to
-   * actually interprete and handle the changes in touch.
+   * actually interpret and handle the changes in touch.
    *
    * \param event    The actual touch event (abort, down, up, move)
    * \param x        The x coordinate (with sub-pixel) of the touch
@@ -100,5 +102,5 @@ protected:
   /*!
    * \brief DPI value of the touch screen
    */
-  float m_dpi;
+  std::atomic<float> m_dpi;
 };

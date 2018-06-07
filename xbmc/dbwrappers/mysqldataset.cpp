@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -24,22 +24,23 @@
 #include <algorithm>
 
 #include "utils/log.h"
-#include "system.h" // for GetLastError()
 #include "network/WakeOnAccess.h"
 #include "Util.h"
+#include "utils/StringUtils.h"
 
-#ifdef HAS_MYSQL
 #include "mysqldataset.h"
+#ifdef HAS_MYSQL
 #include "mysql/errmsg.h"
-#ifdef TARGET_WINDOWS
-#pragma comment(lib, "mysqlclient.lib")
+#elif defined(HAS_MARIADB)
+#include <mariadb/errmsg.h>
 #endif
 
+#ifdef TARGET_POSIX
+#include "platform/linux/ConvUtils.h"
+#endif
 
 #define MYSQL_OK          0
 #define ER_BAD_DB_ERROR   1049
-
-using namespace std;
 
 namespace dbiplus {
 
@@ -65,7 +66,7 @@ MysqlDatabase::~MysqlDatabase() {
 }
 
 Dataset* MysqlDatabase::CreateDataset() const {
-   return new MysqlDataset((MysqlDatabase*)this);
+   return new MysqlDataset(const_cast<MysqlDatabase*>(this));
 }
 
 int MysqlDatabase::status(void) {
@@ -99,6 +100,7 @@ int MysqlDatabase::setErr(int err_code, const char * qry) {
       snprintf(err, 256, "Undefined MySQL error: Code (%d)", err_code);
       error = err;
   }
+  error = "[" + db + "] " + error;
   error += "\nQuery: ";
   error += qry;
   error += "\n";
@@ -107,6 +109,47 @@ int MysqlDatabase::setErr(int err_code, const char * qry) {
 
 const char *MysqlDatabase::getErrorMsg() {
    return error.c_str();
+}
+
+void MysqlDatabase::configure_connection() {
+  char sqlcmd[512];
+  int ret;
+
+  // MySQL 5.7.5+: See #8393
+  strcpy(sqlcmd, "SET SESSION sql_mode = (SELECT REPLACE(@@SESSION.sql_mode,'ONLY_FULL_GROUP_BY',''))");
+  if ((ret = mysql_real_query(conn, sqlcmd, strlen(sqlcmd))) != MYSQL_OK)
+    throw DbErrors("Can't disable sql_mode ONLY_FULL_GROUP_BY: '%s' (%d)", db.c_str(), ret);
+
+  // MySQL 5.7.6+: See #8393. Non-fatal if error, as not supported by MySQL 5.0.x
+  strcpy(sqlcmd, "SELECT @@SESSION.optimizer_switch");
+  if ((ret = mysql_real_query(conn, sqlcmd, strlen(sqlcmd))) == MYSQL_OK)
+  {
+    MYSQL_RES* res = mysql_store_result(conn);
+    MYSQL_ROW row;
+
+    if (res)
+    {
+      if ((row = mysql_fetch_row(res)) != NULL)
+      {
+        std::string column = row[0];
+        std::vector<std::string> split = StringUtils::Split(column, ',');
+
+        for (std::vector<std::string>::iterator itIn = split.begin(); itIn != split.end(); ++itIn)
+        {
+          if (StringUtils::Trim(*itIn) == "derived_merge=on")
+          {
+            strcpy(sqlcmd, "SET SESSION optimizer_switch = 'derived_merge=off'");
+            if ((ret = mysql_real_query(conn, sqlcmd, strlen(sqlcmd))) != MYSQL_OK)
+              throw DbErrors("Can't set optimizer_switch = '%s': '%s' (%d)", StringUtils::Trim(*itIn).c_str(), db.c_str(), ret);
+            break;
+          }
+        }
+      }
+      mysql_free_result(res);
+    }
+  }
+  else
+    CLog::Log(LOGWARNING, "Unable to query optimizer_switch: '%s' (%d)", db.c_str(), ret);
 }
 
 int MysqlDatabase::connect(bool create_new) {
@@ -122,15 +165,15 @@ int MysqlDatabase::connect(bool create_new) {
     if (conn == NULL) {
       conn = mysql_init(conn);
       mysql_ssl_set(
-        conn, 
-        key.empty() ? NULL : key.c_str(), 
-        cert.empty() ? NULL : cert.c_str(), 
-        ca.empty() ? NULL : ca.c_str(), 
-        capath.empty() ? NULL : capath.c_str(), 
+        conn,
+        key.empty() ? NULL : key.c_str(),
+        cert.empty() ? NULL : cert.c_str(),
+        ca.empty() ? NULL : ca.c_str(),
+        capath.empty() ? NULL : capath.c_str(),
         ciphers.empty() ? NULL : ciphers.c_str());
     }
 
-    if (!CWakeOnAccess::Get().WakeUpHost(host, "MySQL : " + db))
+    if (!CWakeOnAccess::GetInstance().WakeUpHost(host, "MySQL : " + db))
       return DB_CONNECTION_NONE;
 
     // establish connection with just user credentials
@@ -142,6 +185,13 @@ int MysqlDatabase::connect(bool create_new) {
                                  NULL,
                                  compression ? CLIENT_COMPRESS : 0) != NULL)
     {
+      static bool showed_ver_info = false;
+      if (!showed_ver_info)
+      {
+        CLog::Log(LOGINFO, "MYSQL: Connected to version %s", mysql_get_server_info(conn));
+        showed_ver_info = true;
+      }
+
       // disable mysql autocommit since we handle it
       //mysql_autocommit(conn, false);
 
@@ -152,6 +202,8 @@ int MysqlDatabase::connect(bool create_new) {
         CLog::Log(LOGERROR, "Unable to set utf8 charset: %s [%d](%s)",
                   db.c_str(), mysql_errno(conn), mysql_error(conn));
       }
+
+      configure_connection();
 
       // check existence
       if (exists())
@@ -271,17 +323,17 @@ int MysqlDatabase::copy(const char *backup_name) {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
       // copy the table definition
-      sprintf(sql, "CREATE TABLE %s.%s LIKE %s",
+      sprintf(sql, "CREATE TABLE `%s`.%s LIKE %s",
               backup_name, row[0], row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
         mysql_free_result(res);
-        throw DbErrors("Can't copy schema for table '%s'\nError: %s", db.c_str(), ret);
+        throw DbErrors("Can't copy schema for table '%s'\nError: %d", row[0], ret);
       }
 
       // copy the table data
-      sprintf(sql, "INSERT INTO %s.%s SELECT * FROM %s",
+      sprintf(sql, "INSERT INTO `%s`.%s SELECT * FROM %s",
               backup_name, row[0], row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
@@ -292,7 +344,7 @@ int MysqlDatabase::copy(const char *backup_name) {
     }
     mysql_free_result(res);
 
-    // we don't recreate views, indicies, or triggers on copy
+    // we don't recreate views, indices, or triggers on copy
     // as we'll be dropping and recreating them anyway
   }
 
@@ -326,7 +378,7 @@ int MysqlDatabase::drop_analytics(void) {
   {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
-      sprintf(sql, "ALTER TABLE %s.%s DROP INDEX %s", db.c_str(), row[0], row[1]);
+      sprintf(sql, "ALTER TABLE `%s`.%s DROP INDEX %s", db.c_str(), row[0], row[1]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
@@ -351,7 +403,7 @@ int MysqlDatabase::drop_analytics(void) {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
       /* we do not need IF EXISTS because these views are exist */
-      sprintf(sql, "DROP VIEW %s.%s", db.c_str(), row[0]);
+      sprintf(sql, "DROP VIEW `%s`.%s", db.c_str(), row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
@@ -375,12 +427,12 @@ int MysqlDatabase::drop_analytics(void) {
   {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
-      sprintf(sql, "DROP TRIGGER %s.%s", db.c_str(), row[0]);
+      sprintf(sql, "DROP TRIGGER `%s`.%s", db.c_str(), row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
         mysql_free_result(res);
-        throw DbErrors("Can't create trigger '%s'\nError: %s", row[0], ret);
+        throw DbErrors("Can't create trigger '%s'\nError: %d", row[0], ret);
       }
     }
     mysql_free_result(res);
@@ -420,26 +472,29 @@ long MysqlDatabase::nextid(const char* sname) {
     return DB_UNEXPECTED_RESULT;
   }
   res = mysql_store_result(conn);
-  if (mysql_num_rows(res) == 0)
+  if (res)
   {
-    id = 1;
-    sprintf(sqlcmd,"insert into %s (nextid,seq_name) values (%d,'%s')",seq_table,id,sname);
-    mysql_free_result(res);
-    if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
-    return id;
-  }
-  else
-  {
-    MYSQL_ROW row = mysql_fetch_row(res);
-    //id = (int)row[0];
-    id = -1;
-    unsigned long *lengths;
-    lengths = mysql_fetch_lengths(res);
-    CLog::Log(LOGINFO,"Next id is [%.*s] ", (int) lengths[0], row[0]);
-    sprintf(sqlcmd,"update %s set nextid=%d where seq_name = '%s'",seq_table,id,sname);
-    mysql_free_result(res);
-    if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
-    return id;
+    if (mysql_num_rows(res) == 0)
+    {
+      id = 1;
+      sprintf(sqlcmd, "insert into %s (nextid,seq_name) values (%d,'%s')", seq_table, id, sname);
+      mysql_free_result(res);
+      if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
+      return id;
+    }
+    else
+    {
+      MYSQL_ROW row = mysql_fetch_row(res);
+      //id = (int)row[0];
+      id = -1;
+      unsigned long *lengths;
+      lengths = mysql_fetch_lengths(res);
+      CLog::Log(LOGINFO, "Next id is [%.*s] ", (int)lengths[0], row[0]);
+      sprintf(sqlcmd, "update %s set nextid=%d where seq_name = '%s'", seq_table, id, sname);
+      mysql_free_result(res);
+      if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
+      return id;
+    }
   }
   return DB_UNEXPECTED_RESULT;
 }
@@ -509,32 +564,25 @@ bool MysqlDatabase::exists(void) {
 
 // methods for formatting
 // ---------------------------------------------
-string MysqlDatabase::vprepare(const char *format, va_list args)
+std::string MysqlDatabase::vprepare(const char *format, va_list args)
 {
-  string strFormat = format;
-  string strResult = "";
-  char *p;
+  std::string strFormat = format;
+  std::string strResult = "";
   size_t pos;
 
   //  %q is the sqlite format string for %s.
   //  Any bad character, like "'", will be replaced with a proper one
   pos = 0;
-  while ( (pos = strFormat.find("%s", pos)) != string::npos )
+  while ( (pos = strFormat.find("%s", pos)) != std::string::npos )
     strFormat.replace(pos++, 2, "%q");
 
-  p = mysql_vmprintf(strFormat.c_str(), args);
-  if ( p )
+  strResult = mysql_vmprintf(strFormat.c_str(), args);
+  //  RAND() is the mysql form of RANDOM()
+  pos = 0;
+  while ( (pos = strResult.find("RANDOM()", pos)) != std::string::npos )
   {
-    strResult = p;
-    free(p);
-
-    //  RAND() is the mysql form of RANDOM()
-    pos = 0;
-    while ( (pos = strResult.find("RANDOM()", pos)) != string::npos )
-    {
-      strResult.replace(pos++, 8, "RAND()");
-      pos += 6;
-    }
+    strResult.replace(pos++, 8, "RAND()");
+    pos += 6;
   }
 
   return strResult;
@@ -548,7 +596,7 @@ string MysqlDatabase::vprepare(const char *format, va_list args)
 */
 #define etRADIX       1 /* Integer types.  %d, %x, %o, and so forth */
 #define etFLOAT       2 /* Floating point.  %f */
-#define etEXP         3 /* Exponentional notation. %e and %E */
+#define etEXP         3 /* Exponential notation. %e and %E */
 #define etGENERIC     4 /* Floating or exponential, depending on exponent. %g */
 #define etSIZE        5 /* Return number of characters processed so far. %n */
 #define etSTRING      6 /* Strings. %s */
@@ -602,7 +650,6 @@ struct StrAccum {
 #define FLAG_SIGNED  1     /* True if the value to convert is signed */
 #define FLAG_INTERN  2     /* True if for internal use only */
 #define FLAG_STRING  4     /* Allow infinity precision */
-
 
 /*
 ** The following table is searched linearly, so it is good to put the
@@ -676,8 +723,6 @@ void MysqlDatabase::appendSpace(StrAccum *pAccum, int N) {
 #endif
 
 #define etBUFSIZE MYSQL_PRINT_BUF_SIZE  /* Size of the output buffer */
-
-
 
 /*
 ** The maximum length of a TEXT or BLOB in bytes.   This also
@@ -756,12 +801,13 @@ void MysqlDatabase::mysqlVXPrintf(
   length = 0;
   bufpt = 0;
   for(; (c=(*fmt))!=0; ++fmt){
+    bool isLike = false;
     if( c!='%' ){
       int amt;
       bufpt = (char *)fmt;
       amt = 1;
       while( (c=(*++fmt))!='%' && c!=0 ) amt++;
-      mysqlStrAccumAppend(pAccum, bufpt, amt);
+      isLike = mysqlStrAccumAppend(pAccum, bufpt, amt);
       if( c==0 ) break;
     }
     if( (c=(*++fmt))==0 ){
@@ -848,7 +894,6 @@ void MysqlDatabase::mysqlVXPrintf(
     }
     zExtra = 0;
 
-
     /* Limit the precision to prevent overflowing buf[] during conversion */
     if( precision>etBUFSIZE-40 && (infop->flags & FLAG_STRING)==0 ){
       precision = etBUFSIZE-40;
@@ -915,8 +960,8 @@ void MysqlDatabase::mysqlVXPrintf(
         }
         bufpt = &buf[etBUFSIZE-1];
         {
-          register const char *cset;      /* Use registers for speed */
-          register int base;
+          const char *cset;
+          int base;
           cset = &aDigits[infop->charset];
           base = infop->base;
           do{                                           /* Convert to ascii */
@@ -1126,7 +1171,11 @@ void MysqlDatabase::mysqlVXPrintf(
         int needQuote;
         char ch;
         char q = ((xtype==etSQLESCAPE3)?'"':'\'');   /* Quote character */
-        const char *escarg = va_arg(ap, char*);
+        std::string arg = va_arg(ap, char*);
+        if (isLike)
+          StringUtils::Replace(arg, "\\", "\\\\");
+        const char *escarg = arg.c_str();
+
         isnull = escarg==0;
         if( isnull ) escarg = (xtype==etSQLESCAPE2 ? "NULL" : "(NULL)");
         k = precision;
@@ -1164,7 +1213,7 @@ void MysqlDatabase::mysqlVXPrintf(
     ** the output.
     */
     if( !flag_leftjustify ){
-      register int nspace;
+      int nspace;
       nspace = width-length;
       if( nspace>0 ){
         appendSpace(pAccum, nspace);
@@ -1174,7 +1223,7 @@ void MysqlDatabase::mysqlVXPrintf(
       mysqlStrAccumAppend(pAccum, bufpt, length);
     }
     if( flag_leftjustify ){
-      register int nspace;
+      int nspace;
       nspace = width-length;
       if( nspace>0 ){
         appendSpace(pAccum, nspace);
@@ -1189,15 +1238,15 @@ void MysqlDatabase::mysqlVXPrintf(
 /*
 ** Append N bytes of text from z to the StrAccum object.
 */
-void MysqlDatabase::mysqlStrAccumAppend(StrAccum *p, const char *z, int N) {
+bool MysqlDatabase::mysqlStrAccumAppend(StrAccum *p, const char *z, int N) {
   if( p->tooBig | p->mallocFailed ){
-    return;
+    return false;
   }
   if( N<0 ){
     N = strlen(z);
   }
   if( N==0 || z==0 ){
-    return;
+    return false;
   }
   if( p->nChar+N >= p->nAlloc ){
     char *zNew;
@@ -1206,7 +1255,7 @@ void MysqlDatabase::mysqlStrAccumAppend(StrAccum *p, const char *z, int N) {
     if( szNew > p->mxAlloc ){
       mysqlStrAccumReset(p);
       p->tooBig = 1;
-      return;
+      return false;
     }else{
       p->nAlloc = szNew;
     }
@@ -1218,11 +1267,22 @@ void MysqlDatabase::mysqlStrAccumAppend(StrAccum *p, const char *z, int N) {
     }else{
       p->mallocFailed = 1;
       mysqlStrAccumReset(p);
-      return;
+      return false;
     }
   }
+
+  bool isLike = false;
+  std::string testString(z, N);
+  if (testString.find("LIKE") != std::string::npos || testString.find("like") != std::string::npos)
+  {
+    CLog::Log(LOGDEBUG, "This query part contains a like, we will double backslash in the next field: %s", testString.c_str());
+    isLike = true;
+
+  }
+
   memcpy(&p->zText[p->nChar], z, N);
   p->nChar += N;
+  return isLike;
 }
 
 /*
@@ -1271,17 +1331,14 @@ void MysqlDatabase::mysqlStrAccumInit(StrAccum *p, char *zBase, int n, int mx){
 ** Print into memory obtained from mysql_malloc().  Omit the internal
 ** %-conversion extensions.
 */
-char *MysqlDatabase::mysql_vmprintf(const char *zFormat, va_list ap) {
-  char *z;
+std::string MysqlDatabase::mysql_vmprintf(const char *zFormat, va_list ap) {
   char zBase[MYSQL_PRINT_BUF_SIZE];
   StrAccum acc;
 
   mysqlStrAccumInit(&acc, zBase, sizeof(zBase), MYSQL_MAX_LENGTH);
   mysqlVXPrintf(&acc, 0, zFormat, ap);
-  z = mysqlStrAccumFinish(&acc);
-  return z;
+  return mysqlStrAccumFinish(&acc);
 }
-
 
 //************* MysqlDataset implementation ***************
 
@@ -1291,7 +1348,6 @@ MysqlDataset::MysqlDataset():Dataset() {
   errmsg = NULL;
   autorefresh = false;
 }
-
 
 MysqlDataset::MysqlDataset(MysqlDatabase *newDb):Dataset(newDb) {
   haveError = false;
@@ -1304,12 +1360,9 @@ MysqlDataset::~MysqlDataset() {
    if (errmsg) free(errmsg);
  }
 
-
 void MysqlDataset::set_autorefresh(bool val) {
     autorefresh = val;
 }
-
-
 
 //--------- protected functions implementation -----------------//
 
@@ -1323,18 +1376,17 @@ MYSQL* MysqlDataset::handle(){
 }
 
 void MysqlDataset::make_query(StringList &_sql) {
-  string query;
-  int result = 0;
+  std::string query;
   if (db == NULL) throw DbErrors("No Database Connection");
   try
   {
     if (autocommit) db->start_transaction();
 
-    for (list<string>::iterator i =_sql.begin(); i!=_sql.end(); ++i)
+    for (std::list<std::string>::iterator i =_sql.begin(); i!=_sql.end(); ++i)
     {
       query = *i;
       Dataset::parse_sql(query);
-      if ((result = static_cast<MysqlDatabase *>(db)->query_with_reconnect(query.c_str())) != MYSQL_OK)
+      if ((static_cast<MysqlDatabase*>(db)->query_with_reconnect(query.c_str())) != MYSQL_OK)
       {
         throw DbErrors(db->getErrorMsg());
       }
@@ -1364,13 +1416,12 @@ void MysqlDataset::make_edit() {
   make_query(update_sql);
 }
 
-
 void MysqlDataset::make_deletion() {
   make_query(delete_sql);
 }
 
 void MysqlDataset::fill_fields() {
-  if ((db == NULL) || (result.record_header.size() == 0) || (result.records.size() < (unsigned int)frecno)) return;
+  if ((db == NULL) || (result.record_header.empty()) || (result.records.size() < (unsigned int)frecno)) return;
 
   if (fields_object->size() == 0) // Filling columns name
   {
@@ -1399,12 +1450,11 @@ void MysqlDataset::fill_fields() {
     (*fields_object)[i].val = "";
 }
 
-
 //------------- public functions implementation -----------------//
 bool MysqlDataset::dropIndex(const char *table, const char *index)
 {
-  string sql;
-  string sql_prepared;
+  std::string sql;
+  std::string sql_prepared;
 
   sql = "SELECT * FROM information_schema.statistics WHERE TABLE_SCHEMA=DATABASE() AND table_name='%s' AND index_name='%s'";
   sql_prepared = static_cast<MysqlDatabase*>(db)->prepare(sql.c_str(), table, index);
@@ -1429,37 +1479,37 @@ static bool ci_test(char l, char r)
   return tolower(l) == tolower(r);
 }
 
-static size_t ci_find(const string& where, const string& what)
+static size_t ci_find(const std::string& where, const std::string& what)
 {
   std::string::const_iterator loc = std::search(where.begin(), where.end(), what.begin(), what.end(), ci_test);
   if (loc == where.end())
-    return string::npos;
+    return std::string::npos;
   else
     return loc - where.begin();
 }
 
-int MysqlDataset::exec(const string &sql) {
+int MysqlDataset::exec(const std::string &sql) {
   if (!handle()) throw DbErrors("No Database Connection");
-  string qry = sql;
+  std::string qry = sql;
   int res = 0;
   exec_res.clear();
 
   // enforce the "auto_increment" keyword to be appended to "integer primary key"
   size_t loc;
 
-  if ( (loc=ci_find(qry, "integer primary key")) != string::npos)
+  if ( (loc=ci_find(qry, "integer primary key")) != std::string::npos)
   {
     qry = qry.insert(loc + 19, " auto_increment ");
   }
 
   // force the charset and collation to UTF-8
-  if ( ci_find(qry, "CREATE TABLE") != string::npos 
-    || ci_find(qry, "CREATE TEMPORARY TABLE") != string::npos )
+  if ( ci_find(qry, "CREATE TABLE") != std::string::npos
+    || ci_find(qry, "CREATE TEMPORARY TABLE") != std::string::npos )
   {
     // If CREATE TABLE ... SELECT Syntax is used we need to add the encoding after the table before the select
     // e.g. CREATE TABLE x CHARACTER SET utf8 COLLATE utf8_general_ci [AS] SELECT * FROM y
-    if ((loc = qry.find(" AS SELECT ")) != string::npos ||
-        (loc = qry.find(" SELECT ")) != string::npos)
+    if ((loc = qry.find(" AS SELECT ")) != std::string::npos ||
+        (loc = qry.find(" SELECT ")) != std::string::npos)
     {
       qry = qry.insert(loc, " CHARACTER SET utf8 COLLATE utf8_general_ci");
     }
@@ -1469,13 +1519,13 @@ int MysqlDataset::exec(const string &sql) {
 
   CLog::Log(LOGDEBUG,"Mysql execute: %s", qry.c_str());
 
-  if (db->setErr( static_cast<MysqlDatabase *>(db)->query_with_reconnect(qry.c_str()), qry.c_str()) != MYSQL_OK)
+  if (db->setErr( static_cast<MysqlDatabase*>(db)->query_with_reconnect(qry.c_str()), qry.c_str()) != MYSQL_OK)
   {
     throw DbErrors(db->getErrorMsg());
   }
   else
   {
-    // TODO: collect results and store in exec_res
+    //! @todo collect results and store in exec_res
     return res;
   }
 }
@@ -1487,7 +1537,6 @@ int MysqlDataset::exec() {
 const void* MysqlDataset::getExecRes() {
   return &exec_res;
 }
-
 
 bool MysqlDataset::query(const std::string &query) {
   if(!handle()) throw DbErrors("No Database Connection");
@@ -1502,7 +1551,7 @@ bool MysqlDataset::query(const std::string &query) {
   size_t loc;
 
   // mysql doesn't understand CAST(foo as integer) => change to CAST(foo as signed integer)
-  while ((loc = ci_find(qry, "as integer)")) != string::npos)
+  while ((loc = ci_find(qry, "as integer)")) != std::string::npos)
     qry = qry.insert(loc + 3, "signed ");
 
   MYSQL_RES *stmt = NULL;
@@ -1512,6 +1561,8 @@ bool MysqlDataset::query(const std::string &query) {
 
   MYSQL* conn = handle();
   stmt = mysql_store_result(conn);
+  if (stmt == NULL)
+    throw DbErrors("Missing result set!");
 
   // column headers
   const unsigned int numColumns = mysql_num_fields(stmt);
@@ -1586,7 +1637,7 @@ bool MysqlDataset::query(const std::string &query) {
   return true;
 }
 
-void MysqlDataset::open(const string &sql) {
+void MysqlDataset::open(const std::string &sql) {
    set_select_sql(sql);
    open();
 }
@@ -1594,7 +1645,7 @@ void MysqlDataset::open(const string &sql) {
 void MysqlDataset::open() {
   if (select_sql.size())
   {
-    query(select_sql.c_str());
+    query(select_sql);
   }
   else
   {
@@ -1611,7 +1662,6 @@ void MysqlDataset::close() {
   active = false;
 }
 
-
 void MysqlDataset::cancel() {
   if ((ds_state == dsInsert) || (ds_state==dsEdit))
   {
@@ -1622,21 +1672,17 @@ void MysqlDataset::cancel() {
   }
 }
 
-
 int MysqlDataset::num_rows() {
   return result.records.size();
 }
-
 
 bool MysqlDataset::eof() {
   return feof;
 }
 
-
 bool MysqlDataset::bof() {
   return fbof;
 }
-
 
 void MysqlDataset::first() {
   Dataset::first();
@@ -1700,5 +1746,3 @@ void MysqlDataset::interrupt() {
 }
 
 }//namespace
-#endif //HAS_MYSQL
-

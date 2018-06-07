@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ extern "C" void tracker_library_free_all(DllTrackInfo* pInfo)
   if (!pInfo->dllList.empty())
   {
     CSingleLock lock(g_trackerLock);
-    CLog::Log(LOGDEBUG,"%s: Detected %" PRIdS" unloaded dll's", pInfo->pDll->GetFileName(), pInfo->dllList.size());
+    CLog::Log(LOGDEBUG,"{0}: Detected {1} unloaded dll's", pInfo->pDll->GetFileName(), pInfo->dllList.size());
     for (DllListIter it = pInfo->dllList.begin(); it != pInfo->dllList.end(); ++it)
     {
       LibraryLoader* pDll = DllLoaderContainer::GetModule((HMODULE)*it);
@@ -93,7 +93,7 @@ extern "C" void tracker_library_free_all(DllTrackInfo* pInfo)
   }
 }
 
-extern "C" HMODULE __stdcall track_LoadLibraryA(LPCSTR file)
+extern "C" HMODULE __stdcall track_LoadLibraryA(const char* file)
 {
   uintptr_t loc = (uintptr_t)_ReturnAddress();
 
@@ -107,7 +107,7 @@ extern "C" HMODULE __stdcall track_LoadLibraryA(LPCSTR file)
   return hHandle;
 }
 
-extern "C" HMODULE __stdcall track_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+extern "C" HMODULE __stdcall track_LoadLibraryExA(const char* lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
   uintptr_t loc = (uintptr_t)_ReturnAddress();
 
@@ -121,7 +121,7 @@ extern "C" HMODULE __stdcall track_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE h
   return hHandle;
 }
 
-extern "C" BOOL __stdcall track_FreeLibrary(HINSTANCE hLibModule)
+extern "C" int __stdcall track_FreeLibrary(HINSTANCE hLibModule)
 {
   uintptr_t loc = (uintptr_t)_ReturnAddress();
 
@@ -129,5 +129,3 @@ extern "C" BOOL __stdcall track_FreeLibrary(HINSTANCE hLibModule)
 
   return dllFreeLibrary(hLibModule);
 }
-
-

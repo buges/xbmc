@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,12 +18,14 @@
  *
  */
 
+#include "KeyboardLayoutManager.h"
+
 #include <algorithm>
 
-#include "KeyboardLayoutManager.h"
 #include "FileItem.h"
-#include "URL.h"
 #include "filesystem/Directory.h"
+#include "URL.h"
+#include "settings/lib/Setting.h"
 #include "utils/log.h"
 #include "utils/XBMCTinyXML.h"
 
@@ -34,7 +36,7 @@ CKeyboardLayoutManager::~CKeyboardLayoutManager()
   Unload();
 }
 
-CKeyboardLayoutManager& CKeyboardLayoutManager::Get()
+CKeyboardLayoutManager& CKeyboardLayoutManager::GetInstance()
 {
   static CKeyboardLayoutManager s_instance;
   return s_instance;
@@ -53,7 +55,7 @@ bool CKeyboardLayoutManager::Load(const std::string& path /* = "" */)
   }
 
   CFileItemList layouts;
-  if (!XFILE::CDirectory::GetDirectory(CURL(layoutDirectory), layouts, ".xml") || layouts.IsEmpty())
+  if (!XFILE::CDirectory::GetDirectory(CURL(layoutDirectory), layouts, ".xml", XFILE::DIR_FLAG_DEFAULTS) || layouts.IsEmpty())
   {
     CLog::Log(LOGWARNING, "CKeyboardLayoutManager: no keyboard layouts found in %s", layoutDirectory.c_str());
     return false;
@@ -126,9 +128,9 @@ bool CKeyboardLayoutManager::GetLayout(const std::string& name, CKeyboardLayout&
   return true;
 }
 
-void CKeyboardLayoutManager::SettingOptionsKeyboardLayoutsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void* data)
+void CKeyboardLayoutManager::SettingOptionsKeyboardLayoutsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void* data)
 {
-  for (KeyboardLayouts::const_iterator it = CKeyboardLayoutManager::Get().m_layouts.begin(); it != CKeyboardLayoutManager::Get().m_layouts.end(); ++it)
+  for (KeyboardLayouts::const_iterator it = CKeyboardLayoutManager::GetInstance().m_layouts.begin(); it != CKeyboardLayoutManager::GetInstance().m_layouts.end(); ++it)
   {
     std::string name = it->second.GetName();
     list.push_back(make_pair(name, name));

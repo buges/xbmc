@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,13 +28,15 @@ class CPluginSource : public CAddon
 {
 public:
 
-  enum Content { UNKNOWN, AUDIO, IMAGE, EXECUTABLE, VIDEO };
+  enum Content { UNKNOWN, AUDIO, IMAGE, EXECUTABLE, VIDEO, GAME };
 
-  CPluginSource(const cp_extension_t *ext);
-  CPluginSource(const AddonProps &props);
-  virtual ~CPluginSource() {}
-  virtual AddonPtr Clone() const;
-  virtual bool IsType(TYPE type) const;
+  static std::unique_ptr<CPluginSource> FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext);
+
+  explicit CPluginSource(CAddonInfo addonInfo);
+  CPluginSource(CAddonInfo addonInfo, const std::string& provides);
+
+  TYPE FullType() const override;
+  bool IsType(TYPE type) const override;
   bool Provides(const Content& content) const
   {
     return content == UNKNOWN ? false : m_providedContent.count(content) > 0;

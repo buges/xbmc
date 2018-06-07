@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
  */
 
 #include "GUIMultiImage.h"
+#include "GUIMessage.h"
+#include "ServiceBroker.h"
 #include "TextureManager.h"
 #include "filesystem/Directory.h"
 #include "utils/URIUtils.h"
@@ -28,9 +30,11 @@
 #include "input/Key.h"
 #include "TextureCache.h"
 #include "WindowIDs.h"
+#include "utils/FileExtensionProvider.h"
+#include "utils/Random.h"
 #include "utils/StringUtils.h"
 
-using namespace std;
+using namespace KODI::GUILIB;
 using namespace XFILE;
 
 CGUIMultiImage::CGUIMultiImage(int parentID, int controlID, float posX, float posY, float width, float height, const CTextureInfo& texture, unsigned int timePerImage, unsigned int fadeTime, bool randomized, bool loop, unsigned int timeToPauseAtEnd)
@@ -50,7 +54,7 @@ CGUIMultiImage::CGUIMultiImage(int parentID, int controlID, float posX, float po
 }
 
 CGUIMultiImage::CGUIMultiImage(const CGUIMultiImage &from)
-  : CGUIControl(from), m_texturePath(), m_imageTimer(), m_files(), m_image(from.m_image)
+  : CGUIControl(from), m_texturePath(from.m_texturePath), m_imageTimer(), m_files(), m_image(from.m_image)
 {
   m_timePerImage = from.m_timePerImage;
   m_timeToPauseAtEnd = from.m_timeToPauseAtEnd;
@@ -104,7 +108,7 @@ void CGUIMultiImage::UpdateInfo(const CGUIListItem *item)
       texturePath = m_texturePath.GetItemLabel(item, true);
     else
       texturePath = m_texturePath.GetLabel(m_parentID);
-    if (texturePath != m_currentPath && !texturePath.empty())
+    if (texturePath != m_currentPath)
     {
       // a new path - set our current path and tell ourselves to load our directory
       m_currentPath = texturePath;
@@ -139,15 +143,17 @@ void CGUIMultiImage::Process(unsigned int currentTime, CDirtyRegionList &dirtyre
       }
     }
   }
+  else if (m_directoryStatus != LOADING)
+    m_image.SetFileName("");
 
-  if (g_graphicsContext.SetClipRegion(m_posX, m_posY, m_width, m_height))
+  if (CServiceBroker::GetWinSystem()->GetGfxContext().SetClipRegion(m_posX, m_posY, m_width, m_height))
   {
     if (m_image.SetColorDiffuse(m_diffuseColor))
       MarkDirtyRegion();
 
     m_image.DoProcess(currentTime, dirtyregions);
 
-    g_graphicsContext.RestoreClipRegion();
+    CServiceBroker::GetWinSystem()->GetGfxContext().RestoreClipRegion();
   }
 
   CGUIControl::Process(currentTime, dirtyregions);
@@ -229,10 +235,10 @@ void CGUIMultiImage::LoadDirectory()
    3. Bundled folder
    */
   CFileItem item(m_currentPath, false);
-  if (item.IsPicture() || CTextureCache::Get().HasCachedImage(m_currentPath))
+  if (item.IsPicture() || CTextureCache::GetInstance().HasCachedImage(m_currentPath))
     m_files.push_back(m_currentPath);
   else // bundled folder?
-    g_TextureManager.GetBundledTexturesFromPath(m_currentPath, m_files);
+    CServiceBroker::GetGUI()->GetTextureManager().GetBundledTexturesFromPath(m_currentPath, m_files);
   if (!m_files.empty())
   { // found - nothing more to do
     OnDirectoryLoaded();
@@ -248,7 +254,7 @@ void CGUIMultiImage::OnDirectoryLoaded()
 {
   // Randomize or sort our images if necessary
   if (m_randomized)
-    random_shuffle(m_files.begin(), m_files.end());
+    KODI::UTILS::RandomShuffle(m_files.begin(), m_files.end());
   else
     sort(m_files.begin(), m_files.end());
 
@@ -277,7 +283,7 @@ void CGUIMultiImage::OnJobComplete(unsigned int jobID, bool success, CJob *job)
   }
 }
 
-void CGUIMultiImage::SetInfo(const CGUIInfoLabel &info)
+void CGUIMultiImage::SetInfo(const GUIINFO::CGUIInfoLabel &info)
 {
   m_texturePath = info;
   if (m_texturePath.IsConstant())
@@ -307,13 +313,13 @@ bool CGUIMultiImage::CMultiImageJob::DoWork()
   {
     // Load in images from the directory specified
     // m_path is relative (as are all skin paths)
-    std::string realPath = g_TextureManager.GetTexturePath(m_path, true);
+    std::string realPath = CServiceBroker::GetGUI()->GetTextureManager().GetTexturePath(m_path, true);
     if (realPath.empty())
       return true;
 
     URIUtils::AddSlashAtEnd(realPath);
     CFileItemList items;
-    CDirectory::GetDirectory(realPath, items, g_advancedSettings.m_pictureExtensions + "|.tbn|.dds", DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_NO_FILE_INFO);
+    CDirectory::GetDirectory(realPath, items, CServiceBroker::GetFileExtensionProvider().GetPictureExtensions()+ "|.tbn|.dds", DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_NO_FILE_INFO);
     for (int i=0; i < items.Size(); i++)
     {
       CFileItem* pItem = items[i].get();

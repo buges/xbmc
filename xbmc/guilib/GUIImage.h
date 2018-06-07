@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#include <vector>
 
 #include "GUIControl.h"
 #include "GUITexture.h"
@@ -61,45 +63,45 @@ public:
     bool         m_fading;   ///< whether we're fading out
 
   private:
-    CFadingTexture(const CFadingTexture&);
-    CFadingTexture& operator=(const CFadingTexture&);
+    CFadingTexture(const CFadingTexture&) = delete;
+    CFadingTexture& operator=(const CFadingTexture&) = delete;
   };
 
   CGUIImage(int parentID, int controlID, float posX, float posY, float width, float height, const CTextureInfo& texture);
   CGUIImage(const CGUIImage &left);
-  virtual ~CGUIImage(void);
-  virtual CGUIImage *Clone() const { return new CGUIImage(*this); };
+  ~CGUIImage(void) override;
+  CGUIImage *Clone() const override { return new CGUIImage(*this); };
 
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual void UpdateVisibility(const CGUIListItem *item = NULL);
-  virtual bool OnAction(const CAction &action) ;
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual void AllocResources();
-  virtual void FreeResources(bool immediately = false);
-  virtual void DynamicResourceAlloc(bool bOnOff);
-  virtual bool IsDynamicallyAllocated() { return m_bDynamicResourceAlloc; };
-  virtual void SetInvalid();
-  virtual bool CanFocus() const;
-  virtual void UpdateInfo(const CGUIListItem *item = NULL);
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  void UpdateVisibility(const CGUIListItem *item = NULL) override;
+  bool OnAction(const CAction &action) override ;
+  bool OnMessage(CGUIMessage& message) override;
+  void AllocResources() override;
+  void FreeResources(bool immediately = false) override;
+  void DynamicResourceAlloc(bool bOnOff) override;
+  bool IsDynamicallyAllocated() override { return m_bDynamicResourceAlloc; };
+  void SetInvalid() override;
+  bool CanFocus() const override;
+  void UpdateInfo(const CGUIListItem *item = NULL) override;
 
-  virtual void SetInfo(const CGUIInfoLabel &info);
+  virtual void SetInfo(const KODI::GUILIB::GUIINFO::CGUIInfoLabel &info);
   virtual void SetFileName(const std::string& strFileName, bool setConstant = false, const bool useCache = true);
   virtual void SetAspectRatio(const CAspectRatio &aspect);
-  virtual void SetWidth(float width);
-  virtual void SetHeight(float height);
-  virtual void SetPosition(float posX, float posY);
-  virtual std::string GetDescription() const;
+  void SetWidth(float width) override;
+  void SetHeight(float height) override;
+  void SetPosition(float posX, float posY) override;
+  std::string GetDescription() const override;
   void SetCrossFade(unsigned int time);
 
   const std::string& GetFileName() const;
   float GetTextureWidth() const;
   float GetTextureHeight() const;
 
-  virtual CRect CalcRenderRegion() const;
+  CRect CalcRenderRegion() const override;
 
 #ifdef _DEBUG
-  virtual void DumpTextureUse();
+  void DumpTextureUse() override;
 #endif
 protected:
   virtual void AllocateOnDemand();
@@ -112,7 +114,7 @@ protected:
 
   // border + conditional info
   CTextureInfo m_image;
-  CGUIInfoLabel m_info;
+  KODI::GUILIB::GUIINFO::CGUIInfoLabel m_info;
 
   CGUITexture m_texture;
   std::vector<CFadingTexture *> m_fadingTextures;

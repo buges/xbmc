@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 #include <Neptune/Source/Core/NptReferences.h>
 #include <Neptune/Source/Core/NptStrings.h>
 
-#include "system.h"
 #include "FileItem.h"
 #include <string>
 
@@ -62,7 +61,7 @@ namespace UPNP
   {
     ECLIENTQUIRKS_NONE = 0x0
 
-    /* Client requires folder's to be marked as storageFolers as verndor type (360)*/
+    /* Client requires folder's to be marked as storageFolders as vendor type (360)*/
   , ECLIENTQUIRKS_ONLYSTORAGEFOLDER = 0x01
 
     /* Client can't handle subtypes for videoItems (360) */

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ CGenericTouchRotateDetector::CGenericTouchRotateDetector(ITouchActionHandler *ha
 
 bool CGenericTouchRotateDetector::OnTouchDown(unsigned int index, const Pointer &pointer)
 {
-  if (index < 0 || index >= TOUCH_MAX_POINTERS)
+  if (index >= MAX_POINTERS)
     return false;
 
   if (m_done)
@@ -46,7 +46,7 @@ bool CGenericTouchRotateDetector::OnTouchDown(unsigned int index, const Pointer 
 
 bool CGenericTouchRotateDetector::OnTouchUp(unsigned int index, const Pointer &pointer)
 {
-  if (index < 0 || index >= TOUCH_MAX_POINTERS)
+  if (index >= MAX_POINTERS)
     return false;
 
   if (m_done)
@@ -70,7 +70,7 @@ bool CGenericTouchRotateDetector::OnTouchUp(unsigned int index, const Pointer &p
 
 bool CGenericTouchRotateDetector::OnTouchMove(unsigned int index, const Pointer &pointer)
 {
-  if (index < 0 || index >= TOUCH_MAX_POINTERS)
+  if (index >= MAX_POINTERS)
     return false;
 
   if (m_done)
@@ -95,7 +95,7 @@ bool CGenericTouchRotateDetector::OnTouchMove(unsigned int index, const Pointer 
     float centerX = (primaryPointer.current.x + secondaryPointer.current.x) / 2;
     float centerY = (primaryPointer.current.y + secondaryPointer.current.y) / 2;
     float scalar = last.scalar(current);
-    float angle = acos(scalar / length) * 180.0f / M_PI;
+    float angle = acos(scalar / length) * 180.0f / static_cast<float>(M_PI);
 
     // make sure the result of acos is a valid number
     if (angle == angle)
@@ -117,7 +117,7 @@ bool CGenericTouchRotateDetector::OnTouchMove(unsigned int index, const Pointer 
 
 bool CGenericTouchRotateDetector::OnTouchUpdate(unsigned int index, const Pointer &pointer)
 {
-  if (index < 0 || index >= TOUCH_MAX_POINTERS)
+  if (index >= MAX_POINTERS)
     return false;
   
   if (m_done)

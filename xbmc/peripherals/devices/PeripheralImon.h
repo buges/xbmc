@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 
 #include "PeripheralHID.h"
 
+#include <atomic>
+
 class CSetting;
 
 namespace PERIPHERALS
@@ -28,12 +30,12 @@ namespace PERIPHERALS
   class CPeripheralImon : public CPeripheralHID
   {
   public:
-    CPeripheralImon(const PeripheralScanResult& scanResult);
-    virtual ~CPeripheralImon(void) {}
-    virtual bool InitialiseFeature(const PeripheralFeature feature);
-    virtual void OnSettingChanged(const std::string &strChangedSetting);
-    virtual void OnDeviceRemoved();
-    virtual void AddSetting(const std::string &strKey, const CSetting *setting, int order);
+    CPeripheralImon(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus);
+    ~CPeripheralImon(void) override = default;
+    bool InitialiseFeature(const PeripheralFeature feature) override;
+    void OnSettingChanged(const std::string &strChangedSetting) override;
+    void OnDeviceRemoved() override;
+    void AddSetting(const std::string &strKey, std::shared_ptr<const CSetting> setting, int order) override;
     inline bool IsImonConflictsWithDInput() 
     { return m_bImonConflictsWithDInput;}
     static inline long GetCountOfImonsConflictWithDInput()
@@ -42,6 +44,6 @@ namespace PERIPHERALS
 
   private:
     bool m_bImonConflictsWithDInput;
-    static volatile long m_lCountOfImonsConflictWithDInput;
+    static std::atomic<long> m_lCountOfImonsConflictWithDInput;
   };
 }

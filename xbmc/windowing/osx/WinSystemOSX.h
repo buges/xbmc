@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,8 @@
  *
  */
 
-#if defined(TARGET_DARWIN_OSX)
+#include <string>
+#include <vector>
 
 #include "windowing/WinSystem.h"
 #include "threads/CriticalSection.h"
@@ -39,59 +40,56 @@ public:
   virtual ~CWinSystemOSX();
 
   // ITimerCallback interface
-  virtual void OnTimeout();
+  virtual void OnTimeout() override;
 
   // CWinSystemBase
-  virtual bool InitWindowSystem();
-  virtual bool DestroyWindowSystem();
-  virtual bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction);
-  virtual bool DestroyWindow();
-  virtual bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop);
+  virtual bool InitWindowSystem() override;
+  virtual bool DestroyWindowSystem() override;
+  virtual bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res) override;
+  virtual bool DestroyWindow() override;
+  virtual bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop) override;
   bool         ResizeWindowInternal(int newWidth, int newHeight, int newLeft, int newTop, void *additional);
-  virtual bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays);
-  virtual void UpdateResolutions();
-  virtual void NotifyAppFocusChange(bool bGaining);
-  virtual void ShowOSMouse(bool show);
-  virtual bool Minimize();
-  virtual bool Restore();
-  virtual bool Hide();
-  virtual bool Show(bool raise = true);
-  virtual void OnMove(int x, int y);
+  virtual bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
+  virtual void UpdateResolutions() override;
+  virtual void NotifyAppFocusChange(bool bGaining) override;
+  virtual void ShowOSMouse(bool show) override;
+  virtual bool Minimize() override;
+  virtual bool Restore() override;
+  virtual bool Hide() override;
+  virtual bool Show(bool raise = true) override;
+  virtual void OnMove(int x, int y) override;
 
-  virtual void EnableSystemScreenSaver(bool bEnable);
-  virtual bool IsSystemScreenSaverEnabled();
-  virtual void ResetOSScreensaver();
-  virtual bool EnableFrameLimiter();
+  virtual std::string GetClipboardText(void) override;
 
-  virtual void EnableTextInput(bool bEnable);
-  virtual bool IsTextInputEnabled();
+  void Register(IDispResource *resource) override;
+  void Unregister(IDispResource *resource) override;
 
-  virtual void Register(IDispResource *resource);
-  virtual void Unregister(IDispResource *resource);
-  
-  virtual int GetNumScreens();
-  virtual int GetCurrentScreen();
-  virtual double GetCurrentRefreshrate() { return m_refreshRate; }
-  
+  virtual std::unique_ptr<CVideoSync> GetVideoSync(void *clock) override;
+
   void        WindowChangedScreen();
 
   void        AnnounceOnLostDevice();
   void        AnnounceOnResetDevice();
+  void        HandleOnResetDevice();
   void        StartLostDeviceTimer();
   void        StopLostDeviceTimer();
-  
+
   void* GetCGLContextObj();
   void* GetNSOpenGLContext();
+  void GetConnectedOutputs(std::vector<std::string> *outputs);
 
-  std::string GetClipboardText(void);
+  // winevents override
+  bool MessagePump() override;
 
 protected:
+  virtual std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
+
   void  HandlePossibleRefreshrateChange();
   void* CreateWindowedContext(void* shareCtx);
   void* CreateFullScreenContext(int screen_index, void* shareCtx);
   void  GetScreenResolution(int* w, int* h, double* fps, int screenIdx);
-  void  EnableVSync(bool enable); 
-  bool  SwitchToVideoMode(int width, int height, double refreshrate, int screenIdx);
+  void  EnableVSync(bool enable);
+  bool  SwitchToVideoMode(int width, int height, double refreshrate);
   void  FillInVideoModes();
   bool  FlushBuffer(void);
   bool  IsObscured(void);
@@ -105,8 +103,6 @@ protected:
   bool                         m_obscured;
   unsigned int                 m_obscured_timecheck;
 
-  bool                         m_use_system_screensaver;
-  bool                         m_can_display_switch;
   bool                         m_movedToOtherScreen;
   int                          m_lastDisplayNr;
   void                        *m_windowDidMove;
@@ -117,6 +113,6 @@ protected:
   CCriticalSection             m_resourceSection;
   std::vector<IDispResource*>  m_resources;
   CTimer                       m_lostDeviceTimer;
+  bool                         m_delayDispReset;
+  XbmcThreads::EndTime         m_dispResetTimer;
 };
-
-#endif

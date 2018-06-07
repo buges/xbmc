@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,20 +22,20 @@
 
 #include "gtest/gtest.h"
 
-TEST(TestLangCodeExpander, ConvertISO6391ToISO6392T)
+TEST(TestLangCodeExpander, ConvertISO6391ToISO6392B)
 {
   std::string refstr, varstr;
 
   refstr = "eng";
-  g_LangCodeExpander.ConvertISO6391ToISO6392T("en", varstr);
+  g_LangCodeExpander.ConvertISO6391ToISO6392B("en", varstr);
   EXPECT_STREQ(refstr.c_str(), varstr.c_str());
 }
 
-TEST(TestLangCodeExpander, ConvertToISO6392T)
+TEST(TestLangCodeExpander, ConvertToISO6392B)
 {
   std::string refstr, varstr;
 
   refstr = "eng";
-  g_LangCodeExpander.ConvertToISO6392T("en", varstr);
+  g_LangCodeExpander.ConvertToISO6392B("en", varstr);
   EXPECT_STREQ(refstr.c_str(), varstr.c_str());
 }

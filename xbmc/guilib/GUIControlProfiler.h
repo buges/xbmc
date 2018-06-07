@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
 #ifndef GUILIB_GUICONTROLPROFILER_H__
 #define GUILIB_GUICONTROLPROFILER_H__
 #pragma once
+
+#include <vector>
 
 #include "GUIControl.h"
 
@@ -79,9 +81,9 @@ public:
   float m_fPerfScale;
 private:
   CGUIControlProfiler(void);
-  ~CGUIControlProfiler(void) {};
-  CGUIControlProfiler(const CGUIControlProfiler &that);
-  CGUIControlProfiler &operator=(const CGUIControlProfiler &that);
+  ~CGUIControlProfiler(void) = default;
+  CGUIControlProfiler(const CGUIControlProfiler &that) = delete;
+  CGUIControlProfiler &operator=(const CGUIControlProfiler &that) = delete;
 
   CGUIControlProfilerItem m_ItemHead;
   CGUIControlProfilerItem *m_pLastItem;

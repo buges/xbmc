@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,21 +22,22 @@
 #include <string>
 
 #include "XBDateTime.h"
+#include "filesystem/File.h"
 #include "network/httprequesthandler/IHTTPRequestHandler.h"
 
 class CHTTPFileHandler : public IHTTPRequestHandler
 {
 public:
-  virtual ~CHTTPFileHandler() { }
+  ~CHTTPFileHandler() override = default;
 
-  virtual int HandleRequest();
+  int HandleRequest() override;
 
-  virtual bool CanHandleRanges() const { return m_canHandleRanges; }
-  virtual bool CanBeCached() const { return m_canBeCached; }
-  virtual bool GetLastModifiedDate(CDateTime &lastModified) const;
+  bool CanHandleRanges() const override { return m_canHandleRanges; }
+  bool CanBeCached() const override { return m_canBeCached; }
+  bool GetLastModifiedDate(CDateTime &lastModified) const override;
 
-  virtual std::string GetRedirectUrl() const { return m_url; }
-  virtual std::string GetResponseFile() const { return m_url; }
+  std::string GetRedirectUrl() const override { return m_url; }
+  std::string GetResponseFile() const override { return m_url; }
 
 protected:
   CHTTPFileHandler();
@@ -46,7 +47,7 @@ protected:
 
   void SetCanHandleRanges(bool canHandleRanges) { m_canHandleRanges = canHandleRanges; }
   void SetCanBeCached(bool canBeCached) { m_canBeCached = canBeCached; }
-  void SetLastModifiedDate(CDateTime lastModified) { m_lastModified = lastModified; }
+  void SetLastModifiedDate(const struct __stat64 *buffer);
 
 private:
   std::string m_url;

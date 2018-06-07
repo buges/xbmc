@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ class CGUIKeyboard : public ITimerCallback
 {
   public:
     CGUIKeyboard():m_idleTimer(this){};
-    virtual ~CGUIKeyboard(){ };
+    ~CGUIKeyboard() override = default;
 
     // entrypoint
     /*!
@@ -59,14 +59,14 @@ class CGUIKeyboard : public ITimerCallback
     
     /*!
     *\brief This call should cancel a currently shown keyboard dialog. The implementation should 
-    * return false from the modal ShowAndGetInput once anyone calls this metohod.
+    * return false from the modal ShowAndGetInput once anyone calls this method.
     */
     virtual void Cancel() = 0;
 
     virtual int GetWindowId() const {return 0;}
 
     // CTimer Interface for autoclose
-    virtual void OnTimeout()
+    void OnTimeout() override
     {
       Cancel();
     }

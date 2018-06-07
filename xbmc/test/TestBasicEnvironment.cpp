@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,30 +20,38 @@
 
 #include "TestBasicEnvironment.h"
 #include "TestUtils.h"
+#include "ServiceBroker.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
-#include "powermanagement/PowerManager.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
-#include "Util.h"
 #include "Application.h"
+#include "AppParamParser.h"
+#include "windowing/WinSystem.h"
+#include "platform/Filesystem.h"
+
+#ifdef TARGET_DARWIN
+#include "Util.h"
+#endif
 
 #include <cstdio>
 #include <cstdlib>
 #include <climits>
+#include <system_error>
+
+namespace fs = KODI::PLATFORM::FILESYSTEM;
 
 void TestBasicEnvironment::SetUp()
 {
   XFILE::CFile *f;
 
-  /* NOTE: The below is done to fix memleak warning about unitialized variable
+  /* NOTE: The below is done to fix memleak warning about uninitialized variable
    * in xbmcutil::GlobalsSingleton<CAdvancedSettings>::getInstance().
    */
   g_advancedSettings.Initialize();
 
-  // Need to configure the network as some tests access the network member
-  g_application.SetupNetwork();
+  g_application.m_ServiceManager.reset(new CServiceManager());
 
   if (!CXBMCTestUtils::Instance().SetReferenceFileBasePath())
     SetUpError();
@@ -57,41 +65,33 @@ void TestBasicEnvironment::SetUp()
   std::string frameworksPath = CUtil::GetFrameworksPath();
   CSpecialProtocol::SetXBMCFrameworksPath(frameworksPath);    
 #endif
-  /* TODO: Something should be done about all the asserts in GUISettings so
+  /** 
+   * @todo Something should be done about all the asserts in GUISettings so
    * that the initialization of these components won't be needed.
    */
-  g_powerManager.Initialize();
-  CSettings::Get().Initialize();
 
   /* Create a temporary directory and set it to be used throughout the
    * test suite run.
    */
-#ifdef TARGET_WINDOWS
-  std::string xbmcTempPath;
-  TCHAR lpTempPathBuffer[MAX_PATH];
-  if (!GetTempPath(MAX_PATH, lpTempPathBuffer))
+
+  g_application.EnablePlatformDirectories(false);
+
+  std::error_code ec;
+  m_tempPath = fs::create_temp_directory(ec);
+  if (ec)
+  {
+    TearDown();
     SetUpError();
-  xbmcTempPath = lpTempPathBuffer;
-  if (!GetTempFileName(xbmcTempPath.c_str(), "xbmctempdir", 0, lpTempPathBuffer))
-    SetUpError();
-  DeleteFile(lpTempPathBuffer);
-  if (!CreateDirectory(lpTempPathBuffer, NULL))
-    SetUpError();
-  CSpecialProtocol::SetTempPath(lpTempPathBuffer);
-#else
-  char buf[MAX_PATH];
-  char *tmp;
-  strcpy(buf, "/tmp/xbmctempdirXXXXXX");
-  if ((tmp = mkdtemp(buf)) == NULL)
-    SetUpError();
-  CSpecialProtocol::SetTempPath(tmp);
-#endif
+  }
+
+  CSpecialProtocol::SetTempPath(m_tempPath);
+  CSpecialProtocol::SetProfilePath(m_tempPath);
 
   /* Create and delete a tempfile to initialize the VFS (really to initialize
    * CLibcdio). This is done so that the initialization of the VFS does not
    * affect the performance results of the test cases.
    */
-  /* TODO: Make the initialization of the VFS here optional so it can be
+  /** @todo Make the initialization of the VFS here optional so it can be
    * testable in a test case.
    */
   f = XBMC_CREATETEMPFILE("");
@@ -100,12 +100,19 @@ void TestBasicEnvironment::SetUp()
     TearDown();
     SetUpError();
   }
+
+  if (!g_application.m_ServiceManager->InitForTesting())
+    exit(1);
+
+  CServiceBroker::GetSettings().Initialize();
 }
 
 void TestBasicEnvironment::TearDown()
 {
-  std::string xbmcTempPath = CSpecialProtocol::TranslatePath("special://temp/");
-  XFILE::CDirectory::Remove(xbmcTempPath);
+  XFILE::CDirectory::RemoveRecursive(m_tempPath);
+
+  CServiceBroker::GetSettings().Uninitialize();
+  g_application.m_ServiceManager->DeinitTesting();
 }
 
 void TestBasicEnvironment::SetUpError()

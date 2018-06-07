@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,32 +27,32 @@
 class CSettingRequirementCondition : public CSettingConditionItem
 {
 public:
-  CSettingRequirementCondition(CSettingsManager *settingsManager = NULL)
+  explicit CSettingRequirementCondition(CSettingsManager *settingsManager = nullptr)
     : CSettingConditionItem(settingsManager)
   { }
-  virtual ~CSettingRequirementCondition() { }
+  ~CSettingRequirementCondition() override = default;
 
-  virtual bool Check() const;
+  bool Check() const override;
 };
 
 class CSettingRequirementConditionCombination : public CSettingConditionCombination
 {
 public:
-  CSettingRequirementConditionCombination(CSettingsManager *settingsManager = NULL)
+  explicit CSettingRequirementConditionCombination(CSettingsManager *settingsManager = nullptr)
     : CSettingConditionCombination(settingsManager)
   { }
-  virtual ~CSettingRequirementConditionCombination() { }
+  ~CSettingRequirementConditionCombination() override = default;
 
-  virtual bool Check() const;
+  bool Check() const override;
 
 private:
-  virtual CBooleanLogicOperation* newOperation() { return new CSettingRequirementConditionCombination(m_settingsManager); }
-  virtual CBooleanLogicValue* newValue() { return new CSettingRequirementCondition(m_settingsManager); }
+  CBooleanLogicOperation* newOperation() override { return new CSettingRequirementConditionCombination(m_settingsManager); }
+  CBooleanLogicValue* newValue() override { return new CSettingRequirementCondition(m_settingsManager); }
 };
 
 class CSettingRequirement : public CSettingCondition
 {
 public:
-  CSettingRequirement(CSettingsManager *settingsManager = NULL);
-  virtual ~CSettingRequirement() { }
+  explicit CSettingRequirement(CSettingsManager *settingsManager = nullptr);
+  ~CSettingRequirement() override = default;
 };

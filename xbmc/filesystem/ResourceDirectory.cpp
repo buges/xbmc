@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,11 +28,9 @@
 
 using namespace XFILE;
 
-CResourceDirectory::CResourceDirectory()
-{ }
+CResourceDirectory::CResourceDirectory() = default;
 
-CResourceDirectory::~CResourceDirectory()
-{ }
+CResourceDirectory::~CResourceDirectory() = default;
 
 bool CResourceDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -47,7 +45,7 @@ bool CResourceDirectory::GetDirectory(const CURL& url, CFileItemList &items)
     for (int i = 0; i < items.Size(); i++)
     {
       CFileItemPtr item = items[i];
-      if (StringUtils::StartsWith(item->GetPath(), translatedPath))
+      if (URIUtils::PathHasParent(item->GetPath(), translatedPath))
         item->SetPath(URIUtils::AddFileToFolder(pathToUrl, item->GetPath().substr(translatedPath.size())));
     }
 

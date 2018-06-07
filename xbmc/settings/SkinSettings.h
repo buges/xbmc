@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,40 +19,25 @@
  *
  */
 
-#include <map>
+#include <set>
 #include <string>
 
+#include "addons/Skin.h"
 #include "settings/lib/ISubSettings.h"
 #include "threads/CriticalSection.h"
 
 class TiXmlNode;
 
-class CSkinString
-{
-public:
-  std::string name;
-  std::string value;
-};
-
-class CSkinBool
-{
-public:
-  CSkinBool()
-    : value(false)
-  { }
-
-  std::string name;
-  bool value;
-};
-
 class CSkinSettings : public ISubSettings
 {
 public:
-  static CSkinSettings& Get();
+  static CSkinSettings& GetInstance();
 
-  virtual bool Load(const TiXmlNode *settings);
-  virtual bool Save(TiXmlNode *settings) const;
-  virtual void Clear();
+  bool Load(const TiXmlNode *settings) override;
+  bool Save(TiXmlNode *settings) const override;
+  void Clear() override;
+
+  void MigrateSettings(const ADDON::SkinPtr& skin);
 
   int TranslateString(const std::string &setting);
   const std::string& GetString(int setting) const;
@@ -67,14 +52,11 @@ public:
 
 protected:
   CSkinSettings();
-  CSkinSettings(const CSkinSettings&);
-  CSkinSettings& operator=(CSkinSettings const&);
-  virtual ~CSkinSettings();
-
-  std::string GetCurrentSkin() const;
+  CSkinSettings(const CSkinSettings&) = delete;
+  CSkinSettings& operator=(CSkinSettings const&) = delete;
+  ~CSkinSettings() override;
 
 private:
-  std::map<int, CSkinString> m_strings;
-  std::map<int, CSkinBool> m_bools;
   CCriticalSection m_critical;
+  std::set<ADDON::CSkinSettingPtr> m_settings;
 };

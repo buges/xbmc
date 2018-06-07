@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,46 +20,36 @@
 
 #include "cores/FFmpeg.h"
 #include "utils/log.h"
-#include "threads/SharedSection.h"
+#include "threads/CriticalSection.h"
 #include "utils/StringUtils.h"
 #include "threads/Thread.h"
 #include "settings/AdvancedSettings.h"
 #include <map>
 
-/* callback for the ffmpeg lock manager */
-int ffmpeg_lockmgr_cb(void **mutex, enum AVLockOp operation)
+static thread_local CFFmpegLog* CFFmpegLogTls;
+
+void CFFmpegLog::SetLogLevel(int level)
 {
-  CSharedSection **lock = (CSharedSection **)mutex;
+  CFFmpegLog::ClearLogLevel();
+  CFFmpegLog *log = new CFFmpegLog();
+  log->level = level;
+  CFFmpegLogTls = log;
+}
 
-  switch (operation)
-  {
-    case AV_LOCK_CREATE:
-    {
-      *lock = NULL;
-      *lock = new CSharedSection();
-      if (*lock == NULL)
-        return 1;
-      break;
-    }
-    case AV_LOCK_OBTAIN:
-      (*lock)->lock();
-      break;
+int CFFmpegLog::GetLogLevel()
+{
+  CFFmpegLog* log = CFFmpegLogTls;
+  if (!log)
+    return -1;
+  return log->level;
+}
 
-    case AV_LOCK_RELEASE:
-      (*lock)->unlock();
-      break;
-
-    case AV_LOCK_DESTROY:
-    {
-      delete *lock;
-      *lock = NULL;
-      break;
-    }
-
-    default:
-      return 1;
-  }
-  return 0;
+void CFFmpegLog::ClearLogLevel()
+{
+  CFFmpegLog* log = CFFmpegLogTls;
+  CFFmpegLogTls = nullptr;
+  if (log)
+    delete log;
 }
 
 static CCriticalSection m_logSection;
@@ -87,37 +77,49 @@ void ff_avutil_log(void* ptr, int level, const char* format, va_list va)
 
   AVClass* avc= ptr ? *(AVClass**)ptr : NULL;
 
-  if(level >= AV_LOG_DEBUG &&
+  int maxLevel = AV_LOG_WARNING;
+  if (CFFmpegLog::GetLogLevel() > 0)
+    maxLevel = AV_LOG_INFO;
+
+  if (level > maxLevel &&
      !g_advancedSettings.CanLogComponent(LOGFFMPEG))
     return;
-  else if(g_advancedSettings.m_logLevel <= LOG_LEVEL_NORMAL)
+  else if (g_advancedSettings.m_logLevel <= LOG_LEVEL_NORMAL)
     return;
 
   int type;
-  switch(level)
+  switch (level)
   {
-    case AV_LOG_INFO   : type = LOGINFO;    break;
-    case AV_LOG_ERROR  : type = LOGERROR;   break;
-    case AV_LOG_DEBUG  :
-    default            : type = LOGDEBUG;   break;
+    case AV_LOG_INFO:
+      type = LOGINFO;
+      break;
+
+    case AV_LOG_ERROR:
+      type = LOGERROR;
+      break;
+
+    case AV_LOG_DEBUG:
+    default:
+      type = LOGDEBUG;
+      break;
   }
 
   std::string message = StringUtils::FormatV(format, va);
   std::string prefix = StringUtils::Format("ffmpeg[%lX]: ", threadId);
-  if(avc)
+  if (avc)
   {
-    if(avc->item_name)
+    if (avc->item_name)
       prefix += std::string("[") + avc->item_name(ptr) + "] ";
-    else if(avc->class_name)
+    else if (avc->class_name)
       prefix += std::string("[") + avc->class_name + "] ";
   }
 
   buffer += message;
   int pos, start = 0;
-  while( (pos = buffer.find_first_of('\n', start)) >= 0 )
+  while ((pos = buffer.find_first_of('\n', start)) >= 0)
   {
-    if(pos>start)
-      CLog::Log(type, "%s%s", prefix.c_str(), buffer.substr(start, pos-start).c_str());
+    if (pos > start)
+      CLog::Log(type, "%s%s", prefix.c_str(), buffer.substr(start, pos - start).c_str());
     start = pos+1;
   }
   buffer.erase(0, start);

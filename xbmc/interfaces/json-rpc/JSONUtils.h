@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <vector>
 
 #include "JSONRPCUtils.h"
 #include "XBDateTime.h"
@@ -29,6 +30,7 @@
 #include "utils/JSONVariantWriter.h"
 #include "utils/JSONVariantParser.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 
 namespace JSONRPC
 {
@@ -94,95 +96,20 @@ namespace JSONRPC
       StringUtils::ToLower(method);
       StringUtils::ToLower(order);
 
+      // parse the sort attributes
       sortAttributes = SortAttributeNone;
       if (parameterObject["sort"]["ignorearticle"].asBoolean())
         sortAttributes = SortAttributeIgnoreArticle;
       else
         sortAttributes = SortAttributeNone;
 
-      if (order == "ascending")
-        sortOrder = SortOrderAscending;
-      else if (order == "descending")
-        sortOrder = SortOrderDescending;
-      else
+      // parse the sort order
+      sortOrder = SortUtils::SortOrderFromString(order);
+      if (sortOrder == SortOrderNone)
         return false;
 
-      if (method == "none")
-        sortBy = SortByNone;
-      else if (method == "label")
-        sortBy = SortByLabel;
-      else if (method == "date")
-        sortBy = SortByDate;
-      else if (method == "size")
-        sortBy = SortBySize;
-      else if (method == "file")
-        sortBy = SortByFile;
-      else if (method == "path")
-        sortBy = SortByPath;
-      else if (method == "drivetype")
-        sortBy = SortByDriveType;
-      else if (method == "title")
-        sortBy = SortByTitle;
-      else if (method == "track")
-        sortBy = SortByTrackNumber;
-      else if (method == "time")
-        sortBy = SortByTime;
-      else if (method == "artist")
-        sortBy = SortByArtist;
-      else if (method == "album")
-        sortBy = SortByAlbum;
-      else if (method == "albumtype")
-        sortBy = SortByAlbumType;
-      else if (method == "genre")
-        sortBy = SortByGenre;
-      else if (method == "country")
-        sortBy = SortByCountry;
-      else if (method == "year")
-        sortBy = SortByYear;
-      else if (method == "rating")
-        sortBy = SortByRating;
-      else if (method == "votes")
-        sortBy = SortByVotes;
-      else if (method == "top250")
-        sortBy = SortByTop250;
-      else if (method == "programcount")
-        sortBy = SortByProgramCount;
-      else if (method == "playlist")
-        sortBy = SortByPlaylistOrder;
-      else if (method == "episode")
-        sortBy = SortByEpisodeNumber;
-      else if (method == "season")
-        sortBy = SortBySeason;
-      else if (method == "totalepisodes")
-        sortBy = SortByNumberOfEpisodes;
-      else if (method == "watchedepisodes")
-        sortBy = SortByNumberOfWatchedEpisodes;
-      else if (method == "tvshowstatus")
-        sortBy = SortByTvShowStatus;
-      else if (method == "tvshowtitle")
-        sortBy = SortByTvShowTitle;
-      else if (method == "sorttitle")
-        sortBy = SortBySortTitle;
-      else if (method == "productioncode")
-        sortBy = SortByProductionCode;
-      else if (method == "mpaa")
-        sortBy = SortByMPAA;
-      else if (method == "studio")
-        sortBy = SortByStudio;
-      else if (method == "dateadded")
-        sortBy = SortByDateAdded;
-      else if (method == "lastplayed")
-        sortBy = SortByLastPlayed;
-      else if (method == "playcount")
-        sortBy = SortByPlaycount;
-      else if (method == "listeners")
-        sortBy = SortByListeners;
-      else if (method == "bitrate")
-        sortBy = SortByBitrate;
-      else if (method == "random")
-        sortBy = SortByRandom;
-      else
-        return false;
+      // parse the sort method
+      sortBy = SortUtils::SortMethodFromString(method);
 
       return true;
     }
@@ -214,7 +141,7 @@ namespace JSONRPC
      \return True if the given object contains a member with 
      the given key otherwise false
      */
-    static inline bool IsValueMember(const CVariant &value, std::string key) { return value.isObject() && value.isMember(key); }
+    static inline bool IsValueMember(const CVariant &value, std::string key) { return value.isMember(key); }
     
     /*!
      \brief Returns the json value of a parameter
@@ -515,7 +442,7 @@ namespace JSONRPC
         return;
 
       stringArray.clear();
-      for (CVariant::const_iterator_array it = jsonStringArray.begin_array(); it != jsonStringArray.end_array(); it++)
+      for (CVariant::const_iterator_array it = jsonStringArray.begin_array(); it != jsonStringArray.end_array(); ++it)
         stringArray.push_back(it->asString());
     }
 

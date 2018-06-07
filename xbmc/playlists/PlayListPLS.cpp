@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,11 @@
  *
  */
 
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "PlayListPLS.h"
 #include "PlayListFactory.h"
 #include "Util.h"
@@ -31,11 +36,10 @@
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
 
-using namespace std;
 using namespace XFILE;
 using namespace PLAYLIST;
 
-#define START_PLAYLIST_MARKER "[playlist]" // may be case-insentive (equivalent to .ini file on win32)
+#define START_PLAYLIST_MARKER "[playlist]" // may be case-insensitive (equivalent to .ini file on win32)
 #define PLAYLIST_NAME     "PlaylistName"
 
 /*----------------------------------------------------------------------
@@ -50,11 +54,9 @@ Length2=5
 NumberOfEntries=2
 Version=2
 ----------------------------------------------------------------------*/
-CPlayListPLS::CPlayListPLS(void)
-{}
+CPlayListPLS::CPlayListPLS(void) = default;
 
-CPlayListPLS::~CPlayListPLS(void)
-{}
+CPlayListPLS::~CPlayListPLS(void) = default;
 
 bool CPlayListPLS::Load(const std::string &strFile)
 {
@@ -129,7 +131,7 @@ bool CPlayListPLS::Load(const std::string &strFile)
       }
       else if (StringUtils::StartsWith(strLeft, "file"))
       {
-        vector <int>::size_type idx = atoi(strLeft.c_str() + 4);
+        std::vector <int>::size_type idx = atoi(strLeft.c_str() + 4);
         if (!Resize(idx))
         {
           bFailed = true;
@@ -154,7 +156,7 @@ bool CPlayListPLS::Load(const std::string &strFile)
       }
       else if (StringUtils::StartsWith(strLeft, "title"))
       {
-        vector <int>::size_type idx = atoi(strLeft.c_str() + 5);
+        std::vector <int>::size_type idx = atoi(strLeft.c_str() + 5);
         if (!Resize(idx))
         {
           bFailed = true;
@@ -165,7 +167,7 @@ bool CPlayListPLS::Load(const std::string &strFile)
       }
       else if (StringUtils::StartsWith(strLeft, "length"))
       {
-        vector <int>::size_type idx = atoi(strLeft.c_str() + 6);
+        std::vector <int>::size_type idx = atoi(strLeft.c_str() + 6);
         if (!Resize(idx))
         {
           bFailed = true;
@@ -233,17 +235,17 @@ void CPlayListPLS::Save(const std::string& strFileName) const
     write += StringUtils::Format("Length%i=%u\n", i + 1, item->GetMusicInfoTag()->GetDuration() / 1000 );
   }
 
-  write += StringUtils::Format("NumberOfEntries=%" PRIuS"\n", m_vecItems.size());
+  write += StringUtils::Format("NumberOfEntries={0}\n", m_vecItems.size());
   write += StringUtils::Format("Version=2\n");
   file.Write(write.c_str(), write.size());
   file.Close();
 }
 
-bool CPlayListASX::LoadAsxIniInfo(istream &stream)
+bool CPlayListASX::LoadAsxIniInfo(std::istream &stream)
 {
   CLog::Log(LOGINFO, "Parsing INI style ASX");
 
-  string name, value;
+  std::string name, value;
 
   while( stream.good() )
   {
@@ -283,7 +285,7 @@ bool CPlayListASX::LoadAsxIniInfo(istream &stream)
   return true;
 }
 
-bool CPlayListASX::LoadData(istream& stream)
+bool CPlayListASX::LoadData(std::istream& stream)
 {
   CLog::Log(LOGNOTICE, "Parsing ASX");
 
@@ -360,7 +362,7 @@ bool CPlayListASX::LoadData(istream& stream)
           title = pTitle->FirstChild()->ValueStr();
 
         while (pRef)
-        { // multiple references may apear for one entry
+        { // multiple references may appear for one entry
           // duration may exist on this level too
           value = XMLUtils::GetAttribute(pRef, "href");
           if (!value.empty())
@@ -381,7 +383,7 @@ bool CPlayListASX::LoadData(istream& stream)
         value = XMLUtils::GetAttribute(pElement, "href");
         if (!value.empty())
         { // found an entryref, let's try loading that url
-          unique_ptr<CPlayList> playlist(CPlayListFactory::Create(value));
+          std::unique_ptr<CPlayList> playlist(CPlayListFactory::Create(value));
           if (NULL != playlist.get())
             if (playlist->Load(value))
               Add(*playlist);
@@ -395,7 +397,7 @@ bool CPlayListASX::LoadData(istream& stream)
 }
 
 
-bool CPlayListRAM::LoadData(istream& stream)
+bool CPlayListRAM::LoadData(std::istream& stream)
 {
   CLog::Log(LOGINFO, "Parsing RAM");
 
@@ -410,7 +412,7 @@ bool CPlayListRAM::LoadData(istream& stream)
   return true;
 }
 
-bool CPlayListPLS::Resize(vector <int>::size_type newSize)
+bool CPlayListPLS::Resize(std::vector <int>::size_type newSize)
 {
   if (newSize == 0)
     return false;

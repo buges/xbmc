@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-#include "system.h"
 #include <string>
 #include "utils/Job.h"
 
@@ -27,7 +26,7 @@ class CAutorunMediaJob : public CJob
 public:
   CAutorunMediaJob(const std::string &label, const std::string &path);
 
-  virtual bool DoWork();
+  bool DoWork() override;
 private:
   const char *GetWindowString(int selection);
 

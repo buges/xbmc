@@ -1,9 +1,8 @@
-#ifndef _ENCODERFFMPEG_H
-#define _ENCODERFFMPEG_H
+#pragma once
 
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -33,11 +32,11 @@ class CEncoderFFmpeg : public IEncoder
 {
 public:
   CEncoderFFmpeg();
-  virtual ~CEncoderFFmpeg() {}
+  ~CEncoderFFmpeg() override = default;
 
-  bool Init(audioenc_callbacks &callbacks);
-  int Encode(int nNumBytesRead, uint8_t *pbtStream);
-  bool Close();
+  bool Init(AddonToKodiFuncTable_AudioEncoder& callbacks) override;
+  int Encode(int nNumBytesRead, uint8_t *pbtStream) override;
+  bool Close() override;
 private:
 
   AVFormatContext  *m_Format;
@@ -68,9 +67,8 @@ private:
   AVFrame          *m_ResampledFrame;
   bool              m_NeedConversion;
 
-  audioenc_callbacks m_callbacks;
+  AddonToKodiFuncTable_AudioEncoder m_callbacks;
 
   bool WriteFrame();
 };
 
-#endif // _ENCODERFFMPEG_H

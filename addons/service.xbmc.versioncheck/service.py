@@ -24,19 +24,24 @@ from lib.common import log, dialog_yesno
 from lib.common import upgrade_message as _upgrademessage
 from lib.common import upgrade_message2 as _upgrademessage2
 
-__addon__        = lib.common.__addon__
-__addonversion__ = lib.common.__addonversion__
-__addonname__    = lib.common.__addonname__
-__addonpath__    = lib.common.__addonpath__
-__icon__         = lib.common.__icon__
+ADDON        = lib.common.ADDON
+ADDONVERSION = lib.common.ADDONVERSION
+ADDONNAME    = lib.common.ADDONNAME
+ADDONPATH    = lib.common.ADDONPATH
+ICON         = lib.common.ICON
 oldversion = False
+
+monitor = xbmc.Monitor()
 
 class Main:
     def __init__(self):
         linux = False
         packages = []
-        xbmc.sleep(5000)
-        if xbmc.getCondVisibility('System.Platform.Linux') and __addon__.getSetting("upgrade_apt") == 'true':
+
+        if monitor.waitForAbort(5):
+            sys.exit(0)
+
+        if xbmc.getCondVisibility('System.Platform.Linux') and ADDON.getSetting("upgrade_apt") == 'true':
             packages = ['kodi']
             _versionchecklinux(packages)
         else:
@@ -52,7 +57,7 @@ def _versioncheck():
     versionlist = get_versionfilelist()
     # retrieve version installed
     version_installed = get_installedversion()
-    # copmpare installed and available
+    # compare installed and available
     oldversion, version_installed, version_available, version_stable = compare_version(version_installed, versionlist)
     return oldversion, version_installed, version_available, version_stable
 
@@ -62,9 +67,9 @@ def _versionchecklinux(packages):
         handler = False
         result = False
         try:
-            # try aptdeamon first
-            from lib.aptdeamonhandler import AptdeamonHandler
-            handler = AptdeamonHandler()
+            # try aptdaemon first
+            from lib.aptdaemonhandler import AptdaemonHandler
+            handler = AptdaemonHandler()
         except:
             # fallback to shell
             # since we need the user password, ask to check for new version first
@@ -75,13 +80,13 @@ def _versionchecklinux(packages):
                 pass
             elif dialog_yesno(32009, 32010):
                 log("disabling addon by user request")
-                __addon__.setSetting("versioncheck_enable", 'false')
+                ADDON.setSetting("versioncheck_enable", 'false')
                 return
 
         if handler:
             if handler.check_upgrade_available(packages[0]):
                 if _upgrademessage(32012, oldversion, True):
-                    if __addon__.getSetting("upgrade_system") == "false":
+                    if ADDON.getSetting("upgrade_system") == "false":
                         result = handler.upgrade_package(packages[0])
                     else:
                         result = handler.upgrade_system()
@@ -100,5 +105,8 @@ def _versionchecklinux(packages):
 
 
 if (__name__ == "__main__"):
-    log('Version %s started' % __addonversion__)
-    Main()
+    if ADDON.getSetting("versioncheck_enable") == "false":
+        log("Disabled")
+    else:
+        log('Version %s started' % ADDONVERSION)
+        Main()

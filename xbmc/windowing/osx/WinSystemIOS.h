@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,13 +20,11 @@
 
 #pragma once
 
-#ifndef WINDOW_SYSTEM_IOSEGL_H
-#define WINDOW_SYSTEM_IOSEGL_H
+#include <string>
+#include <vector>
 
-#if defined(TARGET_DARWIN_IOS)
 #include "windowing/WinSystem.h"
 #include "rendering/gles/RenderSystemGLES.h"
-#include "utils/GlobalsHandling.h"
 #include "threads/CriticalSection.h"
 
 class IDispResource;
@@ -39,44 +37,52 @@ public:
   CWinSystemIOS();
   virtual ~CWinSystemIOS();
 
-  virtual bool InitWindowSystem();
-  virtual bool DestroyWindowSystem();
-  virtual bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction);
-  virtual bool DestroyWindow();
-  virtual bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop);
-  virtual bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays);
-  virtual void UpdateResolutions();
-  virtual bool CanDoWindowed() { return false; }
+  // Implementation of CWinSystemBase
+  CRenderSystemBase *GetRenderSystem() override { return this; }
+  bool InitWindowSystem() override;
+  bool DestroyWindowSystem() override;
+  bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res) override;
+  bool DestroyWindow() override;
+  bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop) override;
+  bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
+  void UpdateResolutions() override;
+  bool CanDoWindowed() override { return false; }
 
-  virtual void ShowOSMouse(bool show);
-  virtual bool HasCursor();
+  void ShowOSMouse(bool show) override;
+  bool HasCursor() override;
 
-  virtual void NotifyAppActiveChange(bool bActivated);
+  void NotifyAppActiveChange(bool bActivated) override;
 
-  virtual bool Minimize();
-  virtual bool Restore() ;
-  virtual bool Hide();
-  virtual bool Show(bool raise = true);
+  bool Minimize() override;
+  bool Restore() override;
+  bool Hide() override;
+  bool Show(bool raise = true) override;
 
-  virtual bool IsExtSupported(const char* extension);
+  bool IsExtSupported(const char* extension) const override;
 
-  virtual bool BeginRender();
-  virtual bool EndRender();
-  
-  virtual void Register(IDispResource *resource);
-  virtual void Unregister(IDispResource *resource);
-  
-  virtual int GetNumScreens();    
-  virtual int GetCurrentScreen();
-  
-          bool InitDisplayLink(CVideoSyncIos *syncImpl);
-          void DeinitDisplayLink(void);
-          void OnAppFocusChange(bool focus);
-          bool IsBackgrounded() const { return m_bIsBackgrounded; }
+  bool BeginRender() override;
+  bool EndRender() override;
+
+  void Register(IDispResource *resource) override;
+  void Unregister(IDispResource *resource) override;
+
+  int GetNumScreens() override;
+  int GetCurrentScreen() override;
+
+  virtual std::unique_ptr<CVideoSync> GetVideoSync(void *clock) override;
+
+  bool InitDisplayLink(CVideoSyncIos *syncImpl);
+  void DeinitDisplayLink(void);
+  void OnAppFocusChange(bool focus);
+  bool IsBackgrounded() const { return m_bIsBackgrounded; }
+  void* GetEAGLContextObj();
+
+  // winevents override
+  bool MessagePump() override;
 
 protected:
-  virtual bool PresentRenderImpl(const CDirtyRegionList &dirty);
-  virtual void SetVSyncImpl(bool enable);
+  void PresentRenderImpl(bool rendered) override;
+  void SetVSyncImpl(bool enable) override;
 
   void        *m_glView; // EAGLView opaque
   void        *m_WorkingContext; // shared EAGLContext opaque
@@ -86,7 +92,7 @@ protected:
   CCriticalSection             m_resourceSection;
   std::vector<IDispResource*>  m_resources;
   bool         m_bIsBackgrounded;
-  
+
 private:
   bool GetScreenResolution(int* w, int* h, double* fps, int screenIdx);
   void FillInVideoModes();
@@ -94,9 +100,3 @@ private:
   CADisplayLinkWrapper *m_pDisplayLink;
 };
 
-XBMC_GLOBAL_REF(CWinSystemIOS,g_Windowing);
-#define g_Windowing XBMC_GLOBAL_USE(CWinSystemIOS)
-
-#endif
-
-#endif // WINDOW_SYSTEM_IOSEGL_H

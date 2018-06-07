@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,50 +18,34 @@
  *
  */
 
-/*!
-\file GUIFont.h
-\brief
-*/
-
-#ifndef CGUILIB_GUIFONTTTF_GL_H
-#define CGUILIB_GUIFONTTTF_GL_H
 #pragma once
 
+#include <string>
+#include <vector>
 
 #include "GUIFontTTF.h"
-#include "system.h"
 #include "system_gl.h"
 
-
-/*!
- \ingroup textures
- \brief
- */
 class CGUIFontTTFGL : public CGUIFontTTFBase
 {
 public:
-  CGUIFontTTFGL(const std::string& strFileName);
-  virtual ~CGUIFontTTFGL(void);
+  explicit CGUIFontTTFGL(const std::string& strFileName);
+  ~CGUIFontTTFGL(void) override;
 
-  virtual bool FirstBegin();
-  virtual void LastEnd();
-#if HAS_GLES
-  virtual CVertexBuffer CreateVertexBuffer(const std::vector<SVertex> &vertices) const;
-  virtual void DestroyVertexBuffer(CVertexBuffer &bufferHandle) const;
+  bool FirstBegin() override;
+  void LastEnd() override;
+
+  CVertexBuffer CreateVertexBuffer(const std::vector<SVertex> &vertices) const override;
+  void DestroyVertexBuffer(CVertexBuffer &bufferHandle) const override;
   static void CreateStaticVertexBuffers(void);
   static void DestroyStaticVertexBuffers(void);
-#endif
 
 protected:
-  virtual CBaseTexture* ReallocTexture(unsigned int& newHeight);
-  virtual bool CopyCharToTexture(FT_BitmapGlyph bitGlyph, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
-  virtual void DeleteHardwareTexture();
-
-#if HAS_GLES
-#define ELEMENT_ARRAY_MAX_CHAR_INDEX (1000)
+  CBaseTexture* ReallocTexture(unsigned int& newHeight) override;
+  bool CopyCharToTexture(FT_BitmapGlyph bitGlyph, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2) override;
+  void DeleteHardwareTexture() override;
 
   static GLuint m_elementArrayHandle;
-#endif
 
 private:
   unsigned int m_updateY1;
@@ -77,9 +61,6 @@ private:
   
   TextureStatus m_textureStatus;
 
-#if HAS_GLES
   static bool m_staticVertexBufferCreated;
-#endif
 };
 
-#endif

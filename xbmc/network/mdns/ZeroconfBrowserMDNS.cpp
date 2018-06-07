@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,19 +19,22 @@
  */
 
 #include "ZeroconfBrowserMDNS.h"
-#include <utils/log.h>
-#include <threads/SingleLock.h>
-#include "guilib/GUIWindowManager.h"
-#include "guilib/GUIMessage.h"
-#include "GUIUserMessages.h"
-#if defined(TARGET_WINDOWS)
-#include "win32/WIN32Util.h"
-#endif //TARGET_WINDOWS
-#include "network/DNSNameCache.h"
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#pragma comment(lib, "dnssd.lib")
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIMessage.h"
+#include "guilib/GUIWindowManager.h"
+#include "GUIUserMessages.h"
+#include "network/DNSNameCache.h"
+#include "ServiceBroker.h"
+#include "threads/SingleLock.h"
+#include "utils/log.h"
+
+#if defined(TARGET_WINDOWS)
+#include "platform/win32/WIN32Util.h"
+#endif //TARGET_WINDOWS
 
 extern HWND g_hWnd;
 
@@ -48,8 +51,11 @@ CZeroconfBrowserMDNS::~CZeroconfBrowserMDNS()
   for(tBrowserMap::iterator it = m_service_browsers.begin(); it != m_service_browsers.end(); ++it )
     doRemoveServiceType(it->first);
 
-#if defined(TARGET_WINDOWS)
+#if defined(TARGET_WINDOWS_DESKTOP)
   WSAAsyncSelect( (SOCKET) DNSServiceRefSockFD( m_browser ), g_hWnd, BONJOUR_BROWSER_EVENT, 0 );
+#elif  defined(TARGET_WINDOWS_STORE)
+  // need to modify this code to use WSAEventSelect since WSAAsyncSelect is not supported
+  CLog::Log(LOGDEBUG, "%s is not implemented for TARGET_WINDOWS_STORE", __FUNCTION__);
 #endif //TARGET_WINDOWS
 
   if (m_browser)
@@ -88,7 +94,7 @@ void DNSSD_API CZeroconfBrowserMDNS::BrowserCallback(DNSServiceRef browser,
     {
       CGUIMessage message(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE_PATH);
       message.SetStringParam("zeroconf://");
-      g_windowManager.SendThreadMessage(message);
+      CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(message);
       CLog::Log(LOGDEBUG, "ZeroconfBrowserMDNS::BrowserCallback sent gui update for path zeroconf://");
     }
   }
@@ -235,11 +241,14 @@ bool CZeroconfBrowserMDNS::doAddServiceType(const std::string& fcr_service_type)
       CLog::Log(LOGERROR, "ZeroconfBrowserMDNS: DNSServiceCreateConnection failed with error = %ld", (int) err);
       return false;
     }
-#if defined(TARGET_WINDOWS)
+#if defined(TARGET_WINDOWS_DESKTOP)
     err = WSAAsyncSelect( (SOCKET) DNSServiceRefSockFD( m_browser ), g_hWnd, BONJOUR_BROWSER_EVENT, FD_READ | FD_CLOSE );
     if (err != kDNSServiceErr_NoError)
       CLog::Log(LOGERROR, "ZeroconfBrowserMDNS: WSAAsyncSelect failed with error = %ld", (int) err);
-#endif //TARGET_WINDOWS
+#elif defined(TARGET_WINDOWS_STORE)
+    // need to modify this code to use WSAEventSelect since WSAAsyncSelect is not supported
+    CLog::Log(LOGERROR, "%s is not implemented for TARGET_WINDOWS_STORE", __FUNCTION__);
+#endif // TARGET_WINDOWS_STORE
   }
 #endif //!HAS_MDNS_EMBEDDED
 

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "IDirectory.h"
 #include "utils/RegExp.h"
 #include <string>
+#include <vector>
 
 namespace XFILE
 {
@@ -29,9 +30,9 @@ namespace XFILE
   {
   public:
     CStackDirectory();
-    ~CStackDirectory();
-    virtual bool GetDirectory(const CURL& url, CFileItemList& items);
-    virtual bool AllowAll() const { return true; }
+    ~CStackDirectory() override;
+    bool GetDirectory(const CURL& url, CFileItemList& items) override;
+    bool AllowAll() const override { return true; }
     static std::string GetStackedTitlePath(const std::string &strPath);
     static std::string GetStackedTitlePath(const std::string &strPath, VECCREGEXP& RegExps);
     static std::string GetFirstStackedFile(const std::string &strPath);

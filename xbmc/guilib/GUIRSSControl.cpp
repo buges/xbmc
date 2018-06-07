@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,15 +19,19 @@
  */
 
 #include "GUIRSSControl.h"
+#include "ServiceBroker.h"
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
+#include "utils/Color.h"
 #include "utils/RssManager.h"
 #include "utils/RssReader.h"
 #include "utils/StringUtils.h"
 
-using namespace std;
+using namespace KODI::GUILIB;
 
-CGUIRSSControl::CGUIRSSControl(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, const CGUIInfoColor &channelColor, const CGUIInfoColor &headlineColor, std::string& strRSSTags)
+CGUIRSSControl::CGUIRSSControl(int parentID, int controlID, float posX, float posY, float width, float height,
+                               const CLabelInfo& labelInfo, const GUIINFO::CGUIInfoColor &channelColor,
+                               const GUIINFO::CGUIInfoColor &headlineColor, std::string& strRSSTags)
 : CGUIControl(parentID, controlID, posX, posY, width, height),
   m_strRSSTags(strRSSTags),
   m_label(labelInfo),
@@ -97,15 +101,15 @@ bool CGUIRSSControl::UpdateColors()
 void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
   bool dirty = false;
-  if (CSettings::Get().GetBool("lookandfeel.enablerssfeeds") && CRssManager::Get().IsActive())
+  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::GetInstance().IsActive())
   {
     CSingleLock lock(m_criticalSection);
     // Create RSS background/worker thread if needed
     if (m_pReader == NULL)
     {
 
-      RssUrls::const_iterator iter = CRssManager::Get().GetUrls().find(m_urlset);
-      if (iter != CRssManager::Get().GetUrls().end())
+      RssUrls::const_iterator iter = CRssManager::GetInstance().GetUrls().find(m_urlset);
+      if (iter != CRssManager::GetInstance().GetUrls().end())
       {
         m_rtl = iter->second.rtl;
         m_vecUrls = iter->second.url;
@@ -115,7 +119,7 @@ void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyre
 
       dirty = true;
 
-      if (CRssManager::Get().GetReader(GetID(), GetParentID(), this, m_pReader))
+      if (CRssManager::GetInstance().GetReader(GetID(), GetParentID(), this, m_pReader))
       {
         m_scrollInfo.pixelPos = m_pReader->m_savedScrollPixelPos;
       }
@@ -123,8 +127,8 @@ void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyre
       {
         if (m_strRSSTags != "")
         {
-          vector<string> tags = StringUtils::Split(m_strRSSTags, ",");
-          for (vector<string>::const_iterator i = tags.begin(); i != tags.end(); ++i)
+          std::vector<std::string> tags = StringUtils::Split(m_strRSSTags, ",");
+          for (std::vector<std::string>::const_iterator i = tags.begin(); i != tags.end(); ++i)
             m_pReader->AddTag(*i);
         }
         // use half the width of the control as spacing between feeds, and double this between feed sets
@@ -158,12 +162,12 @@ void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyre
 void CGUIRSSControl::Render()
 {
   // only render the control if they are enabled
-  if (CSettings::Get().GetBool("lookandfeel.enablerssfeeds") && CRssManager::Get().IsActive())
+  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::GetInstance().IsActive())
   {
 
     if (m_label.font)
     {
-      vecColors colors;
+      std::vector<UTILS::Color> colors;
       colors.push_back(m_label.textColor);
       colors.push_back(m_headlineColor);
       colors.push_back(m_channelColor);

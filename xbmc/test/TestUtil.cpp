@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -64,37 +64,53 @@ TEST(TestUtil, SplitExec)
   std::vector<std::string> params;
   CUtil::SplitExecFunction("ActivateWindow(Video, \"C:\\test\\foo\")", function, params);
   EXPECT_EQ(function,  "ActivateWindow");
-  EXPECT_EQ(params.size(), 2);
+  EXPECT_EQ(params.size(), 2U);
   EXPECT_EQ(params[0], "Video");
   EXPECT_EQ(params[1], "C:\\test\\foo");
   params.clear();
   CUtil::SplitExecFunction("ActivateWindow(Video, \"C:\\test\\foo\\\")", function, params);
   EXPECT_EQ(function,  "ActivateWindow");
-  EXPECT_EQ(params.size(), 2);
+  EXPECT_EQ(params.size(), 2U);
   EXPECT_EQ(params[0], "Video");
   EXPECT_EQ(params[1], "C:\\test\\foo");
   params.clear();
   CUtil::SplitExecFunction("ActivateWindow(Video, \"C:\\\\test\\\\foo\\\\\")", function, params);
   EXPECT_EQ(function,  "ActivateWindow");
-  EXPECT_EQ(params.size(), 2);
+  EXPECT_EQ(params.size(), 2U);
   EXPECT_EQ(params[0], "Video");
   EXPECT_EQ(params[1], "C:\\test\\foo\\");
   params.clear();
   CUtil::SplitExecFunction("ActivateWindow(Video, \"C:\\\\\\\\test\\\\\\foo\\\\\")", function, params);
   EXPECT_EQ(function,  "ActivateWindow");
-  EXPECT_EQ(params.size(), 2);
+  EXPECT_EQ(params.size(), 2U);
   EXPECT_EQ(params[0], "Video");
   EXPECT_EQ(params[1], "C:\\\\test\\\\foo\\");
   params.clear();
   CUtil::SplitExecFunction("SetProperty(Foo,\"\")", function, params);
   EXPECT_EQ(function,  "SetProperty");
-  EXPECT_EQ(params.size(), 2);
+  EXPECT_EQ(params.size(), 2U);
   EXPECT_EQ(params[0], "Foo");
   EXPECT_EQ(params[1], "");
   params.clear();
   CUtil::SplitExecFunction("SetProperty(foo,ba(\"ba black )\",sheep))", function, params);
   EXPECT_EQ(function,  "SetProperty");
-  EXPECT_EQ(params.size(), 2);
+  EXPECT_EQ(params.size(), 2U);
   EXPECT_EQ(params[0], "foo");
   EXPECT_EQ(params[1], "ba(\"ba black )\",sheep)");
+}
+
+TEST(TestUtil, MakeShortenPath)
+{
+  std::string result;
+  EXPECT_EQ(true, CUtil::MakeShortenPath("smb://test/string/is/long/and/very/much/so", result, 10));
+  EXPECT_EQ("smb:/../so", result);
+
+  EXPECT_EQ(true, CUtil::MakeShortenPath("smb://test/string/is/long/and/very/much/so", result, 30));
+  EXPECT_EQ("smb://../../../../../../../so", result);
+
+  EXPECT_EQ(true, CUtil::MakeShortenPath("smb://test//string/is/long/and/very//much/so", result, 30));
+  EXPECT_EQ("smb:/../../../../../so", result);
+
+  EXPECT_EQ(true, CUtil::MakeShortenPath("//test//string/is/long/and/very//much/so", result, 30));
+  EXPECT_EQ("/../../../../../so", result);
 }

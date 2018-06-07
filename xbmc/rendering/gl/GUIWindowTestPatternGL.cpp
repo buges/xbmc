@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *      Test patterns designed by Ofer LaOr - hometheater.co.il
  *
@@ -20,9 +20,6 @@
  *
  */
 
-#include "system.h"
-
-#ifdef HAS_GL
 #include "system_gl.h"
 #include "GUIWindowTestPatternGL.h"
 
@@ -30,9 +27,7 @@ CGUIWindowTestPatternGL::CGUIWindowTestPatternGL(void) : CGUIWindowTestPattern()
 {
 }
 
-CGUIWindowTestPatternGL::~CGUIWindowTestPatternGL(void)
-{
-}
+CGUIWindowTestPatternGL::~CGUIWindowTestPatternGL(void) = default;
 
 void CGUIWindowTestPatternGL::DrawVerticalLines(int top, int left, int bottom, int right)
 {
@@ -198,7 +193,5 @@ void CGUIWindowTestPatternGL::BeginRender()
 
 void CGUIWindowTestPatternGL::EndRender()
 {
-  glEnable(GL_TEXTURE_2D);
-}
 
-#endif
+}

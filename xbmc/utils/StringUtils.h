@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,9 +33,34 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <sstream>
+#include <locale>
 
+#include <fmt/format.h>
+
+#if FMT_VERSION >= 40000
+#include <fmt/printf.h>
+#endif
+
+#include "LangInfo.h"
 #include "XBDateTime.h"
 #include "utils/params_check_macros.h"
+
+/*! \brief  C-processor Token stringification
+
+The following macros can be used to stringify definitions to
+C style strings.
+
+Example:
+
+#define foo 4
+DEF_TO_STR_NAME(foo)  // outputs "foo"
+DEF_TO_STR_VALUE(foo) // outputs "4"
+
+*/
+
+#define DEF_TO_STR_NAME(x) #x
+#define DEF_TO_STR_VALUE(x) DEF_TO_STR_NAME(x)
 
 class StringUtils
 {
@@ -51,9 +76,28 @@ public:
   \param ... variable number of value type arguments
   \return Formatted string
   */
-  static std::string Format(PRINTF_FORMAT_STRING const char *fmt, ...) PARAM1_PRINTF_FORMAT;
+  template<typename... Args>
+  static std::string Format(const std::string& fmt, Args&&... args)
+  {
+    // coverity[fun_call_w_exception : FALSE]
+    auto result = fmt::format(fmt, std::forward<Args>(args)...);
+    if (result == fmt)
+      result = fmt::sprintf(fmt, std::forward<Args>(args)...);
+
+    return result;
+  }
+  template<typename... Args>
+  static std::wstring Format(const std::wstring& fmt, Args&&... args)
+  {
+    // coverity[fun_call_w_exception : FALSE]
+    auto result = fmt::format(fmt, std::forward<Args>(args)...);
+    if (result == fmt)
+      result = fmt::sprintf(fmt, std::forward<Args>(args)...);
+
+    return result;
+  }
+
   static std::string FormatV(PRINTF_FORMAT_STRING const char *fmt, va_list args);
-  static std::wstring Format(PRINTF_FORMAT_STRING const wchar_t *fmt, ...);
   static std::wstring FormatV(PRINTF_FORMAT_STRING const wchar_t *fmt, va_list args);
   static void ToUpper(std::string &str);
   static void ToUpper(std::wstring &str);
@@ -66,6 +110,7 @@ public:
   static bool EqualsNoCase(const char *s1, const char *s2);
   static int  CompareNoCase(const std::string &str1, const std::string &str2);
   static int  CompareNoCase(const char *s1, const char *s2);
+  static int ReturnDigits(const std::string &str);
   static std::string Left(const std::string &str, size_t count);
   static std::string Mid(const std::string &str, size_t first, size_t count = std::string::npos);
   static std::string Right(const std::string &str, size_t count);
@@ -90,7 +135,18 @@ public:
   static bool EndsWithNoCase(const std::string &str1, const std::string &str2);
   static bool EndsWithNoCase(const std::string &str1, const char *s2);
 
-  static std::string Join(const std::vector<std::string> &strings, const std::string& delimiter);
+  template<typename CONTAINER>
+  static std::string Join(const CONTAINER &strings, const std::string& delimiter)
+  {
+    std::string result;
+    for (const auto& str : strings)
+      result += str + delimiter;
+
+    if (!result.empty())
+      result.erase(result.size() - delimiter.size());
+    return result;
+  }
+
   /*! \brief Splits the given input string using the given delimiter into separate strings.
 
    If the given input string is empty the result will be an empty array (not
@@ -102,6 +158,86 @@ public:
    */
   static std::vector<std::string> Split(const std::string& input, const std::string& delimiter, unsigned int iMaxStrings = 0);
   static std::vector<std::string> Split(const std::string& input, const char delimiter, size_t iMaxStrings = 0);
+  static std::vector<std::string> Split(const std::string& input, const std::vector<std::string> &delimiters);
+  /*! \brief Splits the given input string using the given delimiter into separate strings.
+
+   If the given input string is empty nothing will be put into the target iterator.
+
+   \param d_first the beginning of the destination range
+   \param input Input string to be split
+   \param delimiter Delimiter to be used to split the input string
+   \param iMaxStrings (optional) Maximum number of splitted strings
+   \return output iterator to the element in the destination range, one past the last element
+   *       that was put there
+   */
+  template<typename OutputIt>
+  static OutputIt SplitTo(OutputIt d_first, const std::string& input, const std::string& delimiter, unsigned int iMaxStrings = 0)
+  {
+    OutputIt dest = d_first;
+
+    if (input.empty())
+      return dest;
+    if (delimiter.empty())
+    {
+      *d_first++ = input;
+      return dest;
+    }
+
+    const size_t delimLen = delimiter.length();
+    size_t nextDelim;
+    size_t textPos = 0;
+    do
+    {
+      if (--iMaxStrings == 0)
+      {
+        *dest++ = input.substr(textPos);
+        break;
+      }
+      nextDelim = input.find(delimiter, textPos);
+      *dest++ = input.substr(textPos, nextDelim - textPos);
+      textPos = nextDelim + delimLen;
+    } while (nextDelim != std::string::npos);
+
+    return dest;
+  }
+  template<typename OutputIt>
+  static OutputIt SplitTo(OutputIt d_first, const std::string& input, const char delimiter, size_t iMaxStrings = 0)
+  {
+    return SplitTo(d_first, input, std::string(1, delimiter), iMaxStrings);
+  }
+  template<typename OutputIt>
+  static OutputIt SplitTo(OutputIt d_first, const std::string& input, const std::vector<std::string> &delimiters)
+  {
+    OutputIt dest = d_first;
+    if (input.empty())
+      return dest;
+
+    if (delimiters.empty())
+    {
+      *dest++ = input;
+      return dest;
+    }
+    std::string str = input;
+    for (size_t di = 1; di < delimiters.size(); di++)
+      StringUtils::Replace(str, delimiters[di], delimiters[0]);
+    return SplitTo(dest, str, delimiters[0]);
+  }
+  
+  /*! \brief Splits the given input strings using the given delimiters into further separate strings.
+
+  If the given input string vector is empty the result will be an empty array (not
+  an array containing an empty string).
+
+  Delimiter strings are applied in order, so once the (optional) maximum number of 
+  items is produced no other delimiters are applied. This produces different results
+  to applying all delimiters at once e.g. "a/b#c/d" becomes "a", "b#c", "d" rather
+  than "a", "b", "c/d"
+
+  \param input Input vector of strings each to be split
+  \param delimiters Delimiter strings to be used to split the input strings
+  \param iMaxStrings (optional) Maximum number of resulting split strings
+  */
+  static std::vector<std::string> SplitMulti(const std::vector<std::string> &input, const std::vector<std::string> &delimiters, unsigned int iMaxStrings = 0);
   static int FindNumber(const std::string& strInput, const std::string &strFind);
   static int64_t AlphaNumericCompare(const wchar_t *left, const wchar_t *right);
   static long TimeStringToSeconds(const std::string &timeString);
@@ -172,6 +308,44 @@ public:
   static int FindBestMatch(const std::string &str, const std::vector<std::string> &strings, double &matchscore);
   static bool ContainsKeyword(const std::string &str, const std::vector<std::string> &keywords);
 
+  /*! \brief Convert the string of binary chars to the actual string.
+
+  Convert the string representation of binary chars to the actual string.
+  For example \1\2\3 is converted to a string with binary char \1, \2 and \3
+
+  \param param String to convert
+  \return Converted string
+  */
+  static std::string BinaryStringToString(const std::string& in);
+  /**
+   * Convert each character in the string to its hexadecimal
+   * representation and return the concatenated result
+   *
+   * example: "abc\n" -> "6162630a"
+   */
+  static std::string ToHexadecimal(const std::string& in);
+  /*! \brief Format the string with locale separators.
+
+  Format the string with locale separators.
+  For example 10000.57 in en-us is '10,000.57' but in italian is '10.000,57'
+
+  \param param String to format
+  \return Formatted string
+  */
+  template<typename T>
+  static std::string FormatNumber(T num)
+  {
+    std::stringstream ss;
+// ifdef is needed because when you set _ITERATOR_DEBUG_LEVEL=0 and you use custom numpunct you will get runtime error in debug mode
+// for more info https://connect.microsoft.com/VisualStudio/feedback/details/2655363
+#if !(defined(_DEBUG) && defined(TARGET_WINDOWS))
+    ss.imbue(g_langInfo.GetOriginalLocale());
+#endif
+    ss.precision(1);
+    ss << std::fixed << num;
+    return ss.str();
+  }
+
   /*! \brief Escapes the given string to be able to be used as a parameter.
 
    Escapes backslashes and double-quotes with an additional backslash and
@@ -193,8 +367,17 @@ public:
   static void Tokenize(const std::string& input, std::vector<std::string>& tokens, const std::string& delimiters);
   static std::vector<std::string> Tokenize(const std::string& input, const char delimiter);
   static void Tokenize(const std::string& input, std::vector<std::string>& tokens, const char delimiter);
-private:
-  static std::string m_lastUUID;
+  static uint64_t ToUint64(std::string str, uint64_t fallback) noexcept;
+
+  /*!
+   * Returns bytes in a human readable format using the smallest unit that will fit `bytes` in at
+   * most three digits. The number of decimals are adjusted with significance such that 'small'
+   * numbers will have more decimals than larger ones.
+   *
+   * For example: 1024 bytes will be formatted as "1.00kB", 10240 bytes as "10.0kB" and
+   * 102400 bytes as "100kB". See TestStringUtils for more examples.
+   */
+  static std::string FormatFileSize(uint64_t bytes);
 };
 
 struct sortstringbyname

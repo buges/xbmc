@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include "GUIViewStatePictures.h"
 #include "FileItem.h"
+#include "ServiceBroker.h"
 #include "view/ViewState.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/MediaSourceSettings.h"
@@ -28,6 +29,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "guilib/WindowIDs.h"
 #include "view/ViewStateSettings.h"
+#include "utils/FileExtensionProvider.h"
 
 using namespace XFILE;
 using namespace ADDON;
@@ -52,7 +54,7 @@ CGUIViewStateWindowPictures::CGUIViewStateWindowPictures(const CFileItemList& it
     AddSortMethod(SortByDateTaken, 577, LABEL_MASKS("%L", "%t", "%L", "%J"));  // Filename, DateTaken | Foldername, Date
     AddSortMethod(SortByFile, 561, LABEL_MASKS("%L", "%I", "%L", ""));  // Filename, Size | FolderName, empty
 
-    const CViewState *viewState = CViewStateSettings::Get().Get("pictures");
+    const CViewState *viewState = CViewStateSettings::GetInstance().Get("pictures");
     SetSortMethod(viewState->m_sortDescription);
     SetViewAsControl(viewState->m_viewMode);
     SetSortOrder(viewState->m_sortDescription.sortOrder);
@@ -62,7 +64,7 @@ CGUIViewStateWindowPictures::CGUIViewStateWindowPictures(const CFileItemList& it
 
 void CGUIViewStateWindowPictures::SaveViewState()
 {
-  SaveViewToDb(m_items.GetPath(), WINDOW_PICTURES, CViewStateSettings::Get().Get("pictures"));
+  SaveViewToDb(m_items.GetPath(), WINDOW_PICTURES, CViewStateSettings::GetInstance().Get("pictures"));
 }
 
 std::string CGUIViewStateWindowPictures::GetLockType()
@@ -72,18 +74,30 @@ std::string CGUIViewStateWindowPictures::GetLockType()
 
 std::string CGUIViewStateWindowPictures::GetExtensions()
 {
-  std::string extensions = g_advancedSettings.m_pictureExtensions;
-  if (CSettings::Get().GetBool("pictures.showvideos"))
-    extensions += "|" + g_advancedSettings.m_videoExtensions;
+  std::string extensions = CServiceBroker::GetFileExtensionProvider().GetPictureExtensions();
+  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PICTURES_SHOWVIDEOS))
+    extensions += "|" + CServiceBroker::GetFileExtensionProvider().GetVideoExtensions();
 
   return extensions;
 }
 
 VECSOURCES& CGUIViewStateWindowPictures::GetSources()
 {
-  VECSOURCES *pictureSources = CMediaSourceSettings::Get().GetSources("pictures");
+  VECSOURCES *pictureSources = CMediaSourceSettings::GetInstance().GetSources("pictures");
+
+  // Guard against source type not existing
+  if (pictureSources == nullptr)
+  {
+    static VECSOURCES empty;
+    return empty;
+  }
+
+  // Picture add-ons
   AddAddonsSource("image", g_localizeStrings.Get(1039), "DefaultAddonPicture.png");
+
+  // Global sources
   AddOrReplace(*pictureSources, CGUIViewState::GetSources());
+
   return *pictureSources;
 }
 

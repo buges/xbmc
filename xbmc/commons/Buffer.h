@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ namespace XbmcCommons
     std::string message;
 
   public:
-    BufferException(const char* message_) : message(message_) {}
+    explicit BufferException(const char* message_) : message(message_) {}
   };
 
   /**
@@ -94,7 +94,7 @@ namespace XbmcCommons
     size_t mcapacity;
     size_t mlimit;
 
-    inline void check(int count) const
+    inline void check(size_t count) const
     { 
       if ((mposition + count) > mlimit) 
         throw BufferException("Buffer buffer overflow: Cannot add more data to the Buffer's buffer.");
@@ -109,7 +109,7 @@ namespace XbmcCommons
     /**
      * Construct a buffer given an externally managed memory buffer.
      * The ownership of the buffer is assumed to be the code that called
-     * this constructor, therefore the Buffer descrutor will not free it.
+     * this constructor, therefore the Buffer destructor will not free it.
      *
      * The newly constructed buffer is considered empty and is ready to
      * have data written into it.
@@ -125,11 +125,11 @@ namespace XbmcCommons
 
     /**
      * Construct a buffer buffer using the size buffer provided. The
-     * buffer will be internally managed and potentiall shared with 
+     * buffer will be internally managed and potentially shared with 
      * other Buffer instances. It will be freed upon destruction of
      * the last Buffer that references it.
      */
-    inline Buffer(size_t bufferSize) : buffer(bufferSize ? new unsigned char[bufferSize] : NULL), mcapacity(bufferSize)
+    inline explicit Buffer(size_t bufferSize) : buffer(bufferSize ? new unsigned char[bufferSize] : NULL), mcapacity(bufferSize)
     { 
       clear(); 
       bufferRef.reset(buffer, std::default_delete<unsigned char[]>());
@@ -140,7 +140,7 @@ namespace XbmcCommons
      * shares the underlying data buffer with the Buffer it is a copy
      * of. Changes made to the data through this buffer will be seen
      * in the source buffer and vice/vrs. However, each buffer maintains
-     * it's own indexing.
+     * its own indexing.
      */
     inline Buffer(const Buffer& buf) : bufferRef(buf.bufferRef), buffer(buf.buffer), 
       mposition(buf.mposition), mcapacity(buf.mcapacity), mlimit(buf.mlimit) { }
@@ -152,7 +152,7 @@ namespace XbmcCommons
      * shares the underlying data buffer with the Buffer it is a copy
      * of. Changes made to the data through this buffer will be seen
      * in the source buffer and vice/vrs. However, each buffer maintains
-     * it's own indexing.
+     * its own indexing.
      */
     inline Buffer& operator=(const Buffer& buf)
     {
@@ -217,15 +217,15 @@ namespace XbmcCommons
      *  that can be read out of the buffer or written into the
      *  buffer before it's finished.
      */
-    inline size_t remaining() { return mlimit - mposition; }
+    inline size_t remaining() const { return mlimit - mposition; }
 
     inline Buffer& put(const void* src, size_t bytes)
     { check(bytes); memcpy( buffer + mposition, src, bytes); mposition += bytes; return *this; }
     inline Buffer& get(void* dest, size_t bytes)
     { check(bytes); memcpy( dest, buffer + mposition, bytes); mposition += bytes; return *this; }
 
-    inline unsigned char* array() { return buffer; }
-    inline unsigned char* curPosition() { return buffer + mposition; }
+    inline unsigned char* data() const { return buffer; }
+    inline unsigned char* curPosition() const { return buffer + mposition; }
     inline Buffer& setPosition(size_t position) { mposition = position; return *this; }
     inline Buffer& forward(size_t positionIncrement)
     { check(positionIncrement); mposition += positionIncrement; return *this; }

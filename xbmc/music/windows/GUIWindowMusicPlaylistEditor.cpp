@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,11 +18,12 @@
  *
  */
 
-#include "system.h"
 #include "GUIWindowMusicPlaylistEditor.h"
+#include "ServiceBroker.h"
 #include "Util.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "Autorun.h"
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "filesystem/PlaylistFileDirectory.h"
@@ -33,7 +34,6 @@
 #include "GUIUserMessages.h"
 #include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
-#include "ContextMenuManager.h"
 
 #define CONTROL_LABELFILES        12
 
@@ -47,7 +47,6 @@
 CGUIWindowMusicPlaylistEditor::CGUIWindowMusicPlaylistEditor(void)
     : CGUIWindowMusicBase(WINDOW_MUSIC_PLAYLIST_EDITOR, "MyMusicPlaylistEditor.xml")
 {
-  m_thumbLoader.SetObserver(this);
   m_playlistThumbLoader.SetObserver(this);
   m_playlist = new CFileItemList;
 }
@@ -142,20 +141,20 @@ bool CGUIWindowMusicPlaylistEditor::GetDirectory(const std::string &strDirectory
   { // root listing - list files:// and musicdb://
     CFileItemPtr files(new CFileItem("files://", true));
     files->SetLabel(g_localizeStrings.Get(744));
-    files->SetLabelPreformated(true);
+    files->SetLabelPreformatted(true);
     files->m_bIsShareOrDrive = true;
     items.Add(files);
 
     CFileItemPtr mdb(new CFileItem("musicdb://", true));
     mdb->SetLabel(g_localizeStrings.Get(14022));
-    mdb->SetLabelPreformated(true);
+    mdb->SetLabelPreformatted(true);
     mdb->m_bIsShareOrDrive = true;
     items.SetPath("");
     items.Add(mdb);
 
     CFileItemPtr vdb(new CFileItem("videodb://musicvideos/", true));
     vdb->SetLabel(g_localizeStrings.Get(20389));
-    vdb->SetLabelPreformated(true);
+    vdb->SetLabelPreformatted(true);
     vdb->m_bIsShareOrDrive = true;
     items.SetPath("");
     items.Add(vdb);
@@ -317,15 +316,6 @@ void CGUIWindowMusicPlaylistEditor::GetContextButtons(int itemNumber, CContextBu
   }
   else if (item && !item->IsParentFolder() && !m_vecItems->IsVirtualDirectoryRoot())
     buttons.Add(CONTEXT_BUTTON_QUEUE_ITEM, 15019);
-
-  if (m_playlist->Size())
-  {
-    buttons.Add(CONTEXT_BUTTON_SAVE, 190);
-    buttons.Add(CONTEXT_BUTTON_CLEAR, 192);
-  }
-  buttons.Add(CONTEXT_BUTTON_LOAD, 21385);
-
-  CContextMenuManager::Get().AddVisibleItems(item, buttons);
 }
 
 bool CGUIWindowMusicPlaylistEditor::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
@@ -340,17 +330,6 @@ bool CGUIWindowMusicPlaylistEditor::OnContextButton(int itemNumber, CONTEXT_BUTT
     OnMovePlaylistItem(GetCurrentPlaylistItem(), 1);
     return true;
 
-  case CONTEXT_BUTTON_SAVE:
-    OnSavePlaylist();
-    return true;
-
-  case CONTEXT_BUTTON_CLEAR:
-    ClearPlaylist();
-    return true;
-
-  case CONTEXT_BUTTON_LOAD:
-    OnLoadPlaylist();
-    return true;
   case CONTEXT_BUTTON_DELETE:
     OnDeletePlaylistItem(GetCurrentPlaylistItem());
     return true;
@@ -402,12 +381,15 @@ void CGUIWindowMusicPlaylistEditor::OnSavePlaylist()
   std::string name = URIUtils::GetFileName(m_strLoadedPlaylist);
   URIUtils::RemoveExtension(name);
 
-  if (CGUIKeyboardFactory::ShowAndGetInput(name, g_localizeStrings.Get(16012), false))
+  if (CGUIKeyboardFactory::ShowAndGetInput(name, CVariant{g_localizeStrings.Get(16012)}, false))
   { // save playlist as an .m3u
     PLAYLIST::CPlayListM3U playlist;
     playlist.Add(*m_playlist);
-    std::string strBase = URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "music");
-    std::string path = URIUtils::AddFileToFolder(strBase, name + ".m3u");
+    std::string path = URIUtils::AddFileToFolder(
+      CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH),
+      "music",
+      name + ".m3u");
+
     playlist.Save(path);
     m_strLoadedPlaylist = name;
   }
@@ -416,7 +398,7 @@ void CGUIWindowMusicPlaylistEditor::OnSavePlaylist()
 void CGUIWindowMusicPlaylistEditor::AppendToPlaylist(CFileItemList &newItems)
 {
   OnRetrieveMusicInfo(newItems);
-  FormatItemLabels(newItems, LABEL_MASKS(CSettings::Get().GetString("musicfiles.trackformat"), CSettings::Get().GetString("musicfiles.trackformatright"), "%L", ""));
+  FormatItemLabels(newItems, LABEL_MASKS(CServiceBroker::GetSettings().GetString(CSettings::SETTING_MUSICFILES_TRACKFORMAT), "%D", "%L", ""));
   m_playlist->Append(newItems);
   UpdatePlaylist();
 }

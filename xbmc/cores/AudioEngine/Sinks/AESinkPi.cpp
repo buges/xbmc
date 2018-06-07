@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,19 +18,17 @@
  *
  */
 
-#include "system.h"
-
-#if defined(TARGET_RASPBERRY_PI)
-
 #include <stdint.h>
 #include <limits.h>
 #include <cassert>
 
 #include "AESinkPi.h"
+#include "ServiceBroker.h"
+#include "cores/AudioEngine/AESinkFactory.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "utils/log.h"
 #include "settings/Settings.h"
-#include "linux/RBP.h"
+#include "platform/linux/RBP.h"
 
 #define CLASSNAME "CAESinkPi"
 
@@ -180,22 +178,42 @@ static uint32_t GetChannelMap(const CAEChannelInfo &channelLayout, bool passthro
   return channel_map;
 }
 
+void CAESinkPi::Register()
+{
+  AE::AESinkRegEntry reg;
+  reg.sinkName = "PI";
+  reg.createFunc = CAESinkPi::Create;
+  reg.enumerateFunc = CAESinkPi::EnumerateDevicesEx;
+  AE::CAESinkFactory::RegisterSink(reg);
+}
+
+IAESink* CAESinkPi::Create(std::string &device, AEAudioFormat &desiredFormat)
+{
+  IAESink *sink = new CAESinkPi();
+  if (sink->Initialize(desiredFormat, device))
+    return sink;
+
+  delete sink;
+  return nullptr;
+}
+
+
 bool CAESinkPi::Initialize(AEAudioFormat &format, std::string &device)
 {
   // This may be called before Application calls g_RBP.Initialise, so call it here too
   g_RBP.Initialize();
 
   /* if we are raw need to let gpu know */
-  m_passthrough = AE_IS_RAW(format.m_dataFormat);
+  m_passthrough = format.m_dataFormat == AE_FMT_RAW;
 
   m_initDevice = device;
   m_initFormat = format;
 
-  if (m_passthrough || CSettings::Get().GetString("audiooutput.audiodevice") == "PI:HDMI")
+  if (m_passthrough || CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE) == "PI:HDMI")
     m_output = AESINKPI_HDMI;
-  else if (CSettings::Get().GetString("audiooutput.audiodevice") == "PI:Analogue")
+  else if (CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE) == "PI:Analogue")
     m_output = AESINKPI_ANALOGUE;
-  else if (CSettings::Get().GetString("audiooutput.audiodevice") == "PI:Both")
+  else if (CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE) == "PI:Both")
     m_output = AESINKPI_BOTH;
   else assert(0);
 
@@ -213,16 +231,19 @@ bool CAESinkPi::Initialize(AEAudioFormat &format, std::string &device)
   format.m_frameSize     = sample_size * channels;
   format.m_sampleRate    = std::max(8000U, std::min(192000U, format.m_sampleRate));
   format.m_frames        = format.m_sampleRate * AUDIO_PLAYBUFFER / NUM_OMX_BUFFERS;
-  format.m_frameSamples  = format.m_frames * channels;
-
-  SetAudioProps(m_passthrough, GetChannelMap(format.m_channelLayout, m_passthrough));
 
   m_format = format;
   m_sinkbuffer_sec_per_byte = 1.0 / (double)(m_format.m_frameSize * m_format.m_sampleRate);
 
   CLog::Log(LOGDEBUG, "%s:%s Format:%d Channels:%d Samplerate:%d framesize:%d bufsize:%d bytes/s=%.2f dest=%s", CLASSNAME, __func__,
                 m_format.m_dataFormat, channels, m_format.m_sampleRate, m_format.m_frameSize, m_format.m_frameSize * m_format.m_frames, 1.0/m_sinkbuffer_sec_per_byte,
-                CSettings::Get().GetString("audiooutput.audiodevice").c_str());
+                CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE).c_str());
+
+  // magic value used when omxplayer is playing - want sink to be disabled
+  if (m_passthrough && m_format.m_streamInfo.m_sampleRate == 16000)
+    return true;
+
+  SetAudioProps(m_passthrough, GetChannelMap(m_format.m_channelLayout, m_passthrough));
 
   OMX_ERRORTYPE omx_err   = OMX_ErrorNone;
 
@@ -433,8 +454,10 @@ double CAESinkPi::GetCacheTotal()
 unsigned int CAESinkPi::AddPackets(uint8_t **data, unsigned int frames, unsigned int offset)
 {
   if (!m_Initialized || !m_omx_output || !frames)
+  {
+    Sleep(10);
     return frames;
-
+  }
   OMX_ERRORTYPE omx_err   = OMX_ErrorNone;
   OMX_BUFFERHEADERTYPE *omx_buffer = NULL;
 
@@ -497,6 +520,7 @@ void CAESinkPi::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
 {
   m_info.m_channels.Reset();
   m_info.m_dataFormats.clear();
+  m_info.m_streamTypes.clear();
   m_info.m_sampleRates.clear();
 
   m_info.m_deviceType = AE_DEVTYPE_HDMI;
@@ -515,14 +539,21 @@ void CAESinkPi::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
   m_info.m_dataFormats.push_back(AE_FMT_FLOATP);
   m_info.m_dataFormats.push_back(AE_FMT_S32NEP);
   m_info.m_dataFormats.push_back(AE_FMT_S16NEP);
-  m_info.m_dataFormats.push_back(AE_FMT_AC3);
-  m_info.m_dataFormats.push_back(AE_FMT_DTS);
-  m_info.m_dataFormats.push_back(AE_FMT_EAC3);
 
+  m_info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_AC3);
+  m_info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_EAC3);
+  m_info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTSHD_CORE);
+  m_info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTS_2048);
+  m_info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTS_1024);
+  m_info.m_streamTypes.push_back(CAEStreamInfo::STREAM_TYPE_DTS_512);
+  m_info.m_dataFormats.push_back(AE_FMT_RAW);
+
+  m_info.m_wantsIECPassthrough = true;
   list.push_back(m_info);
 
   m_info.m_channels.Reset();
   m_info.m_dataFormats.clear();
+  m_info.m_streamTypes.clear();
   m_info.m_sampleRates.clear();
 
   m_info.m_deviceType = AE_DEVTYPE_PCM;
@@ -539,10 +570,12 @@ void CAESinkPi::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
   m_info.m_dataFormats.push_back(AE_FMT_S32NEP);
   m_info.m_dataFormats.push_back(AE_FMT_S16NEP);
 
+  m_info.m_wantsIECPassthrough = true;
   list.push_back(m_info);
 
   m_info.m_channels.Reset();
   m_info.m_dataFormats.clear();
+  m_info.m_streamTypes.clear();
   m_info.m_sampleRates.clear();
 
   m_info.m_deviceType = AE_DEVTYPE_PCM;
@@ -558,8 +591,7 @@ void CAESinkPi::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
   m_info.m_dataFormats.push_back(AE_FMT_FLOATP);
   m_info.m_dataFormats.push_back(AE_FMT_S32NEP);
   m_info.m_dataFormats.push_back(AE_FMT_S16NEP);
-
+  
+  m_info.m_wantsIECPassthrough = true;
   list.push_back(m_info);
 }
-
-#endif

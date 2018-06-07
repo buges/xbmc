@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ TEST(TestStreamDetails, General)
   video->m_iDuration = 30;
   video->m_strCodec = "h264";
   video->m_strStereoMode = "left_right";
+  video->m_strLanguage = "eng";
 
   audio->m_iChannels = 2;
   audio->m_strCodec = "aac";

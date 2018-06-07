@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
  */
 
 #include "cores/AudioEngine/Interfaces/AESound.h"
-
-#include "cores/AudioEngine/AEFactory.h"
 #include "ActiveAE.h"
 #include "ActiveAESound.h"
 #include "utils/log.h"
@@ -32,13 +30,11 @@ extern "C" {
 using namespace ActiveAE;
 using namespace XFILE;
 
-/* typecast AE to CActiveAE */
-#define AE (*((CActiveAE*)CAEFactory::GetEngine()))
-
-CActiveAESound::CActiveAESound(const std::string &filename) :
+CActiveAESound::CActiveAESound(const std::string &filename, CActiveAE *ae) :
   IAESound         (filename),
   m_filename       (filename),
-  m_volume         (1.0f    )
+  m_volume         (1.0f    ),
+  m_channel        (AE_CH_NULL)
 {
   m_orig_sound = NULL;
   m_dst_sound = NULL;
@@ -46,6 +42,7 @@ CActiveAESound::CActiveAESound(const std::string &filename) :
   m_isSeekPossible = false;
   m_fileSize = 0;
   m_isConverted = false;
+  m_activeAE = ae;
 }
 
 CActiveAESound::~CActiveAESound()
@@ -57,17 +54,18 @@ CActiveAESound::~CActiveAESound()
 
 void CActiveAESound::Play()
 {
-  AE.PlaySound(this);
+  m_activeAE->PlaySound(this);
+
 }
 
 void CActiveAESound::Stop()
 {
-  AE.StopSound(this);
+  m_activeAE->StopSound(this);
 }
 
 bool CActiveAESound::IsPlaying()
 {
-  // TODO
+  //! @todo implement
   return false;
 }
 

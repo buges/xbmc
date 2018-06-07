@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,14 +19,18 @@
  */
 
 #include "GUIDialogAccessPoints.h"
+#include "guilib/GUIMessage.h"
 #include "guilib/GUIKeyboardFactory.h"
-#ifdef TARGET_POSIX
-#include "linux/NetworkLinux.h"
+#if defined(TARGET_ANDROID)
+#include "platform/android/network/NetworkAndroid.h"
+#elif defined(TARGET_POSIX)
+#include "platform/linux/network/NetworkLinux.h"
 #endif
-#include "Application.h"
+#include "ServiceBroker.h"
 #include "FileItem.h"
 #include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/Variant.h"
 
 #define CONTROL_ACCESS_POINTS 3
 
@@ -52,7 +56,7 @@ bool CGUIDialogAccessPoints::OnAction(const CAction &action)
     if (iItem == (int) m_aps.size())
     {
        m_selectedAPEssId = "";
-       if (CGUIKeyboardFactory::ShowAndGetInput(m_selectedAPEssId, g_localizeStrings.Get(789), false))
+       if (CGUIKeyboardFactory::ShowAndGetInput(m_selectedAPEssId, CVariant{g_localizeStrings.Get(789)}, false))
        {
          m_selectedAPEncMode = m_aps[iItem].getEncryptionMode();
          m_wasItemSelected = true;
@@ -85,7 +89,7 @@ void CGUIDialogAccessPoints::OnInitWindow()
   m_accessPoints->Clear();
 
   std::string ifaceName(m_interfaceName);
-  CNetworkInterface* iface = g_application.getNetwork().GetInterfaceByName(ifaceName);
+  CNetworkInterface* iface = CServiceBroker::GetNetwork().GetInterfaceByName(ifaceName);
   m_aps = iface->GetAccessPoints();
 
   for (int i = 0; i < (int) m_aps.size(); i++)

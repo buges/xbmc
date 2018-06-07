@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,10 @@
 #include "LanguageHook.h"
 
 #include "guilib/GUIKeyboardFactory.h"
+#include "utils/Variant.h"
+#include "messaging/ApplicationMessenger.h"
+
+using namespace KODI::MESSAGING;
 
 namespace XBMCAddon
 {
@@ -33,7 +37,7 @@ namespace XBMCAddon
     {
     }
 
-    Keyboard::~Keyboard() {}
+    Keyboard::~Keyboard() = default;
 
     void Keyboard::doModal(int autoclose)
     {
@@ -41,7 +45,7 @@ namespace XBMCAddon
       // using keyboardfactory method to get native keyboard if there is.
       strText = strDefault;
       std::string text(strDefault);
-      bConfirmed = CGUIKeyboardFactory::ShowAndGetInput(text, strHeading, true, bHidden, autoclose * 1000);
+      bConfirmed = CGUIKeyboardFactory::ShowAndGetInput(text, CVariant{strHeading}, true, bHidden, autoclose * 1000);
       strText = text;
     }
 

@@ -1,3 +1,5 @@
+#pragma once
+
 /**********************************************************************
  * Copyright (c) 2002, Leo Seib, Hannover
  *
@@ -26,14 +28,11 @@
  *
  **********************************************************************/
 
-
-#ifndef _DATASET_H
-#define _DATASET_H
-
 #include <cstdio>
-#include <string>
-#include <map>
 #include <list>
+#include <map>
+#include <string>
+#include <vector>
 #include "qry_dat.h"
 #include <stdarg.h>
 
@@ -152,7 +151,7 @@ public:
 
   /*! \brief Prepare a SQL statement for execution or querying using C printf nomenclature.
    \param format - C printf compliant format string
-   \param ... - optional comma seperated list of variables for substitution in format string placeholders.
+   \param ... - optional comma separated list of variables for substitution in format string placeholders.
    \return escaped and formatted string.
    */
   virtual std::string prepare(const char *format, ...);
@@ -223,21 +222,21 @@ protected:
    Example:
    update  wt_story set idobject set idobject=:NEW_idobject,body=:NEW_body
    where idobject=:OLD_idobject
-   Essentually fields idobject and body must present in the
+   Essentially fields idobject and body must present in the
    result set (select_sql statement) */
 
   StringList insert_sql; 		// May be an array in complex queries
 /* Field values for inserting must has prefix :NEW_ and field name
    Example:
    insert into wt_story (idobject, body) values (:NEW_idobject, :NEW_body)
-   Essentually fields idobject and body must present in the
+   Essentially fields idobject and body must present in the
    result set (select_sql statement) */
 
   StringList delete_sql; 		// May be an array in complex queries
 /* Field values for deleing must has prefix :OLD_ and field name
    Example:
    delete from wt_story where idobject=:OLD_idobject
-   Essentually field idobject must present in the
+   Essentially field idobject must present in the
    result set (select_sql statement) */
 
 
@@ -269,7 +268,7 @@ public:
  virtual int str_compare(const char * s1, const char * s2);
 /* constructor */
   Dataset();
-  Dataset(Database *newDb);
+  explicit Dataset(Database *newDb);
 
 /* destructor */
   virtual ~Dataset();
@@ -287,7 +286,7 @@ public:
 /* status active is OK query */
   virtual bool isActive(void) { return active; }
 
-  virtual void setSqlParams(const char *sqlFrmt, sqlType t, ...); 
+  virtual void setSqlParams(const char *sqlFrmt, sqlType t, ...);
 
 
 /* error handling */
@@ -307,7 +306,7 @@ public:
   virtual int  exec (const std::string &sql) = 0;
   virtual int  exec() = 0;
   virtual const void* getExecRes()=0;
-/* as open, but with our query exept Sql */
+/* as open, but with our query exec Sql */
   virtual bool query(const std::string &sql) = 0;
 /* Close SQL Query*/
   virtual void close();
@@ -333,14 +332,14 @@ public:
   virtual void first();
 /* Go to next record in dataset */
   virtual void next();
-/* Go to porevious record */
+/* Go to previous record */
   virtual void prev();
 /* Go to last record in dataset */
   virtual void last();
 
 /* Check for Ending dataset */
   virtual bool eof(void) { return feof; }
-/* Check for Begining dataset */
+/* Check for Beginning dataset */
   virtual bool bof(void) { return fbof; }
 
 /* Start the insert mode */
@@ -356,7 +355,7 @@ public:
   virtual void deletion();
 /* Cancel changes, made in insert or edit states of dataset */
   virtual void cancel() {};
-/* interupt any pending database operation  */
+/* interrupt any pending database operation  */
 	virtual void interrupt() {};
 
   virtual void setParamList(const ParamList &params);
@@ -403,9 +402,63 @@ public:
 
 /* --------------- for fast access ---------------- */
   const result_set& get_result_set() { return result; }
-  const sql_record* const get_sql_record();
+  const sql_record* get_sql_record();
 
  private:
+  Dataset(const Dataset&) = delete;
+  Dataset& operator=(const Dataset&) = delete;
+
+  unsigned int fieldIndexMapID;
+
+/* Struct to store an indexMapped field access entry */
+  struct FieldIndexMapEntry
+  {
+   explicit FieldIndexMapEntry(const char *name):fieldIndex(~0), strName(name){};
+   bool operator < (const FieldIndexMapEntry &other) const {return strName < other.strName;};
+   unsigned int fieldIndex;
+   std::string strName;
+  };
+
+/* Comparator to quickly find an indexMapped field access entry in the unsorted fieldIndexMap_Entries vector */
+  struct FieldIndexMapComparator
+  {
+   explicit FieldIndexMapComparator(const std::vector<FieldIndexMapEntry> &c): c_(c) {};
+   bool operator()(const unsigned int &v, const FieldIndexMapEntry &o) const
+   {
+     return c_[v] < o;
+   };
+   bool operator()(const unsigned int &v1, const unsigned int &v2) const
+   {
+     return c_[v1] < c_[v2];
+   };
+   bool operator()(const FieldIndexMapEntry &o, const unsigned int &v) const
+   {
+     return o < c_[v];
+   };
+  private:
+   const std::vector<FieldIndexMapEntry> &c_;
+  };
+
+/* Store string to field index translation in the same order
+   fields are accessed by field_value([string]).
+   Idea behind it:
+   - Open a SELECT query with many results
+   - track field access of the first row
+   - use this information for the following rows by just looking at the next
+     element in this vector
+*/
+  std::vector<FieldIndexMapEntry> fieldIndexMap_Entries;
+
+/* Hold the sorting order regarding FieldIndexMapEntry::strName in the
+   fieldIndexMap_Entries vector.
+   If "next element" in fieldIndexMap_Entries does not match,
+   do a fast binary search inside it using the fieldIndexMap_Sorter.
+*/
+  std::vector<unsigned int> fieldIndexMap_Sorter;
+
+/* Get the column index from a string field_value request */
+  bool get_index_map_entry(const char *f_name);
+
   void set_ds_state(dsStates new_state) {ds_state = new_state;};	
  public:
 /* return ds_state value */
@@ -457,4 +510,4 @@ public:
 };
 
 }
-#endif
+

@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 
 #include "windows/GUIMediaWindow.h"
 #include "PictureThumbLoader.h"
-#include "DllImageLib.h"
 
 class CGUIDialogProgress;
 
@@ -30,34 +29,34 @@ class CGUIWindowPictures : public CGUIMediaWindow, public IBackgroundLoaderObser
 {
 public:
   CGUIWindowPictures(void);
-  virtual ~CGUIWindowPictures(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual void OnInitWindow();
+  ~CGUIWindowPictures(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  void OnInitWindow() override;
 
 protected:
-  virtual bool GetDirectory(const std::string &strDirectory, CFileItemList& items);
-  virtual void OnInfo(int item);
-  virtual bool OnClick(int iItem);
-  virtual void UpdateButtons();
-  virtual void OnPrepareFileItems(CFileItemList& items);
-  virtual bool Update(const std::string &strDirectory, bool updateFilterPath = true);
-  virtual void GetContextButtons(int itemNumber, CContextButtons &buttons);
-  virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
-  virtual std::string GetStartFolder(const std::string &dir);
+  bool GetDirectory(const std::string &strDirectory, CFileItemList& items) override;
+  void OnItemInfo(int item);
+  bool OnClick(int iItem, const std::string &player = "") override;
+  void UpdateButtons() override;
+  void OnPrepareFileItems(CFileItemList& items) override;
+  bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
+  void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
+  bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
+  bool OnAddMediaSource() override;
+  std::string GetStartFolder(const std::string &dir) override;
 
   void OnRegenerateThumbs();
-  virtual bool OnPlayMedia(int iItem);
+  bool OnPlayMedia(int iItem, const std::string &player = "") override;
   bool ShowPicture(int iItem, bool startSlideShow);
   void OnShowPictureRecursive(const std::string& strPath);
   void OnSlideShow(const std::string& strPicture);
   void OnSlideShow();
   void OnSlideShowRecursive(const std::string& strPicture);
   void OnSlideShowRecursive();
-  virtual void OnItemLoaded(CFileItem* pItem);
-  virtual void LoadPlayList(const std::string& strPlayList);
+  void OnItemLoaded(CFileItem* pItem) override;
+  void LoadPlayList(const std::string& strPlayList) override;
 
   CGUIDialogProgress* m_dlgProgress;
-  DllImageLib m_ImageLib;
 
   CPictureThumbLoader m_thumbLoader;
   bool m_slideShowStarted;

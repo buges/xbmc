@@ -1,7 +1,7 @@
 #pragma once
 /*
 *      Copyright (C) 2015 Team XBMC
-*      http://xbmc.org
+*      http://kodi.tv
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -39,20 +39,20 @@ class CHTTPPythonWsgiInvoker : public CHTTPPythonInvoker
 {
 public:
   CHTTPPythonWsgiInvoker(ILanguageInvocationHandler* invocationHandler, HTTPPythonRequest* request);
-  virtual ~CHTTPPythonWsgiInvoker();
+  ~CHTTPPythonWsgiInvoker() override;
 
   // implementations of CHTTPPythonInvoker
-  virtual HTTPPythonRequest* GetRequest();
+  HTTPPythonRequest* GetRequest() override;
 
 protected:
   // overrides of CPythonInvoker
-  virtual void executeScript(void *fp, const std::string &script, void *module, void *moduleDict);
-  virtual std::map<std::string, PythonModuleInitialization> getModules() const;
-  virtual const char* getInitializationScript() const;
+  void executeScript(void *fp, const std::string &script, void *module, void *moduleDict) override;
+  std::map<std::string, PythonModuleInitialization> getModules() const override;
+  const char* getInitializationScript() const override;
 
 private:
   static std::map<std::string, std::string> createCgiEnvironment(const HTTPPythonRequest* httpRequest, ADDON::AddonPtr addon);
-  static void addWsgiEnvironment(HTTPPythonRequest* request, void* environ);
+  static void addWsgiEnvironment(HTTPPythonRequest* request, void* environment);
 
   XBMCAddon::xbmcwsgi::WsgiResponse* m_wsgiResponse;
 };

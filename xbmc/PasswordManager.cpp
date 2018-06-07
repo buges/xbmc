@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,7 @@
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "filesystem/File.h"
-
-using namespace std;
+#include "ServiceBroker.h"
 
 CPasswordManager &CPasswordManager::GetInstance()
 {
@@ -47,7 +46,7 @@ bool CPasswordManager::AuthenticateURL(CURL &url)
   if (!m_loaded)
     Load();
   std::string lookup(GetLookupPath(url));
-  map<std::string, std::string>::const_iterator it = m_temporaryCache.find(lookup);
+  std::map<std::string, std::string>::const_iterator it = m_temporaryCache.find(lookup);
   if (it == m_temporaryCache.end())
   { // second step, try something that doesn't quite match
     it = m_temporaryCache.find(GetServerLookup(lookup));
@@ -55,6 +54,7 @@ bool CPasswordManager::AuthenticateURL(CURL &url)
   if (it != m_temporaryCache.end())
   {
     CURL auth(it->second);
+    url.SetDomain(auth.GetDomain());
     url.SetPassword(auth.GetPassWord());
     url.SetUserName(auth.GetUserName());
     return true;
@@ -68,13 +68,31 @@ bool CPasswordManager::PromptToAuthenticateURL(CURL &url)
 
   std::string passcode;
   std::string username = url.GetUserName();
+  std::string domain = url.GetDomain();
+  if (!domain.empty())
+    username = domain + '\\' + username;
 
   bool saveDetails = false;
   if (!CGUIDialogLockSettings::ShowAndGetUserAndPassword(username, passcode, url.GetWithoutUserDetails(), &saveDetails))
     return false;
 
+  // domain/name to domain\name
+  std::string name = username;
+  std::replace(name.begin(), name.end(), '/', '\\');
+
+  if (url.IsProtocol("smb") && name.find('\\') != std::string::npos)
+  {
+    auto pair = StringUtils::Split(name, '\\', 2);
+    url.SetDomain(pair[0]);
+    url.SetUserName(pair[1]);
+  }
+  else
+  {
+    url.SetDomain("");
+    url.SetUserName(username);
+  }
+
   url.SetPassword(passcode);
-  url.SetUserName(username);
 
   // save the information for later
   SaveAuthenticatedURL(url, saveDetails);
@@ -106,6 +124,16 @@ void CPasswordManager::SaveAuthenticatedURL(const CURL &url, bool saveToProfile)
   m_temporaryCache[GetServerLookup(path)] = authenticatedPath;
 }
 
+bool CPasswordManager::IsURLSupported(const CURL &url)
+{
+  if ( url.IsProtocol("smb")
+    || url.IsProtocol("nfs")
+    || url.IsProtocol("sftp"))
+    return true;
+
+  return false;
+}
+
 void CPasswordManager::Clear()
 {
   m_temporaryCache.clear();
@@ -116,7 +144,10 @@ void CPasswordManager::Clear()
 void CPasswordManager::Load()
 {
   Clear();
-  std::string passwordsFile = CProfilesManager::Get().GetUserDataItem("passwords.xml");
+
+  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+
+  std::string passwordsFile = profileManager.GetUserDataItem("passwords.xml");
   if (XFILE::CFile::Exists(passwordsFile))
   {
     CXBMCTinyXML doc;
@@ -157,7 +188,7 @@ void CPasswordManager::Save() const
   if (!root)
     return;
 
-  for (map<std::string, std::string>::const_iterator i = m_permanentCache.begin(); i != m_permanentCache.end(); ++i)
+  for (std::map<std::string, std::string>::const_iterator i = m_permanentCache.begin(); i != m_permanentCache.end(); ++i)
   {
     TiXmlElement pathElement("path");
     TiXmlNode *path = root->InsertEndChild(pathElement);
@@ -165,16 +196,21 @@ void CPasswordManager::Save() const
     XMLUtils::SetPath(path, "to", i->second);
   }
 
-  doc.SaveFile(CProfilesManager::Get().GetUserDataItem("passwords.xml"));
+  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+
+  doc.SaveFile(profileManager.GetUserDataItem("passwords.xml"));
 }
 
 std::string CPasswordManager::GetLookupPath(const CURL &url) const
 {
-  return "smb://" + url.GetHostName() + "/" + url.GetShareName();
+  if (url.IsProtocol("sftp"))
+    return GetServerLookup(url.Get());
+
+  return url.GetProtocol() + "://" + url.GetHostName() + "/" + url.GetShareName();
 }
 
 std::string CPasswordManager::GetServerLookup(const std::string &path) const
 {
   CURL url(path);
-  return "smb://" + url.GetHostName() + "/";
+  return url.GetProtocol() + "://" + url.GetHostName() + "/";
 }

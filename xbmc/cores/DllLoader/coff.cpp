@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -211,6 +211,8 @@ int CoffLoader::LoadCoffHModule(FILE *fp)
   // alloc aligned memory
 #ifdef TARGET_POSIX
   hModule = malloc(tempWindowsHeader.SizeOfImage);
+#elif defined TARGET_WINDOWS_STORE
+  hModule = VirtualAllocFromApp(GetCurrentProcess(), tempWindowsHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #else
   hModule = VirtualAllocEx(GetCurrentProcess(), (PVOID)tempWindowsHeader.ImageBase, tempWindowsHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
   if (hModule == NULL)
@@ -487,7 +489,7 @@ char *CoffLoader::GetStringTblOff(int Offset)
 
 char *CoffLoader::GetSymbolName(SymbolTable_t *sym)
 {
-  __int64 index = sym->Name.Offset;
+  long long index = sym->Name.Offset;
   int low = (int)(index & 0xFFFFFFFF);
   int high = (int)((index >> 32) & 0xFFFFFFFF);
 
@@ -960,7 +962,7 @@ void CoffLoader::PerformFixups(void)
 
   EntryAddress = (unsigned long)RVA2Data(EntryAddress);
 
-  if( (PVOID)WindowsHeader->ImageBase == hModule )
+  if( reinterpret_cast<void*>(WindowsHeader->ImageBase) == hModule )
     return;
 
   if ( !Directory )

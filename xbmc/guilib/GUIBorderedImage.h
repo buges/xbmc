@@ -3,7 +3,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,16 +30,16 @@ class CGUIBorderedImage : public CGUIImage
 public:
   CGUIBorderedImage(int parentID, int controlID, float posX, float posY, float width, float height, const CTextureInfo& texture, const CTextureInfo& borderTexture, const CRect &borderSize);
   CGUIBorderedImage(const CGUIBorderedImage &right);
-  virtual ~CGUIBorderedImage(void);
-  virtual CGUIBorderedImage *Clone() const { return new CGUIBorderedImage(*this); };
+  ~CGUIBorderedImage(void) override;
+  CGUIBorderedImage *Clone() const override { return new CGUIBorderedImage(*this); };
 
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual void AllocResources();
-  virtual void FreeResources(bool immediately = false);
-  virtual void DynamicResourceAlloc(bool bOnOff);
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  void AllocResources() override;
+  void FreeResources(bool immediately = false) override;
+  void DynamicResourceAlloc(bool bOnOff) override;
   
-  virtual CRect CalcRenderRegion() const;
+  CRect CalcRenderRegion() const override;
 
 protected:
   CGUITexture m_borderImage;

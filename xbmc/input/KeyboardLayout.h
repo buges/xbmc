@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2013 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include "InputCodingTable.h"
+
 class TiXmlElement;
 
 class CKeyboardLayout
@@ -30,6 +32,7 @@ class CKeyboardLayout
 public:
   CKeyboardLayout();
   virtual ~CKeyboardLayout();
+  IInputCodingTablePtr GetCodingTable() { return m_codingtable; }
 
   bool Load(const TiXmlElement* element);
 
@@ -56,4 +59,5 @@ private:
   std::string m_language;
   std::string m_layout;
   Keyboards m_keyboards;
+  IInputCodingTablePtr m_codingtable;
 };

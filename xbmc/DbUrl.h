@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,17 +19,18 @@
  *
  */
 
-#include <map>
+#include "utils/UrlOptions.h"
+#include "URL.h"
+
 #include <string>
 
-#include "URL.h"
-#include "utils/UrlOptions.h"
+class CVariant;
 
-class CDbUrl : public CUrlOptions
+class CDbUrl : CUrlOptions
 {
 public:
   CDbUrl();
-  virtual ~CDbUrl();
+  ~CDbUrl() override;
 
   bool IsValid() const { return m_valid; }
   void Reset();
@@ -40,14 +41,18 @@ public:
   const std::string& GetType() const { return m_type; }
   void AppendPath(const std::string &subPath);
 
-  virtual void AddOption(const std::string &key, const char *value);
-  virtual void AddOption(const std::string &key, const std::string &value);
-  virtual void AddOption(const std::string &key, int value);
-  virtual void AddOption(const std::string &key, float value);
-  virtual void AddOption(const std::string &key, double value);
-  virtual void AddOption(const std::string &key, bool value);
-  virtual void AddOptions(const std::string &options);
-  virtual void RemoveOption(const std::string &key);
+  using CUrlOptions::HasOption;
+  using CUrlOptions::GetOptions;
+  using CUrlOptions::GetOptionsString;
+
+  void AddOption(const std::string &key, const char *value) override;
+  void AddOption(const std::string &key, const std::string &value) override;
+  void AddOption(const std::string &key, int value) override;
+  void AddOption(const std::string &key, float value) override;
+  void AddOption(const std::string &key, double value) override;
+  void AddOption(const std::string &key, bool value) override;
+  void AddOptions(const std::string &options) override;
+  void RemoveOption(const std::string &key) override;
 
 protected:
   virtual bool parse() = 0;

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ namespace PythonBindings
   {
     PyObject* obj;
   public:
-    inline PyObjectDecrementor(PyObject* pyobj) : obj(pyobj) {}
+    inline explicit PyObjectDecrementor(PyObject* pyobj) : obj(pyobj) {}
     inline ~PyObjectDecrementor() { Py_XDECREF(obj); }
 
     inline PyObject* get() { return obj; }
@@ -55,9 +55,9 @@ namespace PythonBindings
       return;
     }
 
-    // TODO: UTF-8: Does python use UTF-16?
-    //              Do we need to convert from the string charset to UTF-8
-    //              for non-unicode data?
+    //! @todo UTF-8: Does python use UTF-16?
+    //!              Do we need to convert from the string charset to UTF-8
+    //!              for non-unicode data?
     if (PyUnicode_Check(pObject))
     {
       // Python unicode objects are UCS2 or UCS4 depending on compilation
@@ -176,6 +176,14 @@ namespace PythonBindings
     if (exc_type == NULL && exc_value == NULL && exc_traceback == NULL)
       return false;
 
+    // See https://docs.python.org/3/c-api/exceptions.html#c.PyErr_NormalizeException
+    PyErr_NormalizeException(&exc_type, &exc_value, &exc_traceback);
+#if PY_MAJOR_VERSION > 2
+    if (exc_traceback != NULL) {
+      PyException_SetTraceback(exc_value, exc_traceback);
+    }
+#endif
+
     exceptionType.clear();
     exceptionValue.clear();
     exceptionTraceback.clear();
@@ -196,18 +204,29 @@ namespace PythonBindings
       PyObject *tracebackModule = PyImport_ImportModule("traceback");
       if (tracebackModule != NULL)
       {
-        PyObject *tbList = PyObject_CallMethod(tracebackModule, "format_exception", "OOO", exc_type, exc_value == NULL ? Py_None : exc_value, exc_traceback == NULL ? Py_None : exc_traceback);
-        PyObject *emptyString = PyString_FromString("");
-        PyObject *strRetval = PyObject_CallMethod(emptyString, "join", "O", tbList);
+        char method[] = "format_exception";
+        char format[] = "OOO";
+        PyObject *tbList = PyObject_CallMethod(tracebackModule, method, format, exc_type, exc_value == NULL ? Py_None : exc_value, exc_traceback == NULL ? Py_None : exc_traceback);
 
-        str = PyString_AsString(strRetval);
-        if (str != NULL)
-          exceptionTraceback = str;
+        if (tbList)
+        {
+          PyObject *emptyString = PyString_FromString("");
+          char method[] = "join";
+          char format[] = "O";
+          PyObject *strRetval = PyObject_CallMethod(emptyString, method, format, tbList);
+          Py_DECREF(emptyString);
 
-        Py_DECREF(tbList);
-        Py_DECREF(emptyString);
-        Py_DECREF(strRetval);
+          if (strRetval)
+          {
+            str = PyString_AsString(strRetval);
+            if (str != NULL)
+              exceptionTraceback = str;
+            Py_DECREF(strRetval);
+          }
+          Py_DECREF(tbList);
+        }
         Py_DECREF(tracebackModule);
+
       }
     }
 
@@ -258,7 +277,7 @@ namespace PythonBindings
         throw XBMCAddon::WrongTypeException("Incorrect type passed to \"%s\", was expecting a \"%s\" but received a \"%s\"",
                                  methodNameForErrorString,expectedType,typeInfo->swigType);
     }
-    return ((PyHolder*)pythonObj)->pSelf;
+    return const_cast<XBMCAddon::AddonClass*>(reinterpret_cast<const PyHolder*>(pythonObj)->pSelf);
   }
 
   /**
@@ -352,7 +371,7 @@ namespace PythonBindings
     const TypeInfo* typeInfo = getTypeInfoForInstance(api);
     PyTypeObject* typeObj = pytype == NULL ? (PyTypeObject*)(&(typeInfo->pythonType)) : pytype;
 
-    PyHolder* self = (PyHolder*)typeObj->tp_alloc(typeObj,0);
+    PyHolder* self = reinterpret_cast<PyHolder*>(typeObj->tp_alloc(typeObj,0));
     if (!self) return NULL;
     self->magicNumber = XBMC_PYTHON_TYPE_MAGIC_NUMBER;
     self->typeInfo = typeInfo;
@@ -362,7 +381,7 @@ namespace PythonBindings
     return (PyObject*)self;
   }
 
-  std::map<XbmcCommons::type_index, const TypeInfo*> typeInfoLookup;
+  std::map<std::type_index, const TypeInfo*> typeInfoLookup;
 
   void registerAddonClassTypeInformation(const TypeInfo* classInfo)
   {
@@ -371,7 +390,7 @@ namespace PythonBindings
 
   const TypeInfo* getTypeInfoForInstance(XBMCAddon::AddonClass* obj)
   {
-    XbmcCommons::type_index ti(typeid(*obj));
+    std::type_index ti(typeid(*obj));
     return typeInfoLookup[ti];
   }
 

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -20,6 +20,8 @@
 
 #include "ActorProtocol.h"
 
+#include <cstring>
+
 using namespace Actor;
 
 void Message::Release()
@@ -36,6 +38,8 @@ void Message::Release()
   // free data buffer
   if (data != buffer)
     delete [] data;
+
+  payloadObj.release();
 
   // delete event in case of sync message
   if (event)
@@ -148,7 +152,30 @@ bool Protocol::SendOutMessage(int signal, void *data /* = NULL */, int size /* =
   { CSingleLock lock(criticalSection);
     outMessages.push(msg);
   }
-  containerOutEvent->Set();
+  if (containerOutEvent)
+    containerOutEvent->Set();
+
+  return true;
+}
+
+bool Protocol::SendOutMessage(int signal, CPayloadWrapBase *payload, Message *outMsg)
+{
+  Message *msg;
+  if (outMsg)
+    msg = outMsg;
+  else
+    msg = GetMessage();
+
+  msg->signal = signal;
+  msg->isOut = true;
+
+  msg->payloadObj.reset(payload);
+
+  { CSingleLock lock(criticalSection);
+    outMessages.push(msg);
+  }
+  if (containerOutEvent)
+    containerOutEvent->Set();
 
   return true;
 }
@@ -176,11 +203,33 @@ bool Protocol::SendInMessage(int signal, void *data /* = NULL */, int size /* = 
   { CSingleLock lock(criticalSection);
     inMessages.push(msg);
   }
-  containerInEvent->Set();
+  if (containerInEvent)
+    containerInEvent->Set();
 
   return true;
 }
 
+bool Protocol::SendInMessage(int signal, CPayloadWrapBase *payload, Message *outMsg)
+{
+  Message *msg;
+  if (outMsg)
+    msg = outMsg;
+  else
+    msg = GetMessage();
+
+  msg->signal = signal;
+  msg->isOut = false;
+
+  msg->payloadObj.reset(payload);
+
+  { CSingleLock lock(criticalSection);
+    inMessages.push(msg);
+  }
+  if (containerInEvent)
+    containerInEvent->Set();
+
+  return true;
+}
 
 bool Protocol::SendOutMessageSync(int signal, Message **retMsg, int timeout, void *data /* = NULL */, int size /* = 0 */)
 {
@@ -190,6 +239,38 @@ bool Protocol::SendOutMessageSync(int signal, Message **retMsg, int timeout, voi
   msg->event = new CEvent;
   msg->event->Reset();
   SendOutMessage(signal, data, size, msg);
+
+  if (!msg->event->WaitMSec(timeout))
+  {
+    msg->origin->Lock();
+    if (msg->replyMessage)
+      *retMsg = msg->replyMessage;
+    else
+    {
+      *retMsg = NULL;
+      msg->isSyncTimeout = true;
+    }
+    msg->origin->Unlock();
+  }
+  else
+    *retMsg = msg->replyMessage;
+
+  msg->Release();
+
+  if (*retMsg)
+    return true;
+  else
+    return false;
+}
+
+bool Protocol::SendOutMessageSync(int signal, Message **retMsg, int timeout, CPayloadWrapBase *payload)
+{
+  Message *msg = GetMessage();
+  msg->isOut = true;
+  msg->isSync = true;
+  msg->event = new CEvent;
+  msg->event->Reset();
+  SendOutMessage(signal, payload, msg);
 
   if (!msg->event->WaitMSec(timeout))
   {

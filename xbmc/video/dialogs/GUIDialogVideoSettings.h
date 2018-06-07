@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,27 +20,38 @@
  *
  */
 
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "settings/dialogs/GUIDialogSettingsManualBase.h"
+#include "cores/VideoPlayer/Interface/StreamInfo.h"
 
 class CGUIDialogVideoSettings : public CGUIDialogSettingsManualBase
 {
 public:
   CGUIDialogVideoSettings();
-  virtual ~CGUIDialogVideoSettings();
+  ~CGUIDialogVideoSettings() override;
 
 protected:
   // implementations of ISettingCallback
-  virtual void OnSettingChanged(const CSetting *setting);
-  virtual void OnSettingAction(const CSetting *setting);
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
+
+  void AddVideoStreams(std::shared_ptr<CSettingGroup> group, const std::string & settingId);
+  static void VideoStreamsOptionFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+
+  static std::string FormatFlags(StreamFlags flags);
 
   // specialization of CGUIDialogSettingsBase
-  virtual bool AllowResettingSettings() const { return false; }
-  virtual void Save();
-  virtual void SetupView();
+  bool AllowResettingSettings() const override { return false; }
+  void Save() override;
+  void SetupView() override;
 
   // specialization of CGUIDialogSettingsManualBase
-  virtual void InitializeSettings();
+  void InitializeSettings() override;
 
 private:
+  int m_videoStream;
   bool m_viewModeChanged;
 };

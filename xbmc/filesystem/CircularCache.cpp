@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,9 +20,10 @@
 
 #include <algorithm>
 #include "threads/SystemClock.h"
-#include "system.h"
 #include "threads/SingleLock.h"
 #include "CircularCache.h"
+
+#include <string.h>
 
 using namespace XFILE;
 

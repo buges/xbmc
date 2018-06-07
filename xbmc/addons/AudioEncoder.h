@@ -18,34 +18,24 @@
  */
 #pragma once
 
-#include "AddonDll.h"
-#include "include/xbmc_audioenc_types.h"
+#include "addons/binary-addons/AddonInstanceHandler.h"
 #include "cdrip/IEncoder.h"
 
-typedef DllAddon<AudioEncoder, AUDIOENC_PROPS> DllAudioEncoder;
 namespace ADDON
 {
-  typedef CAddonDll<DllAudioEncoder,
-                    AudioEncoder, AUDIOENC_PROPS> AudioEncoderDll;
 
-  class CAudioEncoder : public AudioEncoderDll, public IEncoder
+  class CAudioEncoder : public IEncoder, public IAddonInstanceHandler
   {
   public:
-    CAudioEncoder(const AddonProps &props) : AudioEncoderDll(props), m_context{nullptr} {};
-    CAudioEncoder(const cp_extension_t *ext);
-    virtual ~CAudioEncoder() {}
-    virtual AddonPtr Clone() const;
+    explicit CAudioEncoder(BinaryAddonBasePtr addonBase);
 
-    // Things that MUST be supplied by the child classes
-    bool Init(audioenc_callbacks &callbacks);
-    int Encode(int nNumBytesRead, uint8_t* pbtStream);
-    bool Close();
-    void Destroy();
-
-    const std::string extension;
+    // Child functions related to IEncoder
+    bool Init(AddonToKodiFuncTable_AudioEncoder& callbacks) override;
+    int Encode(int nNumBytesRead, uint8_t* pbtStream) override;
+    bool Close() override;
 
   private:
-    void *m_context; ///< audio encoder context
+    AddonInstance_AudioEncoder m_struct;
   };
 
 } /*namespace ADDON*/

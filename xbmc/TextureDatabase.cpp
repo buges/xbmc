@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -53,14 +53,14 @@ typedef struct
 
 static const translateField fields[] = {
   { "none",          TF_None,          CDatabaseQueryRule::TEXT_FIELD    },
-  { "textureid",     TF_Id,            CDatabaseQueryRule::NUMERIC_FIELD },
+  { "textureid",     TF_Id,            CDatabaseQueryRule::REAL_FIELD    },
   { "url",           TF_Url,           CDatabaseQueryRule::TEXT_FIELD    },
   { "cachedurl",     TF_CachedUrl,     CDatabaseQueryRule::TEXT_FIELD    },
   { "lasthashcheck", TF_LastHashCheck, CDatabaseQueryRule::TEXT_FIELD    },
   { "imagehash",     TF_ImageHash,     CDatabaseQueryRule::TEXT_FIELD    },
-  { "width",         TF_Width,         CDatabaseQueryRule::NUMERIC_FIELD },
-  { "height",        TF_Height,        CDatabaseQueryRule::NUMERIC_FIELD },
-  { "usecount",      TF_UseCount,      CDatabaseQueryRule::NUMERIC_FIELD },
+  { "width",         TF_Width,         CDatabaseQueryRule::REAL_FIELD    },
+  { "height",        TF_Height,        CDatabaseQueryRule::REAL_FIELD    },
+  { "usecount",      TF_UseCount,      CDatabaseQueryRule::REAL_FIELD    },
   { "lastused",      TF_LastUsed,      CDatabaseQueryRule::TEXT_FIELD    }
 };
 
@@ -152,13 +152,9 @@ std::string CTextureUtils::UnwrapImageURL(const std::string &image)
   return image;
 }
 
-CTextureDatabase::CTextureDatabase()
-{
-}
+CTextureDatabase::CTextureDatabase() = default;
 
-CTextureDatabase::~CTextureDatabase()
-{
-}
+CTextureDatabase::~CTextureDatabase() = default;
 
 bool CTextureDatabase::Open()
 {
@@ -183,7 +179,7 @@ void CTextureDatabase::CreateAnalytics()
   m_pDS->exec("CREATE INDEX idxTexture ON texture(url)");
   m_pDS->exec("CREATE INDEX idxSize ON sizes(idtexture, size)");
   m_pDS->exec("CREATE INDEX idxSize2 ON sizes(idtexture, width, height)");
-  // TODO: Should the path index be a covering index? (we need only retrieve texture)
+  //! @todo Should the path index be a covering index? (we need only retrieve texture)
   m_pDS->exec("CREATE INDEX idxPath ON path(url, type)");
 
   CLog::Log(LOGINFO, "%s creating triggers", __FUNCTION__);
@@ -259,7 +255,7 @@ bool CTextureDatabase::GetCachedTexture(const std::string &url, CTextureDetails 
     if (NULL == m_pDS.get()) return false;
 
     std::string sql = PrepareSQL("SELECT id, cachedurl, lasthashcheck, imagehash, width, height FROM texture JOIN sizes ON (texture.id=sizes.idtexture AND sizes.size=1) WHERE url='%s'", url.c_str());
-    m_pDS->query(sql.c_str());
+    m_pDS->query(sql);
     if (!m_pDS->eof())
     { // have some information
       details.id = m_pDS->fv(0).get_asInt();
@@ -295,7 +291,7 @@ bool CTextureDatabase::GetTextures(CVariant &items, const Filter &filter)
       return false;
 
     sql = PrepareSQL(sql, !filter.fields.empty() ? filter.fields.c_str() : "*") + sqlFilter;
-    if (!m_pDS->query(sql.c_str()))
+    if (!m_pDS->query(sql))
       return false;
 
     while (!m_pDS->eof())
@@ -343,16 +339,16 @@ bool CTextureDatabase::AddCachedTexture(const std::string &url, const CTextureDe
     if (NULL == m_pDS.get()) return false;
 
     std::string sql = PrepareSQL("DELETE FROM texture WHERE url='%s'", url.c_str());
-    m_pDS->exec(sql.c_str());
+    m_pDS->exec(sql);
 
     std::string date = details.updateable ? CDateTime::GetCurrentDateTime().GetAsDBDateTime() : "";
     sql = PrepareSQL("INSERT INTO texture (id, url, cachedurl, imagehash, lasthashcheck) VALUES(NULL, '%s', '%s', '%s', '%s')", url.c_str(), details.file.c_str(), details.hash.c_str(), date.c_str());
-    m_pDS->exec(sql.c_str());
+    m_pDS->exec(sql);
     int textureID = (int)m_pDS->lastinsertid();
 
     // set the size information
     sql = PrepareSQL("INSERT INTO sizes (idtexture, size, usecount, lastusetime, width, height) VALUES(%u, 1, 1, CURRENT_TIMESTAMP, %u, %u)", textureID, details.width, details.height);
-    m_pDS->exec(sql.c_str());
+    m_pDS->exec(sql);
   }
   catch (...)
   {
@@ -375,7 +371,7 @@ bool CTextureDatabase::ClearCachedTexture(int id, std::string &cacheFile)
     if (NULL == m_pDS.get()) return false;
 
     std::string sql = PrepareSQL("select cachedurl from texture where id=%u", id);
-    m_pDS->query(sql.c_str());
+    m_pDS->query(sql);
 
     if (!m_pDS->eof())
     { // have some information
@@ -383,7 +379,7 @@ bool CTextureDatabase::ClearCachedTexture(int id, std::string &cacheFile)
       m_pDS->close();
       // remove it
       sql = PrepareSQL("delete from texture where id=%u", id);
-      m_pDS->exec(sql.c_str());
+      m_pDS->exec(sql);
       return true;
     }
     m_pDS->close();
@@ -413,7 +409,7 @@ std::string CTextureDatabase::GetTextureForPath(const std::string &url, const st
       return "";
 
     std::string sql = PrepareSQL("select texture from path where url='%s' and type='%s'", url.c_str(), type.c_str());
-    m_pDS->query(sql.c_str());
+    m_pDS->query(sql);
 
     if (!m_pDS->eof())
     { // have some information
@@ -441,19 +437,19 @@ void CTextureDatabase::SetTextureForPath(const std::string &url, const std::stri
       return;
 
     std::string sql = PrepareSQL("select id from path where url='%s' and type='%s'", url.c_str(), type.c_str());
-    m_pDS->query(sql.c_str());
+    m_pDS->query(sql);
     if (!m_pDS->eof())
     { // update
       int pathID = m_pDS->fv(0).get_asInt();
       m_pDS->close();
       sql = PrepareSQL("update path set texture='%s' where id=%u", texture.c_str(), pathID);
-      m_pDS->exec(sql.c_str());
+      m_pDS->exec(sql);
     }
     else
     { // add the texture
       m_pDS->close();
       sql = PrepareSQL("insert into path (id, url, type, texture) values(NULL, '%s', '%s', '%s')", url.c_str(), type.c_str(), texture.c_str());
-      m_pDS->exec(sql.c_str());
+      m_pDS->exec(sql);
     }
   }
   catch (...)
@@ -471,7 +467,7 @@ void CTextureDatabase::ClearTextureForPath(const std::string &url, const std::st
     if (NULL == m_pDS.get()) return;
 
     std::string sql = PrepareSQL("DELETE FROM path WHERE url='%s' and type='%s'", url.c_str(), type.c_str());
-    m_pDS->exec(sql.c_str());
+    m_pDS->exec(sql);
   }
   catch (...)
   {

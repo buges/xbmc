@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
 
-using namespace std;
 using namespace XFILE;
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
@@ -32,8 +31,7 @@ CMusicDbUrl::CMusicDbUrl()
   : CDbUrl()
 { }
 
-CMusicDbUrl::~CMusicDbUrl()
-{ }
+CMusicDbUrl::~CMusicDbUrl() = default;
 
 bool CMusicDbUrl::parse()
 {
@@ -102,6 +100,10 @@ bool CMusicDbUrl::parse()
 
     case NODE_TYPE_GENRE:
       m_type = "genres";
+      break;
+
+    case NODE_TYPE_ROLE:
+      m_type = "roles";
       break;
 
     case NODE_TYPE_YEAR:

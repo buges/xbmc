@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,82 +18,102 @@
  *
  */
 
-#ifndef RENDER_SYSTEM_GL_H
-#define RENDER_SYSTEM_GL_H
-
 #pragma once
 
-#if defined(HAVE_LIBGL)
-
-#include "system.h"
 #include "system_gl.h"
+#include "GLShader.h"
 #include "rendering/RenderSystem.h"
+#include "utils/Color.h"
+
+enum ESHADERMETHOD
+{
+  SM_DEFAULT = 0,
+  SM_TEXTURE,
+  SM_MULTI,
+  SM_FONTS,
+  SM_TEXTURE_NOBLEND,
+  SM_MULTI_BLENDCOLOR,
+  SM_MAX
+};
 
 class CRenderSystemGL : public CRenderSystemBase
 {
 public:
   CRenderSystemGL();
-  virtual ~CRenderSystemGL();
-  virtual void CheckOpenGLQuirks();
-  virtual bool InitRenderSystem();
-  virtual bool DestroyRenderSystem();
-  virtual bool ResetRenderSystem(int width, int height, bool fullScreen, float refreshRate);
+  ~CRenderSystemGL() override;
+  bool InitRenderSystem() override;
+  bool DestroyRenderSystem() override;
+  bool ResetRenderSystem(int width, int height) override;
 
-  virtual bool BeginRender();
-  virtual bool EndRender();
-  virtual bool PresentRender(const CDirtyRegionList& dirty);
-  virtual bool ClearBuffers(color_t color);
-  virtual bool IsExtSupported(const char* extension);
+  bool BeginRender() override;
+  bool EndRender() override;
+  void PresentRender(bool rendered, bool videoLayer) override;
+  bool ClearBuffers(UTILS::Color color) override;
+  bool IsExtSupported(const char* extension) const override;
 
-  virtual void SetVSync(bool vsync);
-  virtual void ResetVSync() { m_bVsyncInit = false; }
+  void SetVSync(bool vsync);
+  void ResetVSync() { m_bVsyncInit = false; }
 
-  virtual void SetViewPort(CRect& viewPort);
-  virtual void GetViewPort(CRect& viewPort);
+  void SetViewPort(const CRect& viewPort) override;
+  void GetViewPort(CRect& viewPort) override;
 
-  virtual void SetScissors(const CRect &rect);
-  virtual void ResetScissors();
+  bool ScissorsCanEffectClipping() override;
+  CRect ClipRectToScissorRect(const CRect &rect) override;
+  void SetScissors(const CRect &rect) override;
+  void ResetScissors() override;
 
-  virtual void CaptureStateBlock();
-  virtual void ApplyStateBlock();
+  void CaptureStateBlock() override;
+  void ApplyStateBlock() override;
 
-  virtual void SetCameraPosition(const CPoint &camera, int screenWidth, int screenHeight);
+  void SetCameraPosition(const CPoint &camera, int screenWidth, int screenHeight, float stereoFactor = 0.0f) override;
 
-  virtual void ApplyHardwareTransform(const TransformMatrix &matrix);
-  virtual void RestoreHardwareTransform();
-  virtual void SetStereoMode(RENDER_STEREO_MODE mode, RENDER_STEREO_VIEW view);
-  virtual bool SupportsStereo(RENDER_STEREO_MODE mode);
+  void ApplyHardwareTransform(const TransformMatrix &matrix) override;
+  void RestoreHardwareTransform() override;
+  void SetStereoMode(RENDER_STEREO_MODE mode, RENDER_STEREO_VIEW view) override;
+  bool SupportsStereo(RENDER_STEREO_MODE mode) const override;
+  bool SupportsNPOT(bool dxt) const override;
 
-  virtual bool TestRender();
+  bool TestRender() override;
 
-  virtual void Project(float &x, float &y, float &z);
+  void Project(float &x, float &y, float &z) override;
 
-  virtual void GetGLSLVersion(int& major, int& minor);
+  std::string GetShaderPath(const std::string &filename) override;
 
-  virtual void ResetGLErrors();
+  void GetGLVersion(int& major, int& minor);
+  void GetGLSLVersion(int& major, int& minor);
+
+  void ResetGLErrors();
+
+  // shaders
+  void EnableShader(ESHADERMETHOD method);
+  void DisableShader();
+  GLint ShaderGetPos();
+  GLint ShaderGetCol();
+  GLint ShaderGetCoord0();
+  GLint ShaderGetCoord1();
+  GLint ShaderGetUniCol();
+  GLint ShaderGetModel();
 
 protected:
   virtual void SetVSyncImpl(bool enable) = 0;
-  virtual bool PresentRenderImpl(const CDirtyRegionList& dirty) = 0;
+  virtual void PresentRenderImpl(bool rendered) = 0;
   void CalculateMaxTexturesize();
+  void InitialiseShaders();
+  void ReleaseShaders();
 
-  int        m_iVSyncMode;
-  int        m_iVSyncErrors;
-  int64_t    m_iSwapStamp;
-  int64_t    m_iSwapRate;
-  int64_t    m_iSwapTime;
-  bool       m_bVsyncInit;
-  int        m_width;
-  int        m_height;
+  bool m_bVsyncInit = false;
+  int m_width;
+  int m_height;
+  bool m_supportsNPOT = true;
 
   std::string m_RenderExtensions;
 
-  int        m_glslMajor;
-  int        m_glslMinor;
+  int m_glslMajor = 0;
+  int m_glslMinor = 0;
   
-  GLint      m_viewPort[4];
+  GLint m_viewPort[4];
+
+  std::unique_ptr<CGLShader*[]> m_pShader;
+  ESHADERMETHOD m_method = SM_DEFAULT;
+  GLuint m_vertexArray = GL_NONE;
 };
-
-#endif // HAVE_LIBGL
-
-#endif // RENDER_SYSTEM_H

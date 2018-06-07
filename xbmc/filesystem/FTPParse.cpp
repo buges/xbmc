@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,23 +18,9 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
-
-#if TARGET_WINDOWS
-#define PCRE_STATIC 1
-#ifdef _DEBUG
-#pragma comment(lib, "pcrecppd.lib")
-#else  // ! _DEBUG
-#pragma comment(lib, "pcrecpp.lib")
-#endif // ! _DEBUG
-#endif // TARGET_WINDOWS
 #include <pcrecpp.h>
 #include <cmath>
 #include "FTPParse.h"
-
-using namespace std;
 
 CFTPParse::CFTPParse()
 {
@@ -44,7 +30,7 @@ CFTPParse::CFTPParse()
   m_time = 0;
 }
 
-string CFTPParse::getName()
+std::string CFTPParse::getName()
 {
   return m_name;
 }
@@ -69,16 +55,16 @@ time_t CFTPParse::getTime()
   return m_time;
 }
 
-void CFTPParse::setTime(string str)
+void CFTPParse::setTime(std::string str)
 {
   /* Variables used to capture patterns via the regexes */
-  string month;
-  string day;
-  string year;
-  string hour;
-  string minute;
-  string second;
-  string am_or_pm;
+  std::string month;
+  std::string day;
+  std::string year;
+  std::string hour;
+  std::string minute;
+  std::string second;
+  std::string am_or_pm;
 
   /* time struct used to set the time_t variable */
   struct tm time_struct = {};
@@ -348,21 +334,21 @@ int CFTPParse::getDayOfWeek(int month, int date, int year)
   return day_of_week;
 }
 
-int CFTPParse::FTPParse(string str)
+int CFTPParse::FTPParse(std::string str)
 {
   /* Various variable to capture patterns via the regexes */
-  string permissions;
-  string link_count;
-  string owner;
-  string group;
-  string size;
-  string date;
-  string name;
-  string type;
-  string stuff;
-  string facts;
-  string version;
-  string file_id;
+  std::string permissions;
+  std::string link_count;
+  std::string owner;
+  std::string group;
+  std::string size;
+  std::string date;
+  std::string name;
+  std::string type;
+  std::string stuff;
+  std::string facts;
+  std::string version;
+  std::string file_id;
 
   /* Regex for standard Unix listing formats */
   pcrecpp::RE unix_re("^([-bcdlps])" // type

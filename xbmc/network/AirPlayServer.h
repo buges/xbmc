@@ -4,7 +4,7 @@
  * the Boxee project. http://www.boxee.tv
  *
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,10 +22,8 @@
  *
  */
 
-#include "system.h"
-#ifdef HAS_AIRPLAY
-
 #include <map>
+#include <vector>
 #include <sys/socket.h>
 #include "threads/Thread.h"
 #include "threads/CriticalSection.h"
@@ -33,6 +31,7 @@
 #include "interfaces/IAnnouncer.h"
 
 class DllLibPlist;
+class CVariant;
 
 #define AIRPLAY_SERVER_VERSION_STR "101.28"
 
@@ -40,7 +39,7 @@ class CAirPlayServer : public CThread, public ANNOUNCEMENT::IAnnouncer
 {
 public:
   // IAnnouncer IF
-  virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
+  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
 
   //AirPlayServer impl.
   static bool StartServer(int port, bool nonlocal);
@@ -53,11 +52,11 @@ public:
   static int m_isPlaying;
 
 protected:
-  void Process();
+  void Process() override;
 
 private:
   CAirPlayServer(int port, bool nonlocal);
-  ~CAirPlayServer();
+  ~CAirPlayServer() override;
   bool SetInternalCredentials(bool usePassword, const std::string& password);
   bool Initialize();
   void Deinitialize();
@@ -104,7 +103,7 @@ private:
   CCriticalSection m_connectionLock;
   std::vector<CTCPClient> m_connections;
   std::map<std::string, int> m_reverseSockets;
-  int m_ServerSocket;
+  std::vector<SOCKET> m_ServerSockets;
   int m_port;
   bool m_nonlocal;
   bool m_usePassword;
@@ -114,5 +113,3 @@ private:
   static CCriticalSection ServerInstanceLock;
   static CAirPlayServer *ServerInstance;
 };
-
-#endif

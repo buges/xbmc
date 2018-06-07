@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
 
 #include "Texture.h"
 
-#if defined(HAS_GL) || defined(HAS_GLES)
-
 #include "system_gl.h"
 
 /************************************************************************/
@@ -33,15 +31,15 @@ class CGLTexture : public CBaseTexture
 {
 public:
   CGLTexture(unsigned int width = 0, unsigned int height = 0, unsigned int format = XB_FMT_A8R8G8B8);
-  virtual ~CGLTexture();
+  ~CGLTexture() override;
 
-  void CreateTextureObject();
-  virtual void DestroyTextureObject();
-  void LoadToGPU();
-  void BindToUnit(unsigned int unit);
+  void CreateTextureObject() override;
+  void DestroyTextureObject() override;
+  void LoadToGPU() override;
+  void BindToUnit(unsigned int unit) override;
 
 protected:
-  GLuint m_texture;
+  GLuint m_texture = 0;
+  bool m_isOglVersion3orNewer = false;
 };
 
-#endif

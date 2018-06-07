@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,32 +19,40 @@
  */
 
 #include "AddonUtils.h"
-#include "guilib/GraphicContext.h"
+#include "Application.h"
 #include "utils/XBMCTinyXML.h"
 #include "addons/Skin.h"
+#include "LanguageHook.h"
 #ifdef ENABLE_XBMC_TRACE_API
 #include "utils/log.h"
-#include "threads/ThreadLocal.h"
 #endif
 
 namespace XBMCAddonUtils
 {
-  //***********************************************************
-  // Some simple helpers
-  void guiLock()
+  GuiLock::GuiLock(XBMCAddon::LanguageHook* languageHook, bool offScreen)
+    : m_languageHook(languageHook), m_offScreen(offScreen)
   {
-    g_graphicsContext.Lock();
+    if (!m_languageHook)
+      m_languageHook = XBMCAddon::LanguageHook::GetLanguageHook();
+    if (m_languageHook)
+      m_languageHook->DelayedCallOpen();
+
+    if (!m_offScreen)
+      g_application.LockFrameMoveGuard();
   }
 
-  void guiUnlock()
+  GuiLock::~GuiLock()
   {
-    g_graphicsContext.Unlock();
+    if (!m_offScreen)
+      g_application.UnlockFrameMoveGuard();
+
+    if (m_languageHook)
+      m_languageHook->DelayedCallClose();
   }
-  //***********************************************************
-  
+
   static char defaultImage[1024];
 
-  const char *getDefaultImage(char* cControlType, char* cTextureType, char* cDefault)
+  const char *getDefaultImage(char* cControlType, char* cTextureType)
   {
     // create an xml block so that we can resolve our defaults
     // <control type="type">
@@ -69,11 +77,11 @@ namespace XBMCAddonUtils
         return defaultImage;
       }
     }
-    return cDefault;
+    return "";
   }
 
 #ifdef ENABLE_XBMC_TRACE_API
-  static XbmcThreads::ThreadLocal<TraceGuard> tlParent;
+  static thread_local TraceGuard* tlParent;
 
   static char** getSpacesArray(int size)
   {
@@ -96,19 +104,19 @@ namespace XBMCAddonUtils
 
   TraceGuard::TraceGuard(const char* _function) :function(_function) 
   {
-    parent = tlParent.get();
+    parent = tlParent;
     depth = parent == NULL ? 0 : parent->depth + 1;
 
-    tlParent.set(this);
+    tlParent = this;
 
     CLog::Log(LOGDEBUG, "%sNEWADDON Entering %s", spaces[depth], function); 
   }
 
   TraceGuard::TraceGuard() :function(NULL) 
   {
-    parent = tlParent.get();
+    parent = tlParent;
     depth = parent == NULL ? 0 : parent->depth + 1;
-    tlParent.set(this);
+    tlParent = this;
     // silent
   }
 
@@ -118,7 +126,7 @@ namespace XBMCAddonUtils
       CLog::Log(LOGDEBUG, "%sNEWADDON Leaving %s", spaces[depth], function);
 
     // need to pop the stack
-    tlParent.set(this->parent);
+    tlParent = this->parent;
   }
 #endif
 

@@ -3,7 +3,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -96,7 +96,7 @@ public:
 
   GUIEventHandler(Class* pInstance, MethodPtr aMethodPtr)
   {
-    GUIEvent<Cookie>::m_pInstance = (GUIEvent<Cookie>*) ((LPVOID) pInstance);
+    GUIEvent<Cookie>::m_pInstance = (GUIEvent<Cookie>*) static_cast<void*>(pInstance);
 
 #ifndef TARGET_POSIX
     // Its dirty but it works!
@@ -172,7 +172,7 @@ public:
 
   CallbackHandler (Class* pInstance, MethodPtr aMethodPtr)
   {
-    Callback<Result, Cookie>::m_pInstance = (Callback<Result, Cookie>*) ((LPVOID) pInstance);
+    Callback<Result, Cookie>::m_pInstance = (Callback<Result, Cookie>*) static_cast<void*>(pInstance);
     // Its dirty but it works!
     memcpy(&Callback<Result, Cookie>::m_pMethod, &aMethodPtr, sizeof(Callback<Result, Cookie>::m_pMethod));
   }

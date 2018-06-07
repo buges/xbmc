@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,23 +24,18 @@
 #include "URL.h"
 #include "playlists/PlayList.h"
 
-using namespace std;
 using namespace PLAYLIST;
 
 namespace XFILE
 {
-  CPlaylistFileDirectory::CPlaylistFileDirectory()
-  {
-  }
+  CPlaylistFileDirectory::CPlaylistFileDirectory() = default;
 
-  CPlaylistFileDirectory::~CPlaylistFileDirectory()
-  {
-  }
+  CPlaylistFileDirectory::~CPlaylistFileDirectory() = default;
 
   bool CPlaylistFileDirectory::GetDirectory(const CURL& url, CFileItemList& items)
   {
     const std::string pathToUrl = url.Get();
-    unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
+    std::unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
     if ( NULL != pPlayList.get())
     {
       // load it
@@ -62,7 +57,7 @@ namespace XFILE
   bool CPlaylistFileDirectory::ContainsFiles(const CURL& url)
   {
     const std::string pathToUrl = url.Get();
-    unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
+    std::unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
     if ( NULL != pPlayList.get())
     {
       // load it

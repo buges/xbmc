@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,10 +25,10 @@ class CAddonPythonInvoker : public CPythonInvoker
 {
 public:
   explicit CAddonPythonInvoker(ILanguageInvocationHandler *invocationHandler);
-  virtual ~CAddonPythonInvoker();
+  ~CAddonPythonInvoker() override;
 
 protected:
   // overrides of CPythonInvoker
-  virtual std::map<std::string, PythonModuleInitialization> getModules() const;
-  virtual const char* getInitializationScript() const;
+  std::map<std::string, PythonModuleInitialization> getModules() const override;
+  const char* getInitializationScript() const override;
 };

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,13 +31,9 @@
 
 using namespace XFILE;
 
-CSourcesDirectory::CSourcesDirectory(void)
-{
-}
+CSourcesDirectory::CSourcesDirectory(void) = default;
 
-CSourcesDirectory::~CSourcesDirectory(void)
-{
-}
+CSourcesDirectory::~CSourcesDirectory(void) = default;
 
 bool CSourcesDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -47,7 +43,7 @@ bool CSourcesDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   URIUtils::RemoveSlashAtEnd(type);
 
   VECSOURCES sources;
-  VECSOURCES *sourcesFromType = CMediaSourceSettings::Get().GetSources(type);
+  VECSOURCES *sourcesFromType = CMediaSourceSettings::GetInstance().GetSources(type);
   if (!sourcesFromType)
     return false;
 
@@ -78,11 +74,12 @@ bool CSourcesDirectory::GetDirectory(const VECSOURCES &sources, CFileItemList &i
     }
     else if (URIUtils::IsProtocol(pItem->GetPath(), "addons"))
       strIcon = "DefaultHardDisk.png";
+    else if (   pItem->IsPath("special://musicplaylists/")
+             || pItem->IsPath("special://videoplaylists/"))
+      strIcon = "DefaultPlaylist.png";
     else if (   pItem->IsVideoDb()
              || pItem->IsMusicDb()
              || pItem->IsPlugin()
-             || pItem->IsPath("special://musicplaylists/")
-             || pItem->IsPath("special://videoplaylists/")
              || pItem->IsPath("musicsearch://"))
       strIcon = "DefaultFolder.png";
     else if (pItem->IsRemote())
@@ -90,16 +87,16 @@ bool CSourcesDirectory::GetDirectory(const VECSOURCES &sources, CFileItemList &i
     else if (pItem->IsISO9660())
       strIcon = "DefaultDVDRom.png";
     else if (pItem->IsDVD())
-      strIcon = "DefaultDVDRom.png";
+      strIcon = "DefaultDVDFull.png";
     else if (pItem->IsCDDA())
       strIcon = "DefaultCDDA.png";
-    else if (pItem->IsRemovable() && g_TextureManager.HasTexture("DefaultRemovableDisk.png"))
+    else if (pItem->IsRemovable() && CServiceBroker::GetGUI()->GetTextureManager().HasTexture("DefaultRemovableDisk.png"))
       strIcon = "DefaultRemovableDisk.png";
     else
       strIcon = "DefaultHardDisk.png";
     
     pItem->SetIconImage(strIcon);
-    if (share.m_iHasLock == 2 && CProfilesManager::Get().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE)
+    if (share.m_iHasLock == 2 && m_profileManager.GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE)
       pItem->SetOverlayImage(CGUIListItem::ICON_OVERLAY_LOCKED);
     else
       pItem->SetOverlayImage(CGUIListItem::ICON_OVERLAY_NONE);

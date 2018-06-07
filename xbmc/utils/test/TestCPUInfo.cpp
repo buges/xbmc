@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,10 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#if defined(TARGET_WINDOWS)
+#  include <windows.h>
+#endif
 
 #include "utils/CPUInfo.h"
 #include "utils/Temperature.h"
@@ -68,6 +72,8 @@ private:
 };
 }
 
+//Disabled for windows because there is no implementation to get the CPU temp and there will probably never be one
+#ifndef TARGET_WINDOWS
 TEST(TestCPUInfo, getTemperature)
 {
   TemporarySetting command(g_advancedSettings.m_cpuTempCmd, "echo '50 c'");
@@ -75,6 +81,7 @@ TEST(TestCPUInfo, getTemperature)
   EXPECT_TRUE(g_cpuInfo.getTemperature(t));
   EXPECT_TRUE(t.IsValid());
 }
+#endif
 
 TEST(TestCPUInfo, getCPUModel)
 {
@@ -127,7 +134,7 @@ TEST(TestCPUInfo, GetCPUFeatures)
 TEST(TestCPUInfo, getUsedPercentage_output)
 {
   CCPUInfo c;
-  Sleep(1); /* TODO: Support option from main that sets this parameter */
+  Sleep(1); //! @todo Support option from main that sets this parameter
   int r = c.getUsedPercentage();
   std::cout << "Percentage: " << testing::PrintToString(r) << std::endl;
 }

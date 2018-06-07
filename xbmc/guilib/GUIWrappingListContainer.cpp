@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
  */
 
 #include "GUIWrappingListContainer.h"
+#include "GUIListItemLayout.h"
+#include "GUIMessage.h"
 #include "FileItem.h"
 #include "input/Key.h"
 
@@ -31,9 +33,7 @@ CGUIWrappingListContainer::CGUIWrappingListContainer(int parentID, int controlID
   m_extraItems = 0;
 }
 
-CGUIWrappingListContainer::~CGUIWrappingListContainer(void)
-{
-}
+CGUIWrappingListContainer::~CGUIWrappingListContainer(void) = default;
 
 void CGUIWrappingListContainer::UpdatePageControl(int offset)
 {
@@ -125,7 +125,7 @@ bool CGUIWrappingListContainer::GetOffsetRange(int &minOffset, int &maxOffset) c
 
 void CGUIWrappingListContainer::ValidateOffset()
 {
-  // our minimal amount of items - we need to take into acount extra items to display wrapped items when scrolling
+  // our minimal amount of items - we need to take into account extra items to display wrapped items when scrolling
   unsigned int minItems = (unsigned int)m_itemsPerPage + ScrollCorrectionRange() + GetCacheCount() / 2;
   if (minItems <= m_items.size())
     return;

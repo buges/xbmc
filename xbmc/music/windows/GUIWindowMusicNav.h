@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,39 +25,35 @@
 
 class CFileItemList;
 
-class CGUIWindowMusicNav : public CGUIWindowMusicBase, public IBackgroundLoaderObserver
+class CGUIWindowMusicNav : public CGUIWindowMusicBase
 {
 public:
 
   CGUIWindowMusicNav(void);
-  virtual ~CGUIWindowMusicNav(void);
+  ~CGUIWindowMusicNav(void) override;
 
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction& action);
-  virtual void FrameMove();
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction& action) override;
+  void FrameMove() override;
 
 protected:
-  virtual void OnItemLoaded(CFileItem* pItem) {};
+  void OnItemLoaded(CFileItem* pItem) override {};
   // override base class methods
-  virtual bool Update(const std::string &strDirectory, bool updateFilterPath = true);
-  virtual bool GetDirectory(const std::string &strDirectory, CFileItemList &items);
-  virtual void UpdateButtons();
-  virtual void PlayItem(int iItem);
-  virtual void OnWindowLoaded();
-  virtual void GetContextButtons(int itemNumber, CContextButtons &buttons);
-  virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
-  virtual bool OnClick(int iItem);
-  virtual std::string GetStartFolder(const std::string &url);
+  bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
+  bool GetDirectory(const std::string &strDirectory, CFileItemList &items) override;
+  void UpdateButtons() override;
+  void PlayItem(int iItem) override;
+  void OnWindowLoaded() override;
+  void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
+  bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
+  bool OnClick(int iItem, const std::string &player = "") override;
+  std::string GetStartFolder(const std::string &url) override;
 
   bool GetSongsFromPlayList(const std::string& strPlayList, CFileItemList &items);
-  void DisplayEmptyDatabaseMessage(bool bDisplay);
   std::string GetQuickpathName(const std::string& strPath) const;
+  bool ManageInfoProvider(const CFileItemPtr item);
 
   VECSOURCES m_shares;
-
-  bool m_bDisplayEmptyDatabaseMessage;  ///< If true we display a message informing the user to switch back to the Files view.
-
-  CMusicThumbLoader m_thumbLoader;      ///< used for the loading of thumbs in the special://musicplaylist folder
 
   // searching
   void OnSearchUpdate();

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  */
 
-#include "system.h"
 #include "VirtualDirectory.h"
+#include "DirectoryFactory.h"
 #include "URL.h"
 #include "Util.h"
 #include "utils/URIUtils.h"
@@ -38,11 +38,9 @@ CVirtualDirectory::CVirtualDirectory(void)
 {
   m_flags = DIR_FLAG_ALLOW_PROMPT;
   m_allowNonLocalSources = true;
-  m_allowThreads = true;
 }
 
-CVirtualDirectory::~CVirtualDirectory(void)
-{}
+CVirtualDirectory::~CVirtualDirectory(void) = default;
 
 /*!
  \brief Add shares to the virtual directory
@@ -58,23 +56,32 @@ void CVirtualDirectory::SetSources(const VECSOURCES& vecSources)
  \brief Retrieve the shares or the content of a directory.
  \param strPath Specifies the path of the directory to retrieve or pass an empty string to get the shares.
  \param items Content of the directory.
- \return Returns \e true, if directory access is successfull.
+ \return Returns \e true, if directory access is successful.
  \note If \e strPath is an empty string, the share \e items have thumbnails and icons set, else the thumbnails
     and icons have to be set manually.
  */
 
 bool CVirtualDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  return GetDirectory(url,items,true);
+  return GetDirectory(url, items, true, false);
 }
-bool CVirtualDirectory::GetDirectory(const CURL& url, CFileItemList &items, bool bUseFileDirectories)
+
+bool CVirtualDirectory::GetDirectory(const CURL& url, CFileItemList &items, bool bUseFileDirectories, bool keepImpl)
 {
   std::string strPath = url.Get();
   int flags = m_flags;
   if (!bUseFileDirectories)
     flags |= DIR_FLAG_NO_FILE_DIRS;
   if (!strPath.empty() && strPath != "files://")
-    return CDirectory::GetDirectory(strPath, items, m_strFileMask, flags, m_allowThreads);
+  {
+    CURL realURL = URIUtils::SubstitutePath(url);
+    if (!m_pDir)
+      m_pDir.reset(CDirectoryFactory::Create(realURL));
+    bool ret = CDirectory::GetDirectory(strPath, m_pDir, items, m_strFileMask, flags);
+    if (!keepImpl)
+      m_pDir.reset();
+    return ret;
+  }
 
   // if strPath is blank, clear the list (to avoid parent items showing up)
   if (strPath.empty())
@@ -88,6 +95,12 @@ bool CVirtualDirectory::GetDirectory(const CURL& url, CFileItemList &items, bool
   GetSources(shares);
   CSourcesDirectory dir;
   return dir.GetDirectory(shares, items);
+}
+
+void CVirtualDirectory::CancelDirectory()
+{
+  if (m_pDir)
+    m_pDir->CancelDirectory();
 }
 
 /*!
@@ -150,12 +163,12 @@ bool CVirtualDirectory::IsInSource(const std::string &path) const
     {
       CMediaSource &share = shares[i];
       if (URIUtils::IsOnDVD(share.strPath) &&
-          StringUtils::StartsWith(path, share.strPath))
+          URIUtils::PathHasParent(path, share.strPath))
         return true;
     }
     return false;
   }
-  // TODO: May need to handle other special cases that GetMatchingSource() fails on
+  //! @todo May need to handle other special cases that GetMatchingSource() fails on
   return (iShare > -1);
 }
 

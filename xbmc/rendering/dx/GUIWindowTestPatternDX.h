@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *      Test patterns designed by Ofer LaOr - hometheater.co.il
  *
@@ -23,6 +23,9 @@
  */
 
 #include "settings/windows/GUIWindowTestPattern.h"
+#include "guilib/GUIShaderDX.h"
+
+#include <wrl/client.h>
 
 class CGUIWindowTestPatternDX : public CGUIWindowTestPattern
 {
@@ -30,23 +33,22 @@ public:
   CGUIWindowTestPatternDX(void);
   virtual ~CGUIWindowTestPatternDX(void);
 
+protected:
+  void DrawVerticalLines(int top, int left, int bottom, int right) override;
+  void DrawHorizontalLines(int top, int left, int bottom, int right) override;
+  void DrawCheckers(int top, int left, int bottom, int right) override;
+  void DrawBouncingRectangle(int top, int left, int bottom, int right) override;
+  void DrawContrastBrightnessPattern(int top, int left, int bottom, int right) override;
+  void DrawCircle(int originX, int originY, int radius) override;
+  void BeginRender() override;
+  void EndRender() override;
+
 private:
-  virtual void DrawVerticalLines(int top, int left, int bottom, int right);
-  virtual void DrawHorizontalLines(int top, int left, int bottom, int right);
-  virtual void DrawCheckers(int top, int left, int bottom, int right);
-  virtual void DrawBouncingRectangle(int top, int left, int bottom, int right);
-  virtual void DrawContrastBrightnessPattern(int top, int left, int bottom, int right);
-  virtual void DrawCircle(int originX, int originY, int radius);
-  virtual void BeginRender();
-  virtual void EndRender();
-
-  struct CUSTOMVERTEX
-  {
-    FLOAT x, y, z, rhw; // The transformed position for the vertex
-    DWORD color;        // The vertex color
-  };
-
+  void UpdateVertexBuffer(Vertex *vertices, unsigned count);
   void DrawRectangle(float x, float y, float x2, float y2, DWORD color);
   void DrawCircleEx(float originX, float originY, float radius, DWORD color);
+
+  unsigned m_bufferWidth;
+  Microsoft::WRL::ComPtr<ID3D11Buffer> m_vb;
 };
 

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
  *
  */
 
-#include "system.h"
 #include "GUIUserMessages.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "GUIDialogSubtitles.h"
 #include "LangInfo.h"
 #include "addons/AddonManager.h"
@@ -31,6 +31,7 @@
 #include "filesystem/SpecialProtocol.h"
 #include "filesystem/StackDirectory.h"
 #include "guilib/GUIKeyboardFactory.h"
+#include "guilib/LocalizeStrings.h"
 #include "input/Key.h"
 #include "settings/Settings.h"
 #include "settings/lib/Setting.h"
@@ -39,6 +40,7 @@
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "URL.h"
 #include "Util.h"
 #include "video/VideoDatabase.h"
@@ -64,16 +66,16 @@ public:
   {
     m_items = new CFileItemList;
   }
-  virtual ~CSubtitlesJob()
+  ~CSubtitlesJob() override
   {
     delete m_items;
   }
-  virtual bool DoWork()
+  bool DoWork() override
   {
-    CDirectory::GetDirectory(m_url.Get(), *m_items);
+    CDirectory::GetDirectory(m_url.Get(), *m_items, "", DIR_FLAG_DEFAULTS);
     return true;
   }
-  virtual bool operator==(const CJob *job) const
+  bool operator==(const CJob *job) const override
   {
     if (strcmp(job->GetType(),GetType()) == 0)
     {
@@ -97,13 +99,12 @@ private:
 
 CGUIDialogSubtitles::CGUIDialogSubtitles(void)
     : CGUIDialog(WINDOW_DIALOG_SUBTITLES, "DialogSubtitles.xml")
+    , m_subtitles(new CFileItemList)
+    , m_serviceItems(new CFileItemList)
+    , m_pausedOnRun(false)
+    , m_updateSubsList(false)
 {
-  m_loadType  = KEEP_IN_MEMORY;
-  m_subtitles = new CFileItemList;
-  m_serviceItems = new CFileItemList;
-  m_pausedOnRun = false;
-  m_updateSubsList = false;
-  m_LastAutoDownloaded = "";
+  m_loadType = KEEP_IN_MEMORY;
 }
 
 CGUIDialogSubtitles::~CGUIDialogSubtitles(void)
@@ -147,7 +148,7 @@ bool CGUIDialogSubtitles::OnMessage(CGUIMessage& message)
     else if (iControl == CONTROL_MANUALSEARCH)
     {
       //manual search
-      if (CGUIKeyboardFactory::ShowAndGetInput(m_strManualSearch, g_localizeStrings.Get(24121), true))
+      if (CGUIKeyboardFactory::ShowAndGetInput(m_strManualSearch, CVariant{g_localizeStrings.Get(24121)}, true))
       {
         Search(m_strManualSearch);
         return true;
@@ -157,8 +158,8 @@ bool CGUIDialogSubtitles::OnMessage(CGUIMessage& message)
   else if (message.GetMessage() == GUI_MSG_WINDOW_DEINIT)
   {
     // Resume the video if the user has requested it
-    if (g_application.m_pPlayer->IsPaused() && m_pausedOnRun)
-      g_application.m_pPlayer->Pause();
+    if (g_application.GetAppPlayer().IsPaused() && m_pausedOnRun)
+      g_application.GetAppPlayer().Pause();
 
     CGUIDialog::OnMessage(message);
 
@@ -173,9 +174,9 @@ void CGUIDialogSubtitles::OnInitWindow()
 {
   // Pause the video if the user has requested it
   m_pausedOnRun = false;
-  if (CSettings::Get().GetBool("subtitles.pauseonsearch") && !g_application.m_pPlayer->IsPaused())
+  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SUBTITLES_PAUSEONSEARCH) && !g_application.GetAppPlayer().IsPaused())
   {
-    g_application.m_pPlayer->Pause();
+    g_application.GetAppPlayer().Pause();
     m_pausedOnRun = true;
   }
 
@@ -234,7 +235,7 @@ void CGUIDialogSubtitles::FillServices()
   ClearServices();
 
   VECADDONS addons;
-  ADDON::CAddonMgr::Get().GetAddons(ADDON_SUBTITLE_MODULE, addons, true);
+  CServiceBroker::GetAddonMgr().GetAddons(addons, ADDON_SUBTITLE_MODULE);
 
   if (addons.empty())
   {
@@ -247,10 +248,10 @@ void CGUIDialogSubtitles::FillServices()
   if (item.GetVideoContentType() == VIDEODB_CONTENT_TVSHOWS ||
       item.GetVideoContentType() == VIDEODB_CONTENT_EPISODES)
     // Set default service for tv shows
-    defaultService = CSettings::Get().GetString("subtitles.tv");
+    defaultService = CServiceBroker::GetSettings().GetString(CSettings::SETTING_SUBTITLES_TV);
   else
     // Set default service for filemode and movies
-    defaultService = CSettings::Get().GetString("subtitles.movie");
+    defaultService = CServiceBroker::GetSettings().GetString(CSettings::SETTING_SUBTITLES_MOVIE);
   
   std::string service = addons.front()->ID();
   for (VECADDONS::const_iterator addonIt = addons.begin(); addonIt != addons.end(); ++addonIt)
@@ -285,10 +286,13 @@ bool CGUIDialogSubtitles::SetService(const std::string &service)
 
     SET_CONTROL_LABEL(CONTROL_NAMELABEL, currentService->GetLabel());
 
-    std::string icon = URIUtils::AddFileToFolder(currentService->GetProperty("Addon.Path").asString(), "logo.png");
-    SET_CONTROL_FILENAME(CONTROL_NAMELOGO, icon);
+    if (currentService->HasAddonInfo())
+    {
+      std::string icon = URIUtils::AddFileToFolder(currentService->GetAddonInfo()->Path(), "logo.png");
+      SET_CONTROL_FILENAME(CONTROL_NAMELOGO, icon);
+    }
 
-    if (g_application.m_pPlayer->GetSubtitleCount() == 0)
+    if (g_application.GetAppPlayer().GetSubtitleCount() == 0)
       SET_CONTROL_HIDDEN(CONTROL_SUBSEXIST);
     else
       SET_CONTROL_VISIBLE(CONTROL_SUBSEXIST);
@@ -325,7 +329,7 @@ void CGUIDialogSubtitles::Search(const std::string &search/*=""*/)
   else
     url.SetOption("action", "search");
 
-  const CSetting *setting = CSettings::Get().GetSetting("subtitles.languages");
+  SettingConstPtr setting = CServiceBroker::GetSettings().GetSetting(CSettings::SETTING_SUBTITLES_LANGUAGES);
   if (setting)
     url.SetOption("languages", setting->ToString());
 
@@ -333,14 +337,14 @@ void CGUIDialogSubtitles::Search(const std::string &search/*=""*/)
   if (g_application.CurrentFileItem().IsStack())
     url.SetOption("stack", "1");
 
-  std::string preferredLanguage = CSettings::Get().GetString("locale.subtitlelanguage");
+  std::string preferredLanguage = CServiceBroker::GetSettings().GetString(CSettings::SETTING_LOCALE_SUBTITLELANGUAGE);
 
   if(StringUtils::EqualsNoCase(preferredLanguage, "original"))
   {
-    SPlayerAudioStreamInfo info;
+    AudioStreamInfo info;
     std::string strLanguage;
 
-    g_application.m_pPlayer->GetAudioStreamInfo(CURRENT_STREAM, info);
+    g_application.GetAppPlayer().GetAudioStreamInfo(CURRENT_STREAM, info);
 
     if (!g_LangCodeExpander.Lookup(info.language, strLanguage))
       strLanguage = "Unknown";
@@ -357,9 +361,9 @@ void CGUIDialogSubtitles::Search(const std::string &search/*=""*/)
 
 void CGUIDialogSubtitles::OnJobComplete(unsigned int jobID, bool success, CJob *job)
 {
-  const CURL &url             = ((CSubtitlesJob *)job)->GetURL();
-  const CFileItemList *items  = ((CSubtitlesJob *)job)->GetItems();
-  const std::string &language = ((CSubtitlesJob *)job)->GetLanguage();
+  const CURL &url             = static_cast<CSubtitlesJob*>(job)->GetURL();
+  const CFileItemList *items  = static_cast<CSubtitlesJob*>(job)->GetItems();
+  const std::string &language = static_cast<CSubtitlesJob*>(job)->GetLanguage();
   if (url.GetOption("action") == "search" || url.GetOption("action") == "manualsearch")
     OnSearchComplete(items);
   else
@@ -374,8 +378,8 @@ void CGUIDialogSubtitles::OnSearchComplete(const CFileItemList *items)
   UpdateStatus(SEARCH_COMPLETE);
   m_updateSubsList = true;
 
-  if (!items->IsEmpty() && g_application.m_pPlayer->GetSubtitleCount() == 0 &&
-    m_LastAutoDownloaded != g_application.CurrentFile() && CSettings::Get().GetBool("subtitles.downloadfirst"))
+  if (!items->IsEmpty() && g_application.GetAppPlayer().GetSubtitleCount() == 0 &&
+    m_LastAutoDownloaded != g_application.CurrentFile() && CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SUBTITLES_DOWNLOADFIRST))
   {
     CFileItemPtr item = items->Get(0);
     CLog::Log(LOGDEBUG, "%s - Automatically download first subtitle: %s", __FUNCTION__, item->GetLabel2().c_str());
@@ -441,7 +445,7 @@ void CGUIDialogSubtitles::OnDownloadComplete(const CFileItemList *items, const s
     return;
   }
 
-  SUBTITLE_STORAGEMODE storageMode = (SUBTITLE_STORAGEMODE) CSettings::Get().GetInt("subtitles.storagemode");
+  SUBTITLE_STORAGEMODE storageMode = (SUBTITLE_STORAGEMODE) CServiceBroker::GetSettings().GetInt(CSettings::SETTING_SUBTITLES_STORAGEMODE);
 
   // Get (unstacked) path
   std::string strCurrentFile = g_application.CurrentUnstackedItem().GetPath();
@@ -462,9 +466,9 @@ void CGUIDialogSubtitles::OnDownloadComplete(const CFileItemList *items, const s
     if (!subPath.empty())
       strDownloadPath = subPath;
 
-    /* Get item's folder for sub storage, special case for RAR/ZIP items
-       TODO: We need some way to avoid special casing this all over the place
-             for rar/zip (perhaps modify GetDirectory?)
+    /** Get item's folder for sub storage, special case for RAR/ZIP items
+     * @todo We need some way to avoid special casing this all over the place
+     * for rar/zip (perhaps modify GetDirectory?)
      */
     if (URIUtils::IsInRAR(strCurrentFile) || URIUtils::IsInZIP(strCurrentFile))
       strCurrentFilePath = URIUtils::GetDirectory(CURL(strCurrentFile).GetHostName());
@@ -593,8 +597,5 @@ void CGUIDialogSubtitles::ClearServices()
 
 void CGUIDialogSubtitles::SetSubtitles(const std::string &subtitle)
 {
-  if (g_application.m_pPlayer)
-  {
-    g_application.m_pPlayer->AddSubtitle(subtitle);
-  }
+  g_application.GetAppPlayer().AddSubtitle(subtitle);
 }

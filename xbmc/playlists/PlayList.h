@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,26 +22,27 @@
 #include "FileItem.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace PLAYLIST
 {
 class CPlayList
 {
 public:
-  CPlayList(int id = -1);
-  virtual ~CPlayList(void) {};
+  explicit CPlayList(int id = -1);
+  virtual ~CPlayList(void) = default;
   virtual bool Load(const std::string& strFileName);
   virtual bool LoadData(std::istream &stream);
   virtual bool LoadData(const std::string& strData);
   virtual void Save(const std::string& strFileName) const {};
 
-  void Add(CPlayList& playlist);
+  void Add(const CPlayList& playlist);
   void Add(const CFileItemPtr &pItem);
-  void Add(CFileItemList& items);
+  void Add(const CFileItemList& items);
 
   // for Party Mode
-  void Insert(CPlayList& playlist, int iPosition = -1);
-  void Insert(CFileItemList& items, int iPosition = -1);
+  void Insert(const CPlayList& playlist, int iPosition = -1);
+  void Insert(const CFileItemList& items, int iPosition = -1);
   void Insert(const CFileItemPtr& item, int iPosition = -1);
 
   int FindOrder(int iOrder) const;

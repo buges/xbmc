@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,13 +19,13 @@
  *
  */
 
-#include "Geometry.h"
+#include "utils/Geometry.h"
 #include <vector>
 
 class CDirtyRegion : public CRect
 {
 public:
-  CDirtyRegion(const CRect &rect) : CRect(rect) { m_age = 0; }
+  explicit CDirtyRegion(const CRect &rect) : CRect(rect) { m_age = 0; }
   CDirtyRegion(float left, float top, float right, float bottom) : CRect(left, top, right, bottom) { m_age = 0; }
   CDirtyRegion() : CRect() { m_age = 0; }
 

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,15 +20,20 @@
 
 #include "SettingCreator.h"
 #include "settings/SettingAddon.h"
+#include "settings/SettingDateTime.h"
 #include "settings/SettingPath.h"
 #include "utils/StringUtils.h"
 
-CSetting* CSettingCreator::CreateSetting(const std::string &settingType, const std::string &settingId, CSettingsManager *settingsManager /* = NULL */) const
+std::shared_ptr<CSetting> CSettingCreator::CreateSetting(const std::string &settingType, const std::string &settingId, CSettingsManager *settingsManager /* = nullptr */) const
 {
   if (StringUtils::EqualsNoCase(settingType, "addon"))
-    return new CSettingAddon(settingId, settingsManager);
+    return std::make_shared<CSettingAddon>(settingId, settingsManager);
   else if (StringUtils::EqualsNoCase(settingType, "path"))
-    return new CSettingPath(settingId, settingsManager);
+    return std::make_shared<CSettingPath>(settingId, settingsManager);
+  else if (StringUtils::EqualsNoCase(settingType, "date"))
+    return std::make_shared<CSettingDate>(settingId, settingsManager);
+  else if (StringUtils::EqualsNoCase(settingType, "time"))
+    return std::make_shared<CSettingTime>(settingId, settingsManager);
 
-  return NULL;
+  return nullptr;
 }

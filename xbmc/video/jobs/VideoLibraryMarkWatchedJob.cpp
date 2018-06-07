@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,10 @@
 #ifdef HAS_UPNP
 #include "network/upnp/UPnP.h"
 #endif
+#include "pvr/PVRManager.h"
+#include "pvr/recordings/PVRRecordings.h"
 #include "profiles/ProfilesManager.h"
+#include "ServiceBroker.h"
 #include "utils/URIUtils.h"
 #include "video/VideoDatabase.h"
 
@@ -36,8 +39,7 @@ CVideoLibraryMarkWatchedJob::CVideoLibraryMarkWatchedJob(const CFileItemPtr &ite
     m_mark(mark)
 { }
 
-CVideoLibraryMarkWatchedJob::~CVideoLibraryMarkWatchedJob()
-{ }
+CVideoLibraryMarkWatchedJob::~CVideoLibraryMarkWatchedJob() = default;
 
 bool CVideoLibraryMarkWatchedJob::operator==(const CJob* job) const
 {
@@ -53,7 +55,9 @@ bool CVideoLibraryMarkWatchedJob::operator==(const CJob* job) const
 
 bool CVideoLibraryMarkWatchedJob::Work(CVideoDatabase &db)
 {
-  if (!CProfilesManager::Get().GetCurrentProfile().canWriteDatabases())
+  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+
+  if (!profileManager.GetCurrentProfile().canWriteDatabases())
     return false;
 
   CFileItemList items;
@@ -66,13 +70,16 @@ bool CVideoLibraryMarkWatchedJob::Work(CVideoDatabase &db)
   for (int i = 0; i < items.Size(); i++)
   {
     CFileItemPtr item = items.Get(i);
-    if (item->HasVideoInfoTag() && m_mark == (item->GetVideoInfoTag()->m_playCount > 0))
+    if (item->HasVideoInfoTag() && m_mark == (item->GetVideoInfoTag()->GetPlayCount() > 0))
       continue;
 
 #ifdef HAS_UPNP
     if (URIUtils::IsUPnP(item->GetPath()) && UPNP::CUPnP::MarkWatched(*item, m_mark))
       continue;
 #endif
+
+    if (item->HasPVRRecordingInfoTag() && CServiceBroker::GetPVRManager().Recordings()->MarkWatched(item, m_mark))
+      continue;
 
     markItems.push_back(item);
   }
@@ -88,7 +95,7 @@ bool CVideoLibraryMarkWatchedJob::Work(CVideoDatabase &db)
     if (m_mark)
     {
       std::string path(item->GetPath());
-      if (item->HasVideoInfoTag())
+      if (item->HasVideoInfoTag() && !item->GetVideoInfoTag()->GetPath().empty())
         path = item->GetVideoInfoTag()->GetPath();
 
       db.ClearBookMarksOfFile(path, CBookmark::RESUME);

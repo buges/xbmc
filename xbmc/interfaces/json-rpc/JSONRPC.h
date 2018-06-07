@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 
 #include "JSONRPCUtils.h"
 #include "JSONServiceDescription.h"
+
+class CVariant;
 
 namespace JSONRPC
 {
@@ -71,7 +73,6 @@ namespace JSONRPC
     static JSONRPC_STATUS NotifyAll(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant& parameterObject, CVariant &result);
   
   private:
-    static void setup();
     static bool HandleMethodCall(const CVariant& request, CVariant& response, ITransportLayer *transport, IClient *client);
     static inline bool IsProperJSONRPC(const CVariant& inputroot);
 

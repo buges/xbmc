@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,12 +27,13 @@
 #include "threads/Thread.h"
 #include "utils/IRssObserver.h"
 #include "utils/XBMCTinyXML.h"
+#include "PlatformDefs.h"
 
 class CRssReader : public CThread
 {
 public:
   CRssReader();
-  virtual ~CRssReader();
+  ~CRssReader() override;
 
   void Create(IRssObserver* aObserver, const std::vector<std::string>& aUrl, const std::vector<int>& times, int spacesBetweenFeeds, bool rtl);
   bool Parse(const std::string& data, int iFeed, const std::string& charset);
@@ -46,12 +47,12 @@ public:
   float m_savedScrollPixelPos;
 
 private:
-  void Process();
+  void Process() override;
   bool Parse(int iFeed);
   void GetNewsItems(TiXmlElement* channelXmlNode, int iFeed);
   void AddString(std::wstring aString, int aColour, int iFeed);
   void UpdateFeed();
-  virtual void OnExit();
+  void OnExit() override;
   int GetQueueSize();
 
   IRssObserver* m_pObserver;

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,9 +19,6 @@
  *
  */
 
-#include <string>
-#include <map>
-
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -29,6 +26,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <map>
+#include <string>
+
 #include <microhttpd.h>
 
 #include "utils/HttpRangeUtils.h"
@@ -43,6 +43,9 @@ enum HTTPMethod
   GET,
   HEAD
 };
+
+HTTPMethod GetHTTPMethod(const char *method);
+std::string GetHTTPMethod(HTTPMethod method);
 
 typedef enum HTTPResponseType
 {
@@ -87,7 +90,7 @@ typedef struct HTTPResponseDetails {
 class IHTTPRequestHandler
 {
 public:
-  virtual ~IHTTPRequestHandler() { }
+  virtual ~IHTTPRequestHandler() = default;
 
   /*!
    * \brief Creates a new HTTP request handler for the given request.
@@ -99,7 +102,7 @@ public:
    *
    * \param request HTTP request to be handled
    */
-  virtual IHTTPRequestHandler* Create(const HTTPRequest &request) = 0;
+  virtual IHTTPRequestHandler* Create(const HTTPRequest &request) const = 0;
 
   /*!
    * \brief Returns the priority of the HTTP request handler.
@@ -115,7 +118,7 @@ public:
   * \param request HTTP request to be handled
   * \return True if the given HTTP request can be handled otherwise false.
   */
-  virtual bool CanHandleRequest(const HTTPRequest &request) = 0;
+  virtual bool CanHandleRequest(const HTTPRequest &request) const = 0;
 
   /*!
    * \brief Handles the HTTP request.
@@ -221,7 +224,6 @@ public:
    * \param value Value of the HTTP POST field
    */
   void AddPostField(const std::string &key, const std::string &value);
-#if (MHD_VERSION >= 0x00040001)
   /*!
   * \brief Adds the given raw HTTP POST data.
   *
@@ -229,19 +231,12 @@ public:
   * \param size Size of the raw HTTP POST data
   */
   bool AddPostData(const char *data, size_t size);
-#else
-  bool AddPostData(const char *data, unsigned int size);
-#endif
 
 protected:
   IHTTPRequestHandler();
   explicit IHTTPRequestHandler(const HTTPRequest &request);
 
-#if (MHD_VERSION >= 0x00040001)
   virtual bool appendPostData(const char *data, size_t size)
-#else
-  virtual bool appendPostData(const char *data, unsigned int size)
-#endif
   { return true; }
 
   bool GetRequestedRanges(uint64_t totalLength);

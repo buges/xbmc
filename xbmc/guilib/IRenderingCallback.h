@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 class IRenderingCallback
 {
 public:
+  virtual ~IRenderingCallback() = default;
   virtual bool Create(int x, int y, int w, int h, void *device) = 0;
   virtual void Render() = 0;
   virtual void Stop() = 0;

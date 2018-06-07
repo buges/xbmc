@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,9 +20,12 @@
  *
  */
 
-#include <string>
+#include <atomic>
 #include <map>
+#include <string>
+#include <utility>
 #include <vector>
+
 #include "utils/Job.h"
 
 class CCriticalSection;
@@ -33,8 +36,8 @@ class CCriticalSection;
 /// free to add it. The main purpose currently is to provide an easy
 /// way to publish services in the different StartXXX/StopXXX methods
 /// in CApplication
-/// TODO: Make me safe for use in static initialization. CritSec is a static member :/
-///       use e.g. loki's singleton implementation to make do it properly
+//! @todo Make me safe for use in static initialization. CritSec is a static member :/
+//!       use e.g. loki's singleton implementation to make do it properly
 class CZeroconf
 {
 public:
@@ -57,7 +60,7 @@ public:
   //implement it by doing so.
   //
   //fcr_identifier - the identifier of the already published service which should be reannounced
-  // returns true on successfull reannonuce - false if this service isn't published yet
+  // returns true on successful reannonuce - false if this service isn't published yet
   bool ForceReAnnounceService(const std::string& fcr_identifier);
 
   ///removes the specified service
@@ -72,7 +75,7 @@ public:
   //started, get published now.
   bool Start();
 
-  // unpublishs all services (but keeps them stored in this class)
+  // unpublishes all services (but keeps them stored in this class)
   // a call to Start() will republish them
   void Stop();
 
@@ -133,16 +136,16 @@ private:
   bool m_started;
 
   //protects singleton creation/destruction
-  static long sm_singleton_guard;
+  static std::atomic_flag sm_singleton_guard;
   static CZeroconf* smp_instance;
 
   class CPublish : public CJob
   {
   public:
     CPublish(const std::string& fcr_identifier, const PublishInfo& pubinfo);
-    CPublish(const tServiceMap& servmap);
+    explicit CPublish(const tServiceMap& servmap);
 
-    bool DoWork();
+    bool DoWork() override;
 
   private:
     tServiceMap m_servmap;

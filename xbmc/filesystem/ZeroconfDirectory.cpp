@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,9 +36,7 @@ CZeroconfDirectory::CZeroconfDirectory()
   CZeroconfBrowser::GetInstance()->Start();
 }
 
-CZeroconfDirectory::~CZeroconfDirectory()
-{
-}
+CZeroconfDirectory::~CZeroconfDirectory() = default;
 
 namespace
 {
@@ -75,7 +73,7 @@ namespace
   }
 }
 
-bool GetDirectoryFromTxtRecords(CZeroconfBrowser::ZeroconfService zeroconf_service, CURL& url, CFileItemList &items)
+bool GetDirectoryFromTxtRecords(const CZeroconfBrowser::ZeroconfService& zeroconf_service, CURL& url, CFileItemList &items)
 {
   bool ret = false;
 
@@ -96,7 +94,7 @@ bool GetDirectoryFromTxtRecords(CZeroconfBrowser::ZeroconfService zeroconf_servi
     if( it != txtRecords.end() && !it->second.empty() )
     {
       //from now on we treat the value as a path - everything else would mean
-      //a missconfigured zeroconf server.
+      //a misconfigured zeroconf server.
       path=it->second;
     }
     
@@ -131,7 +129,7 @@ bool GetDirectoryFromTxtRecords(CZeroconfBrowser::ZeroconfService zeroconf_servi
         URIUtils::RemoveSlashAtEnd(urlStr);//we don't need the slash at and of url then
       }
       else//path doesn't start with slash - 
-      {//this is some kind of missconfiguration - we fix it by adding a slash to the url
+      {//this is some kind of misconfiguration - we fix it by adding a slash to the url
         URIUtils::AddSlashAtEnd(urlStr);
       }
       
@@ -147,7 +145,7 @@ bool GetDirectoryFromTxtRecords(CZeroconfBrowser::ZeroconfService zeroconf_servi
       else
         item->SetLabel("/");
 
-      item->SetLabelPreformated(true);
+      item->SetLabelPreformatted(true);
       //just set the default folder icon
       item->FillInDefaultIcon();
       item->m_bIsShareOrDrive=true;
@@ -183,7 +181,7 @@ bool CZeroconfDirectory::GetDirectory(const CURL& url, CFileItemList &items)
         //now do the formatting
         std::string protocol = GetHumanReadableProtocol(it->GetType());
         item->SetLabel(it->GetName() + " (" + protocol  + ")");
-        item->SetLabelPreformated(true);
+        item->SetLabelPreformatted(true);
         //just set the default folder icon
         item->FillInDefaultIcon();
         items.Add(item);
@@ -211,7 +209,7 @@ bool CZeroconfDirectory::GetDirectory(const CURL& url, CFileItemList &items)
         service.SetPort(zeroconf_service.GetPort());
         service.SetHostName(zeroconf_service.GetIP());
         //do protocol conversion (_smb._tcp -> smb)
-        //ToDo: try automatic conversion -> remove leading '_' and '._tcp'?
+        //! @todo try automatic conversion -> remove leading '_' and '._tcp'?
         std::string protocol;
         if(!GetXBMCProtocol(zeroconf_service.GetType(), protocol))
         {

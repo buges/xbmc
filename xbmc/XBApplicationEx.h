@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 
 #include "guilib/IWindowManagerCallback.h"
 
+class CAppParamParser;
+
 // Do not change the numbering, external scripts depend on them
 enum {
   EXITCODE_QUIT      = 0,
@@ -35,7 +37,7 @@ class CXBApplicationEx : public IWindowManagerCallback
 {
 public:
   CXBApplicationEx();
-  ~CXBApplicationEx();
+  ~CXBApplicationEx() override;
 
   // Variables for timing
   bool m_bStop;
@@ -46,13 +48,10 @@ public:
   // Overridable functions for the 3D scene created by the app
   virtual bool Initialize() { return true; }
   virtual bool Cleanup() { return true; }
-  virtual void SetRenderGUI(bool renderGUI) {};
 
 public:
-  // Functions to create, run, and clean up the application
-  virtual bool Create();
-  INT Run();
-  VOID Destroy();
+  int Run(const CAppParamParser &params);
+  void Destroy();
 
 private:
 };

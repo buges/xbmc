@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,9 +24,10 @@
 class CSettingCreator : public ISettingCreator
 {
 public:
-  CSettingCreator() { }
-  virtual ~CSettingCreator() { }
-
   // implementation of ISettingCreator
-  virtual CSetting* CreateSetting(const std::string &settingType, const std::string &settingId, CSettingsManager *settingsManager = NULL) const;
+  std::shared_ptr<CSetting> CreateSetting(const std::string &settingType, const std::string &settingId, CSettingsManager *settingsManager = nullptr) const override;
+
+protected:
+  CSettingCreator() = default;
+  ~CSettingCreator() override = default;
 };

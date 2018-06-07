@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@
  *
  */
 
+#include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
-#include "utils/StringUtils.h"
 #include "test/TestUtils.h"
 #include "utils/StringUtils.h"
 
@@ -32,29 +32,28 @@ class TestFileFactory : public testing::Test
 protected:
   TestFileFactory()
   {
-    if (CSettings::Get().Initialize())
+    if (CServiceBroker::GetSettings().Initialize())
     {
       std::vector<std::string> advancedsettings =
         CXBMCTestUtils::Instance().getAdvancedSettingsFiles();
       std::vector<std::string> guisettings =
         CXBMCTestUtils::Instance().getGUISettingsFiles();
 
-      std::vector<std::string>::iterator it;
-      for (it = guisettings.begin(); it < guisettings.end(); ++it)
-        CSettings::Get().Load(*it);
+      for (const auto& it : guisettings)
+        CServiceBroker::GetSettings().Load(it);
 
-      for (it = advancedsettings.begin(); it < advancedsettings.end(); ++it)
-        g_advancedSettings.ParseSettingsFile(*it);
+      for (const auto& it : advancedsettings)
+        g_advancedSettings.ParseSettingsFile(it);
 
-      CSettings::Get().SetLoaded();
+      CServiceBroker::GetSettings().SetLoaded();
     }
   }
 
-  ~TestFileFactory()
+  ~TestFileFactory() override
   {
     g_advancedSettings.Clear();
-    CSettings::Get().Unload();
-    CSettings::Get().Uninitialize();
+    CServiceBroker::GetSettings().Unload();
+    CServiceBroker::GetSettings().Uninitialize();
   }
 };
 
@@ -74,11 +73,10 @@ TEST_F(TestFileFactory, Read)
   std::vector<std::string> urls =
     CXBMCTestUtils::Instance().getTestFileFactoryReadUrls();
 
-  std::vector<std::string>::iterator it;
-  for (it = urls.begin(); it < urls.end(); ++it)
+  for (const auto& url : urls)
   {
-    std::cout << "Testing URL: " << *it << std::endl;
-    ASSERT_TRUE(file.Open(*it));
+    std::cout << "Testing URL: " << url << std::endl;
+    ASSERT_TRUE(file.Open(url));
     std::cout << "file.GetLength(): " <<
       testing::PrintToString(file.GetLength()) << std::endl;
     std::cout << "file.Seek(file.GetLength() / 2, SEEK_CUR) return value: " <<
@@ -90,7 +88,7 @@ TEST_F(TestFileFactory, Read)
     std::cout << "File contents:" << std::endl;
     while ((size = file.Read(buf, sizeof(buf))) > 0)
     {
-      str = StringUtils::Format("  %08X", count);
+      str = StringUtils::Format("  %08llX", count);
       std::cout << str << "  ";
       count += size;
       for (i = 0; i < size; i++)
@@ -128,12 +126,11 @@ TEST_F(TestFileFactory, Write)
   std::vector<std::string> urls =
     CXBMCTestUtils::Instance().getTestFileFactoryWriteUrls();
 
-  std::vector<std::string>::iterator it;
-  for (it = urls.begin(); it < urls.end(); ++it)
+  for (const auto& url : urls)
   {
-    std::cout << "Testing URL: " << *it << std::endl;
+    std::cout << "Testing URL: " << url << std::endl;
     std::cout << "Writing...";
-    ASSERT_TRUE(file.OpenForWrite(*it, true));
+    ASSERT_TRUE(file.OpenForWrite(url, true));
     while ((size = inputfile.Read(buf, sizeof(buf))) > 0)
     {
       EXPECT_GE(file.Write(buf, size), 0);
@@ -141,7 +138,7 @@ TEST_F(TestFileFactory, Write)
     file.Close();
     std::cout << "done." << std::endl;
     std::cout << "Reading..." << std::endl;
-    ASSERT_TRUE(file.Open(*it));
+    ASSERT_TRUE(file.Open(url));
     EXPECT_EQ(inputfile.GetLength(), file.GetLength());
     std::cout << "file.Seek(file.GetLength() / 2, SEEK_CUR) return value: " <<
       testing::PrintToString(file.Seek(file.GetLength() / 2, SEEK_CUR)) << std::endl;
@@ -152,7 +149,7 @@ TEST_F(TestFileFactory, Write)
     std::cout << "File contents:\n";
     while ((size = file.Read(buf, sizeof(buf))) > 0)
     {
-      str = StringUtils::Format("  %08X", count);
+      str = StringUtils::Format("  %08llX", count);
       std::cout << str << "  ";
       count += size;
       for (i = 0; i < size; i++)

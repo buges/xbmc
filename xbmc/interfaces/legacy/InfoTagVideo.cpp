@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,6 +42,11 @@ namespace XBMCAddon
       delete infoTag;
     }
 
+    int InfoTagVideo::getDbId()
+    {
+      return infoTag->m_iDbId;
+    }
+
     String InfoTagVideo::getDirector()
     {
       return StringUtils::Join(infoTag->m_director, g_advancedSettings.m_videoItemSeparator);
@@ -77,14 +82,24 @@ namespace XBMCAddon
       return infoTag->m_strPictureURL.GetFirstThumb().m_url;
     }
 
+    String InfoTagVideo::getTVShowTitle()
+    {
+      return infoTag->m_strShowTitle;
+    }
+
     String InfoTagVideo::getTitle()
     {
       return infoTag->m_strTitle;
     }
 
+    String InfoTagVideo::getMediaType()
+    {
+      return infoTag->m_type;
+    }
+
     String InfoTagVideo::getVotes()
     {
-      return infoTag->m_strVotes;
+      return StringUtils::Format("%i", infoTag->GetRating().votes);
     }
 
     String InfoTagVideo::getCast()
@@ -104,22 +119,37 @@ namespace XBMCAddon
 
     String InfoTagVideo::getIMDBNumber()
     {
-      return infoTag->m_strIMDBNumber;
+      return infoTag->GetUniqueID();
+    }
+
+    int InfoTagVideo::getSeason()
+    {
+      return infoTag->m_iSeason;
+    }
+
+    int InfoTagVideo::getEpisode()
+    {
+      return infoTag->m_iEpisode;
     }
 
     int InfoTagVideo::getYear()
     {
-      return infoTag->m_iYear;
+      return infoTag->GetYear();
     }
 
     double InfoTagVideo::getRating()
     {
-      return infoTag->m_fRating;
+      return infoTag->GetRating().rating;
+    }
+
+    int InfoTagVideo::getUserRating()
+    {
+      return infoTag->m_iUserRating;
     }
 
     int InfoTagVideo::getPlayCount()
     {
-      return infoTag->m_playCount;
+      return infoTag->GetPlayCount();
     }
 
     String InfoTagVideo::getLastPlayed()
@@ -134,12 +164,37 @@ namespace XBMCAddon
 
     String InfoTagVideo::getPremiered()
     {
-      return infoTag->m_premiered.GetAsLocalizedDate();
+      return infoTag->GetPremiered().GetAsLocalizedDate();
     }
 
     String InfoTagVideo::getFirstAired()
     {
       return infoTag->m_firstAired.GetAsLocalizedDate();
+    }
+
+    String InfoTagVideo::getTrailer()
+    {
+      return infoTag->m_strTrailer;
+    }
+
+    std::vector<std::string> InfoTagVideo::getArtist()
+    {
+      return infoTag->m_artist;
+    }
+
+    String InfoTagVideo::getAlbum()
+    {
+      return infoTag->m_strAlbum;
+    }
+
+    int InfoTagVideo::getTrack()
+    {
+      return infoTag->m_iTrack;
+    }
+
+    unsigned int InfoTagVideo::getDuration()
+    {
+      return infoTag->GetDuration();
     }
   }
 }

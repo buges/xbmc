@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,10 +17,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-#include "system.h"
-
-#ifdef HAS_DVD_DRIVE
 
 #include "CDDAFile.h"
 #include <sys/stat.h>
@@ -236,6 +232,3 @@ int CFileCDDA::GetChunkSize()
 {
   return SECTOR_COUNT*CDIO_CD_FRAMESIZE_RAW;
 }
-
-#endif
-

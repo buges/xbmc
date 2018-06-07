@@ -5,7 +5,7 @@ PLATFORM=$(NATIVEPLATFORM)
 
 # lib name, version
 LIBNAME=giflib
-VERSION=5.0.5
+VERSION=5.1.4
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.bz2
 
@@ -13,8 +13,6 @@ ARCHIVE=$(SOURCE).tar.bz2
 CONFIGURE=./configure --prefix=$(PREFIX)
 
 LIBDYLIB=$(PLATFORM)/lib/.libs/libgif.a
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

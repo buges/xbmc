@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ TEST(TestFileUtils, DeleteItem_CFileItemPtr)
   item->SetPath(tmpfilepath);
   item->m_bIsFolder = false;
   item->Select(true);
-
+  tmpfile->Close();  //Close tmpfile before we try to delete it
   EXPECT_TRUE(CFileUtils::DeleteItem(item));
 }
 
@@ -46,6 +46,7 @@ TEST(TestFileUtils, DeleteItemString)
   XFILE::CFile *tmpfile;
 
   ASSERT_NE(nullptr, (tmpfile = XBMC_CREATETEMPFILE("")));
+  tmpfile->Close();  //Close tmpfile before we try to delete it
   EXPECT_TRUE(CFileUtils::DeleteItem(XBMC_TEMPFILEPATH(tmpfile)));
 }
 

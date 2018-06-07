@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,30 +20,24 @@
 
 #include "Screenshot.h"
 
-#include "system.h"
+#include "system_gl.h"
 #include <vector>
 
+#include "ServiceBroker.h"
 #include "Util.h"
+#include "URL.h"
 
-#include "Application.h"
-#include "windowing/WindowingFactory.h"
 #include "pictures/Picture.h"
 
 #ifdef TARGET_RASPBERRY_PI
-#include "xbmc/linux/RBP.h"
-#endif
-
-#ifdef HAS_VIDEO_PLAYBACK
-#include "cores/VideoRenderers/RenderManager.h"
-#endif
-
-#ifdef HAS_IMXVPU
-// This has to go into another header file
-#include "cores/dvdplayer/DVDCodecs/Video/DVDVideoCodecIMX.h"
+#include "platform/linux/RBP.h"
 #endif
 
 #include "filesystem/File.h"
-#include "guilib/GraphicContext.h"
+#include "guilib/GUIComponent.h"
+#include "windowing/GraphicContext.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 
 #include "utils/JobManager.h"
 #include "utils/URIUtils.h"
@@ -56,7 +50,12 @@
 #include "utils/ScreenshotAML.h"
 #endif
 
-using namespace std;
+#if defined(TARGET_WINDOWS)
+#include "rendering/dx/DeviceResources.h"
+#include <wrl/client.h>
+using namespace Microsoft::WRL;
+#endif
+
 using namespace XFILE;
 
 CScreenshotSurface::CScreenshotSurface()
@@ -79,62 +78,76 @@ bool CScreenshotSurface::capture()
   m_buffer = g_RBP.CaptureDisplay(m_width, m_height, &m_stride, true, false);
   if (!m_buffer)
     return false;
-#elif defined(HAS_DX)
-  LPDIRECT3DSURFACE9 lpSurface = NULL, lpBackbuffer = NULL;
-  g_graphicsContext.Lock();
-  if (g_application.m_pPlayer->IsPlayingVideo())
-  {
-#ifdef HAS_VIDEO_PLAYBACK
-    g_renderManager.SetupScreenshot();
-#endif
-  }
-  g_application.RenderNoPresent();
+#elif defined(TARGET_WINDOWS)
 
-  if (FAILED(g_Windowing.Get3DDevice()->CreateOffscreenPlainSurface(g_Windowing.GetWidth(), g_Windowing.GetHeight(), D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &lpSurface, NULL)))
+  CSingleLock lock(CServiceBroker::GetWinSystem()->GetGfxContext());
+
+  CServiceBroker::GetGUI()->GetWindowManager().Render();
+
+  auto deviceResources = DX::DeviceResources::Get();
+  deviceResources->FinishCommandList();
+
+  ComPtr<ID3D11DeviceContext> pImdContext = deviceResources->GetImmediateContext();
+  ComPtr<ID3D11Device> pDevice = deviceResources->GetD3DDevice();
+  CD3DTexture* backbuffer = deviceResources->GetBackBuffer();
+  if (!backbuffer)
     return false;
 
-  if (FAILED(g_Windowing.Get3DDevice()->GetRenderTarget(0, &lpBackbuffer)))
-    return false;
+  D3D11_TEXTURE2D_DESC desc = { 0 };
+  backbuffer->GetDesc(&desc);
+  desc.Usage = D3D11_USAGE_STAGING;
+  desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+  desc.BindFlags = 0;
 
-  // now take screenshot
-  if (SUCCEEDED(g_Windowing.Get3DDevice()->GetRenderTargetData(lpBackbuffer, lpSurface)))
+  ComPtr<ID3D11Texture2D> pCopyTexture = nullptr;
+  if (SUCCEEDED(pDevice->CreateTexture2D(&desc, nullptr, &pCopyTexture)))
   {
-    D3DLOCKED_RECT lr;
-    D3DSURFACE_DESC desc;
-    lpSurface->GetDesc(&desc);
-    if (SUCCEEDED(lpSurface->LockRect(&lr, NULL, D3DLOCK_READONLY)))
+    // take copy
+    pImdContext->CopyResource(pCopyTexture.Get(), backbuffer->Get());
+
+    D3D11_MAPPED_SUBRESOURCE res;
+    if (SUCCEEDED(pImdContext->Map(pCopyTexture.Get(), 0, D3D11_MAP_READ, 0, &res)))
     {
       m_width = desc.Width;
       m_height = desc.Height;
-      m_stride = lr.Pitch;
+      m_stride = res.RowPitch;
       m_buffer = new unsigned char[m_height * m_stride];
-      memcpy(m_buffer, lr.pBits, m_height * m_stride);
-      lpSurface->UnlockRect();
+      if (desc.Format == DXGI_FORMAT_R10G10B10A2_UNORM)
+      {
+        // convert R10G10B10A2 -> B8G8R8A8
+        for (int y = 0; y < m_height; y++)
+        {
+          uint32_t* pixels10 = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(res.pData) + y * res.RowPitch);
+          uint8_t* pixels8 = m_buffer + y * m_stride;
+
+          for (int x = 0; x < m_width; x++, pixels10++, pixels8 += 4)
+          {
+            // actual bit per channel is A2B10G10R10
+            uint32_t pixel = *pixels10;
+            // R
+            pixels8[2] = static_cast<uint8_t>((pixel & 0x3FF) * 255 / 1023);
+            // G
+            pixel >>= 10;
+            pixels8[1] = static_cast<uint8_t>((pixel & 0x3FF) * 255 / 1023);
+            // B
+            pixel >>= 10;
+            pixels8[0] = static_cast<uint8_t>((pixel & 0x3FF) * 255 / 1023);
+            // A
+            pixels8[3] = 0xFF;
+          }
+        }
+      }
+      else
+        memcpy(m_buffer, res.pData, m_height * m_stride);
+      pImdContext->Unmap(pCopyTexture.Get(), 0);
     }
     else
-    {
-      CLog::Log(LOGERROR, "%s LockRect failed", __FUNCTION__);
-    }
+      CLog::LogFunction(LOGERROR, __FUNCTION__, "MAP_READ failed.");
   }
-  else
-  {
-    CLog::Log(LOGERROR, "%s GetBackBuffer failed", __FUNCTION__);
-  }
-  lpSurface->Release();
-  lpBackbuffer->Release();
-
-  g_graphicsContext.Unlock();
-
 #elif defined(HAS_GL) || defined(HAS_GLES)
 
-  g_graphicsContext.BeginPaint();
-  if (g_application.m_pPlayer->IsPlayingVideo())
-  {
-#ifdef HAS_VIDEO_PLAYBACK
-    g_renderManager.SetupScreenshot();
-#endif
-  }
-  g_application.RenderNoPresent();
+  CSingleLock lock(CServiceBroker::GetWinSystem()->GetGfxContext());
+  CServiceBroker::GetGUI()->GetWindowManager().Render();
 #ifndef HAS_GLES
   glReadBuffer(GL_BACK);
 #endif
@@ -148,12 +161,11 @@ bool CScreenshotSurface::capture()
   unsigned char* surface = new unsigned char[m_stride * m_height];
 
   //read pixels from the backbuffer
-#if HAS_GLES == 2
+#if HAS_GLES >= 2
   glReadPixels(viewport[0], viewport[1], viewport[2], viewport[3], GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)surface);
 #else
   glReadPixels(viewport[0], viewport[1], viewport[2], viewport[3], GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)surface);
 #endif
-  g_graphicsContext.EndPaint();
 
   //make a new buffer and copy the read image to it with the Y axis inverted
   m_buffer = new unsigned char[m_stride * m_height];
@@ -171,16 +183,10 @@ bool CScreenshotSurface::capture()
   }
 
   delete [] surface;
-  
+
 #if defined(HAS_LIBAMCODEC)
   // Captures the current visible videobuffer and blend it into m_buffer (captured overlay)
   CScreenshotAML::CaptureVideoFrame(m_buffer, m_width, m_height);
-#endif
-
-#ifdef HAS_IMXVPU
-  // Captures the current visible framebuffer page and blends it into the
-  // captured GL overlay
-  g_IMXContext.CaptureDisplay(m_buffer, m_width, m_height);
 #endif
 
 #else
@@ -197,11 +203,11 @@ void CScreenShot::TakeScreenshot(const std::string &filename, bool sync)
   CScreenshotSurface surface;
   if (!surface.capture())
   {
-    CLog::Log(LOGERROR, "Screenshot %s failed", filename.c_str());
+    CLog::Log(LOGERROR, "Screenshot %s failed", CURL::GetRedacted(filename).c_str());
     return;
   }
 
-  CLog::Log(LOGDEBUG, "Saving screenshot %s", filename.c_str());
+  CLog::Log(LOGDEBUG, "Saving screenshot %s", CURL::GetRedacted(filename).c_str());
 
   //set alpha byte to 0xFF
   for (int y = 0; y < surface.m_height; y++)
@@ -215,7 +221,7 @@ void CScreenShot::TakeScreenshot(const std::string &filename, bool sync)
   if (sync)
   {
     if (!CPicture::CreateThumbnailFromSurface(surface.m_buffer, surface.m_width, surface.m_height, surface.m_stride, filename))
-      CLog::Log(LOGERROR, "Unable to write screenshot %s", filename.c_str());
+      CLog::Log(LOGERROR, "Unable to write screenshot %s", CURL::GetRedacted(filename).c_str());
 
     delete [] surface.m_buffer;
     surface.m_buffer = NULL;
@@ -223,11 +229,11 @@ void CScreenShot::TakeScreenshot(const std::string &filename, bool sync)
   else
   {
     //make sure the file exists to avoid concurrency issues
-    FILE* fp = fopen(filename.c_str(), "w");
-    if (fp)
-      fclose(fp);
+    XFILE::CFile file;
+    if (file.OpenForWrite(filename))
+      file.Close();
     else
-      CLog::Log(LOGERROR, "Unable to create file %s", filename.c_str());
+      CLog::Log(LOGERROR, "Unable to create file %s", CURL::GetRedacted(filename).c_str());
 
     //write .png file asynchronous with CThumbnailWriter, prevents stalling of the render thread
     //buffer is deleted from CThumbnailWriter
@@ -240,18 +246,18 @@ void CScreenShot::TakeScreenshot(const std::string &filename, bool sync)
 void CScreenShot::TakeScreenshot()
 {
   static bool savingScreenshots = false;
-  static vector<std::string> screenShots;
+  static std::vector<std::string> screenShots;
   bool promptUser = false;
   std::string strDir;
 
   // check to see if we have a screenshot folder yet
-  CSettingPath *screenshotSetting = (CSettingPath*)CSettings::Get().GetSetting("debug.screenshotpath");
+  std::shared_ptr<CSettingPath> screenshotSetting = std::static_pointer_cast<CSettingPath>(CServiceBroker::GetSettings().GetSetting(CSettings::SETTING_DEBUG_SCREENSHOTPATH));
   if (screenshotSetting != NULL)
   {
     strDir = screenshotSetting->GetValue();
     if (strDir.empty())
     {
-      if (CGUIControlButtonSetting::GetPath(screenshotSetting))
+      if (CGUIControlButtonSetting::GetPath(screenshotSetting, &g_localizeStrings))
         strDir = screenshotSetting->GetValue();
     }
   }
@@ -285,7 +291,7 @@ void CScreenShot::TakeScreenshot()
           newDir = screenshotSetting->GetValue();
           if (newDir.empty())
           {
-            if (CGUIControlButtonSetting::GetPath(screenshotSetting))
+            if (CGUIControlButtonSetting::GetPath(screenshotSetting, &g_localizeStrings))
               newDir = screenshotSetting->GetValue();
           }
         }

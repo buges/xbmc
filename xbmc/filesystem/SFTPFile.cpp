@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,15 +20,15 @@
 
 #include "threads/SystemClock.h"
 #include "SFTPFile.h"
-#ifdef HAS_FILESYSTEM_SFTP
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "URL.h"
 #include <fcntl.h>
 #include <sstream>
 
-#ifdef TARGET_WINDOWS
-#pragma comment(lib, "ssh.lib")
+#if defined(TARGET_DARWIN_IOS)
+#include "utils/StringUtils.h"
+#include "platform/darwin/DarwinUtils.h"
 #endif
 
 #ifndef S_ISDIR
@@ -42,7 +42,6 @@
 #endif
 
 using namespace XFILE;
-using namespace std;
 
 
 static std::string CorrectPath(const std::string& path)
@@ -97,7 +96,7 @@ static const char * SFTPErrorText(int sftp_error)
 
 CSFTPSession::CSFTPSession(const std::string &host, unsigned int port, const std::string &username, const std::string &password)
 {
-  CLog::Log(LOGINFO, "SFTPSession: Creating new session on host '%s:%d' with user '%s'", host.c_str(), port, username.c_str());
+  CLog::Log(LOGINFO, "SFTPSession: Creating new session on host '%s:%d'", host.c_str(), port);
   CSingleLock lock(m_critSect);
   if (!Connect(host, port, username, password))
     Disconnect();
@@ -111,7 +110,7 @@ CSFTPSession::~CSFTPSession()
   Disconnect();
 }
 
-sftp_file CSFTPSession::CreateFileHande(const std::string &file)
+sftp_file CSFTPSession::CreateFileHandle(const std::string &file)
 {
   if (m_connected)
   {
@@ -331,7 +330,7 @@ bool CSFTPSession::VerifyKnownHost(ssh_session session)
     case SSH_SERVER_FILE_NOT_FOUND:
       CLog::Log(LOGINFO, "SFTPSession: Server file was not found, creating a new one");
     case SSH_SERVER_NOT_KNOWN:
-      CLog::Log(LOGINFO, "SFTPSession: Server unkown, we trust it for now");
+      CLog::Log(LOGINFO, "SFTPSession: Server unknown, we trust it for now");
       if (ssh_write_knownhost(session) < 0)
       {
         CLog::Log(LOGERROR, "CSFTPSession: Failed to save host '%s'", strerror(errno));
@@ -361,7 +360,6 @@ bool CSFTPSession::Connect(const std::string &host, unsigned int port, const std
     return false;
   }
 
-#if LIBSSH_VERSION_INT >= SSH_VERSION_INT(0,4,0)
   if (ssh_options_set(m_session, SSH_OPTIONS_USER, username.c_str()) < 0)
   {
     CLog::Log(LOGERROR, "SFTPSession: Failed to set username '%s' for session", username.c_str());
@@ -379,36 +377,17 @@ bool CSFTPSession::Connect(const std::string &host, unsigned int port, const std
     CLog::Log(LOGERROR, "SFTPSession: Failed to set port '%d' for session", port);
     return false;
   }
-
+#if defined(TARGET_DARWIN_IOS)
+  std::string home = CDarwinUtils::GetUserHomeDirectory();
+  std::string sshFolder = StringUtils::Format("%s/.ssh", home.c_str());
+  if (ssh_options_set(m_session, SSH_OPTIONS_SSH_DIR, sshFolder.c_str()) < 0)
+  {
+    CLog::Log(LOGERROR, "SFTPSession: Failed to set .ssh folder to '%s' for session", sshFolder.c_str());
+    return false;
+  }
+#endif
   ssh_options_set(m_session, SSH_OPTIONS_LOG_VERBOSITY, 0);
   ssh_options_set(m_session, SSH_OPTIONS_TIMEOUT, &timeout);  
-#else
-  SSH_OPTIONS* options = ssh_options_new();
-
-  if (ssh_options_set_username(options, username.c_str()) < 0)
-  {
-    CLog::Log(LOGERROR, "SFTPSession: Failed to set username '%s' for session", username.c_str());
-    return false;
-  }
-
-  if (ssh_options_set_host(options, host.c_str()) < 0)
-  {
-    CLog::Log(LOGERROR, "SFTPSession: Failed to set host '%s' for session", host.c_str());
-    return false;
-  }
-
-  if (ssh_options_set_port(options, port) < 0)
-  {
-    CLog::Log(LOGERROR, "SFTPSession: Failed to set port '%d' for session", port);
-    return false;
-  }
-  
-  ssh_options_set_timeout(options, timeout, 0);
-
-  ssh_options_set_log_verbosity(options, 0);
-
-  ssh_set_options(m_session, options);
-#endif
 
   if(ssh_connect(m_session))
   {
@@ -430,19 +409,11 @@ bool CSFTPSession::Connect(const std::string &host, unsigned int port, const std
     return false;
   }
 
-#if LIBSSH_VERSION_MINOR >= 6
   int method = ssh_userauth_list(m_session, NULL);
-#else
-  int method = ssh_auth_list(m_session);
-#endif
 
   // Try to authenticate with public key first
   int publicKeyAuth = SSH_AUTH_DENIED;
-#if LIBSSH_VERSION_MINOR >= 6
   if (method & SSH_AUTH_METHOD_PUBLICKEY && (publicKeyAuth = ssh_userauth_publickey_auto(m_session, NULL, NULL)) == SSH_AUTH_ERROR)
-#else
-  if (method & SSH_AUTH_METHOD_PUBLICKEY && (publicKeyAuth = ssh_userauth_autopubkey(m_session, NULL)) == SSH_AUTH_ERROR)
-#endif
   {
     CLog::Log(LOGERROR, "SFTPSession: Failed to authenticate via publickey '%s'", ssh_get_error(m_session));
     return false;
@@ -530,13 +501,13 @@ bool CSFTPSession::GetItemPermissions(const char *path, uint32_t &permissions)
 }
 
 CCriticalSection CSFTPSessionManager::m_critSect;
-map<std::string, CSFTPSessionPtr> CSFTPSessionManager::sessions;
+std::map<std::string, CSFTPSessionPtr> CSFTPSessionManager::sessions;
 
 CSFTPSessionPtr CSFTPSessionManager::CreateSession(const CURL &url)
 {
-  string username = url.GetUserName().c_str();
-  string password = url.GetPassWord().c_str();
-  string hostname = url.GetHostName().c_str();
+  std::string username = url.GetUserName().c_str();
+  std::string password = url.GetPassWord().c_str();
+  std::string hostname = url.GetHostName().c_str();
   unsigned int port = url.HasPort() ? url.GetPort() : 22;
 
   return CSFTPSessionManager::CreateSession(hostname, port, username, password);
@@ -545,7 +516,7 @@ CSFTPSessionPtr CSFTPSessionManager::CreateSession(const CURL &url)
 CSFTPSessionPtr CSFTPSessionManager::CreateSession(const std::string &host, unsigned int port, const std::string &username, const std::string &password)
 {
   // Convert port number to string
-  stringstream itoa;
+  std::stringstream itoa;
   itoa << port;
   std::string portstr = itoa.str();
 
@@ -564,7 +535,7 @@ CSFTPSessionPtr CSFTPSessionManager::CreateSession(const std::string &host, unsi
 void CSFTPSessionManager::ClearOutIdleSessions()
 {
   CSingleLock lock(m_critSect);
-  for(map<std::string, CSFTPSessionPtr>::iterator iter = sessions.begin(); iter != sessions.end();)
+  for(std::map<std::string, CSFTPSessionPtr>::iterator iter = sessions.begin(); iter != sessions.end();)
   {
     if (iter->second->IsIdle())
       sessions.erase(iter++);
@@ -595,7 +566,7 @@ bool CSFTPFile::Open(const CURL& url)
   if (m_session)
   {
     m_file = url.GetFileName().c_str();
-    m_sftp_handle = m_session->CreateFileHande(m_file);
+    m_sftp_handle = m_session->CreateFileHandle(m_file);
 
     return (m_sftp_handle != NULL);
   }
@@ -721,5 +692,3 @@ int CSFTPFile::IoControl(EIoControl request, void* param)
 
   return -1;
 }
-
-#endif

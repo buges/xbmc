@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ CPlayList* CPlayListFactory::Create(const std::string& filename)
 
 CPlayList* CPlayListFactory::Create(const CFileItem& item)
 {
-  if( item.IsInternetStream() )
+  if (item.IsInternetStream())
   {
     // Ensure the MIME type has been retrieved for http:// and shout:// streams
     if (item.GetMimeType().empty())
@@ -72,7 +72,11 @@ CPlayList* CPlayListFactory::Create(const CFileItem& item)
       return new CPlayListWPL();
   }
 
-  std::string extension = URIUtils::GetExtension(item.GetPath());
+  std::string path = item.GetDynPath();
+  if (path.empty())
+    path = item.GetPath();
+
+  std::string extension = URIUtils::GetExtension(path);
   StringUtils::ToLower(extension);
 
   if (extension == ".m3u" || extension == ".strm")
@@ -108,7 +112,7 @@ bool CPlayListFactory::IsPlaylist(const CFileItem& item)
   std::string strMimeType = item.GetMimeType();
   StringUtils::ToLower(strMimeType);
 
-/* These are abit uncertain 
+/* These are a bit uncertain 
   if(strMimeType == "video/x-ms-asf"
   || strMimeType == "video/x-ms-asx"
   || strMimeType == "video/x-ms-wmv"
@@ -129,7 +133,7 @@ bool CPlayListFactory::IsPlaylist(const CFileItem& item)
   || strMimeType == "audio/x-mpegurl")
     return true;
 
-  return IsPlaylist(item.GetPath());
+  return IsPlaylist(item.GetDynPath());
 }
 
 bool CPlayListFactory::IsPlaylist(const CURL& url)

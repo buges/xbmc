@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,13 +19,16 @@
  */
 #pragma once
 
-#include <memory>
 #include <map>
+#include <memory>
+#include <utility>
+#include <vector>
+
+#include <dns_sd.h>
 
 #include "network/ZeroconfBrowser.h"
-#include "threads/Thread.h"
 #include "threads/CriticalSection.h"
-#include <dns_sd.h>
+#include "threads/Thread.h"
 
 //platform specific implementation of  zeroconfbrowser interface using native os x APIs
 class CZeroconfBrowserMDNS : public CZeroconfBrowser

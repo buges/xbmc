@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,19 +22,18 @@
 
 #include "GUIListGroup.h"
 #include "GUITexture.h"
-#include "GUIInfoTypes.h"
+#include "guiinfo/GUIInfoTypes.h"
 
 class CGUIListItem;
 class CFileItem;
 class CLabelInfo;
 
-class CGUIListItemLayout
+class CGUIListItemLayout final
 {
 public:
   CGUIListItemLayout();
-  CGUIListItemLayout(const CGUIListItemLayout &from);
-  virtual ~CGUIListItemLayout();
-  void LoadLayout(TiXmlElement *layout, int context, bool focused);
+  CGUIListItemLayout(const CGUIListItemLayout &from, CGUIControl *control);
+  void LoadLayout(TiXmlElement *layout, int context, bool focused, float maxWidth, float maxHeight);
   void Process(CGUIListItem *item, int parentID, unsigned int currentTime, CDirtyRegionList &dirtyregions);
   void Render(CGUIListItem *item, int parentID);
   float Size(ORIENTATION orientation) const;
@@ -44,6 +43,7 @@ public:
   void ResetAnimation(ANIMATION_TYPE animType);
   void SetInvalid() { m_invalidated = true; };
   void FreeResources(bool immediately = false);
+  void SetParentControl(CGUIControl *control) { m_group.SetParentControl(control); };
 
 //#ifdef GUILIB_PYTHON_COMPATIBILITY
   void CreateListControlLayouts(float width, float height, bool focused, const CLabelInfo &labelInfo, const CLabelInfo &labelInfo2, const CTextureInfo &texture, const CTextureInfo &textureFocus, float texHeight, float iconWidth, float iconHeight, const std::string &nofocusCondition, const std::string &focusCondition);
@@ -56,7 +56,7 @@ public:
   bool MoveRight();
 
 #ifdef _DEBUG
-  virtual void DumpTextureUse();
+  void DumpTextureUse();
 #endif
   bool CheckCondition();
 protected:
@@ -71,6 +71,6 @@ protected:
   bool m_invalidated;
 
   INFO::InfoPtr m_condition;
-  CGUIInfoBool m_isPlaying;
+  KODI::GUILIB::GUIINFO::CGUIInfoBool m_isPlaying;
 };
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,22 +13,26 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
 
-#include "system.h"
 #include "GUIFont.h"
 #include "GUIFontTTFGL.h"
 #include "GUIFontManager.h"
 #include "Texture.h"
 #include "TextureManager.h"
-#include "GraphicContext.h"
+#include "windowing/GraphicContext.h"
+#include "ServiceBroker.h"
 #include "gui3d.h"
 #include "utils/log.h"
 #include "utils/GLUtils.h"
-#include "windowing/WindowingFactory.h"
+#ifdef HAS_GL
+#include "rendering/gl/RenderSystemGL.h"
+#elif HAS_GLES
+#include "rendering/gles/RenderSystemGLES.h"
+#endif
 #include "guilib/MatrixGLES.h"
 
 // stuff for freetype
@@ -37,10 +41,8 @@
 #include FT_GLYPH_H
 #include FT_OUTLINE_H
 
-using namespace std;
-
-#if defined(HAS_GL) || defined(HAS_GLES)
-
+#define ELEMENT_ARRAY_MAX_CHAR_INDEX (1000)
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 CGUIFontTTFGL::CGUIFontTTFGL(const std::string& strFileName)
 : CGUIFontTTFBase(strFileName)
@@ -56,14 +58,21 @@ CGUIFontTTFGL::~CGUIFontTTFGL(void)
   // destructed before the CGUIFontTTFGL goes out of scope, because
   // our virtual methods won't be accessible after this point
   m_dynamicCache.Flush();
+  DeleteHardwareTexture();
 }
 
 bool CGUIFontTTFGL::FirstBegin()
 {
+#if defined(HAS_GL)
+  GLenum pixformat = GL_RED;
+#else
+  GLenum pixformat = GL_ALPHA; // deprecated
+#endif
+
   if (m_textureStatus == TEXTURE_REALLOCATED)
   {
     if (glIsTexture(m_nTexture))
-      g_TextureManager.ReleaseHwTexture(m_nTexture);
+      CServiceBroker::GetGUI()->GetTextureManager().ReleaseHwTexture(m_nTexture);
     m_textureStatus = TEXTURE_VOID;
   }
 
@@ -74,16 +83,14 @@ bool CGUIFontTTFGL::FirstBegin()
 
     // Bind the texture object
     glBindTexture(GL_TEXTURE_2D, m_nTexture);
-#ifdef HAS_GL
-    glEnable(GL_TEXTURE_2D);
-#endif
+
     // Set the texture's stretching properties
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // Set the texture image -- THIS WORKS, so the pixels must be wrong.
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, m_texture->GetWidth(), m_texture->GetHeight(), 0,
-        GL_ALPHA, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, pixformat, m_texture->GetWidth(), m_texture->GetHeight(), 0,
+        pixformat, GL_UNSIGNED_BYTE, 0);
 
     VerifyGLState();
     m_textureStatus = TEXTURE_UPDATED;
@@ -92,9 +99,8 @@ bool CGUIFontTTFGL::FirstBegin()
   if (m_textureStatus == TEXTURE_UPDATED)
   {
     glBindTexture(GL_TEXTURE_2D, m_nTexture);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, m_updateY1, m_texture->GetWidth(), m_updateY2 - m_updateY1, GL_ALPHA, GL_UNSIGNED_BYTE,
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, m_updateY1, m_texture->GetWidth(), m_updateY2 - m_updateY1, pixformat, GL_UNSIGNED_BYTE,
         m_texture->GetPixels() + m_updateY1 * m_texture->GetPitch());
-    glDisable(GL_TEXTURE_2D);
 
     m_updateY1 = m_updateY2 = 0;
     m_textureStatus = TEXTURE_READY;
@@ -103,84 +109,82 @@ bool CGUIFontTTFGL::FirstBegin()
   // Turn Blending On
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
   glEnable(GL_BLEND);
-#ifdef HAS_GL
-  glEnable(GL_TEXTURE_2D);
-#endif
+  glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, m_nTexture);
-
-#ifdef HAS_GL
-  glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_COMBINE);
-  glTexEnvi(GL_TEXTURE_ENV,GL_COMBINE_RGB,GL_REPLACE);
-  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, GL_PRIMARY_COLOR);
-  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
-  glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
-  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE0);
-  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PRIMARY_COLOR);
-  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  VerifyGLState();
-
-  if(g_Windowing.UseLimitedColor())
-  {
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_nTexture); // dummy bind
-    glEnable(GL_TEXTURE_2D);
-
-    const GLfloat rgba[4] = {16.0f / 255.0f, 16.0f / 255.0f, 16.0f / 255.0f, 0.0f};
-    glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE , GL_COMBINE);
-    glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, rgba);
-    glTexEnvi (GL_TEXTURE_ENV, GL_COMBINE_RGB      , GL_ADD);
-    glTexEnvi (GL_TEXTURE_ENV, GL_SOURCE0_RGB      , GL_PREVIOUS);
-    glTexEnvi (GL_TEXTURE_ENV, GL_SOURCE1_RGB      , GL_CONSTANT);
-    glTexEnvi (GL_TEXTURE_ENV, GL_OPERAND0_RGB     , GL_SRC_COLOR);
-    glTexEnvi (GL_TEXTURE_ENV, GL_OPERAND1_RGB     , GL_SRC_COLOR);
-    glTexEnvi (GL_TEXTURE_ENV, GL_COMBINE_ALPHA    , GL_REPLACE);
-    glTexEnvi (GL_TEXTURE_ENV, GL_SOURCE0_ALPHA    , GL_PREVIOUS);
-    VerifyGLState();
-  }
-
-#endif
   return true;
 }
 
 void CGUIFontTTFGL::LastEnd()
 {
 #ifdef HAS_GL
-  glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+  CRenderSystemGL* renderSystem = dynamic_cast<CRenderSystemGL*>(CServiceBroker::GetRenderSystem());
+  renderSystem->EnableShader(SM_FONTS);
 
-  glColorPointer   (4, GL_UNSIGNED_BYTE, sizeof(SVertex), (char*)&m_vertex[0] + offsetof(SVertex, r));
-  glVertexPointer  (3, GL_FLOAT        , sizeof(SVertex), (char*)&m_vertex[0] + offsetof(SVertex, x));
-  glTexCoordPointer(2, GL_FLOAT        , sizeof(SVertex), (char*)&m_vertex[0] + offsetof(SVertex, u));
-  glEnableClientState(GL_COLOR_ARRAY);
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  glDrawArrays(GL_QUADS, 0, m_vertex.size());
-  glPopClientAttrib();
-
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glDisable(GL_TEXTURE_2D);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glDisable(GL_TEXTURE_2D);
-#else
-  // GLES 2.0 version.
-  g_Windowing.EnableGUIShader(SM_FONTS);
+  GLint posLoc = renderSystem->ShaderGetPos();
+  GLint colLoc = renderSystem->ShaderGetCol();
+  GLint tex0Loc = renderSystem->ShaderGetCoord0();
+  GLint modelLoc = renderSystem->ShaderGetModel();
 
   CreateStaticVertexBuffers();
-
-  GLint posLoc  = g_Windowing.GUIShaderGetPos();
-  GLint colLoc  = g_Windowing.GUIShaderGetCol();
-  GLint tex0Loc = g_Windowing.GUIShaderGetCoord0();
-  GLint modelLoc = g_Windowing.GUIShaderGetModel();
 
   // Enable the attributes used by this shader
   glEnableVertexAttribArray(posLoc);
   glEnableVertexAttribArray(colLoc);
   glEnableVertexAttribArray(tex0Loc);
 
-  if (m_vertex.size() > 0)
+  if (!m_vertex.empty())
+  {
+
+    // Deal with vertices that had to use software clipping
+    std::vector<SVertex> vecVertices(6 * (m_vertex.size() / 4));
+    SVertex *vertices = &vecVertices[0];
+    for (size_t i=0; i<m_vertex.size(); i+=4)
+    {
+      *vertices++ = m_vertex[i];
+      *vertices++ = m_vertex[i+1];
+      *vertices++ = m_vertex[i+2];
+
+      *vertices++ = m_vertex[i+1];
+      *vertices++ = m_vertex[i+3];
+      *vertices++ = m_vertex[i+2];
+    }
+    vertices = &vecVertices[0];
+
+    GLuint VertexVBO;
+
+    glGenBuffers(1, &VertexVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VertexVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(SVertex)*vecVertices.size(), &vecVertices[0], GL_STATIC_DRAW);
+
+    glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, sizeof(SVertex), BUFFER_OFFSET(offsetof(SVertex, x)));
+    glVertexAttribPointer(colLoc, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(SVertex), BUFFER_OFFSET(offsetof(SVertex, r)));
+    glVertexAttribPointer(tex0Loc, 2, GL_FLOAT, GL_FALSE, sizeof(SVertex), BUFFER_OFFSET(offsetof(SVertex, u)));
+
+    glDrawArrays(GL_TRIANGLES, 0, vecVertices.size());
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDeleteBuffers(1, &VertexVBO);
+  }
+
+#else
+  // GLES 2.0 version.
+  CRenderSystemGLES* renderSystem = dynamic_cast<CRenderSystemGLES*>(CServiceBroker::GetRenderSystem());
+  renderSystem->EnableGUIShader(SM_FONTS);
+
+  GLint posLoc  = renderSystem->GUIShaderGetPos();
+  GLint colLoc  = renderSystem->GUIShaderGetCol();
+  GLint tex0Loc = renderSystem->GUIShaderGetCoord0();
+  GLint modelLoc = renderSystem->GUIShaderGetModel();
+
+
+  CreateStaticVertexBuffers();
+
+  // Enable the attributes used by this shader
+  glEnableVertexAttribArray(posLoc);
+  glEnableVertexAttribArray(colLoc);
+  glEnableVertexAttribArray(tex0Loc);
+
+  if (!m_vertex.empty())
   {
     // Deal with vertices that had to use software clipping
     std::vector<SVertex> vecVertices( 6 * (m_vertex.size() / 4) );
@@ -199,26 +203,36 @@ void CGUIFontTTFGL::LastEnd()
 
     vertices = &vecVertices[0];
 
-    glVertexAttribPointer(posLoc,  3, GL_FLOAT,         GL_FALSE, sizeof(SVertex), (char*)vertices + offsetof(SVertex, x));
-    // Normalize color values. Does not affect Performance at all.
+    glVertexAttribPointer(posLoc,  3, GL_FLOAT, GL_FALSE, sizeof(SVertex), (char*)vertices + offsetof(SVertex, x));
     glVertexAttribPointer(colLoc,  4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(SVertex), (char*)vertices + offsetof(SVertex, r));
-    glVertexAttribPointer(tex0Loc, 2, GL_FLOAT,         GL_FALSE, sizeof(SVertex), (char*)vertices + offsetof(SVertex, u));
+    glVertexAttribPointer(tex0Loc, 2, GL_FLOAT,  GL_FALSE, sizeof(SVertex), (char*)vertices + offsetof(SVertex, u));
 
     glDrawArrays(GL_TRIANGLES, 0, vecVertices.size());
   }
-  if (m_vertexTrans.size() > 0)
+#endif
+
+  if (!m_vertexTrans.empty())
   {
     // Deal with the vertices that can be hardware clipped and therefore translated
 
     // Bind our pre-calculated array to GL_ELEMENT_ARRAY_BUFFER
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_elementArrayHandle);
+    // Store current scissor
+    CRect scissor = CServiceBroker::GetWinSystem()->GetGfxContext().StereoCorrection(CServiceBroker::GetWinSystem()->GetGfxContext().GetScissors());
 
     for (size_t i = 0; i < m_vertexTrans.size(); i++)
     {
       // Apply the clip rectangle
-      CRect clip = g_Windowing.ClipRectToScissorRect(m_vertexTrans[i].clip);
+      CRect clip = renderSystem->ClipRectToScissorRect(m_vertexTrans[i].clip);
       if (!clip.IsEmpty())
-        g_Windowing.SetScissors(clip);
+      {
+        // intersect with current scissor
+        clip.Intersect(scissor);
+        // skip empty clip
+        if (clip.IsEmpty())
+          continue;
+        renderSystem->SetScissors(clip);
+      }
 
       // Apply the translation to the currently active (top-of-stack) model view matrix
       glMatrixModview.Push();
@@ -226,7 +240,7 @@ void CGUIFontTTFGL::LastEnd()
       glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glMatrixModview.Get());
 
       // Bind the buffer to the OpenGL context's GL_ARRAY_BUFFER binding point
-      glBindBuffer(GL_ARRAY_BUFFER, (GLuint) m_vertexTrans[i].vertexBuffer->bufferHandle);
+      glBindBuffer(GL_ARRAY_BUFFER, m_vertexTrans[i].vertexBuffer->bufferHandle);
 
       // Do the actual drawing operation, split into groups of characters no
       // larger than the pre-determined size of the element array
@@ -247,7 +261,7 @@ void CGUIFontTTFGL::LastEnd()
       glMatrixModview.Pop();
     }
     // Restore the original scissor rectangle
-    g_Windowing.ResetScissors();
+    renderSystem->SetScissors(scissor);
     // Restore the original model view matrix
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glMatrixModview.Get());
     // Unbind GL_ARRAY_BUFFER and GL_ELEMENT_ARRAY_BUFFER
@@ -260,11 +274,13 @@ void CGUIFontTTFGL::LastEnd()
   glDisableVertexAttribArray(colLoc);
   glDisableVertexAttribArray(tex0Loc);
 
-  g_Windowing.DisableGUIShader();
+#ifdef HAS_GL
+  renderSystem->DisableShader();
+#else
+  renderSystem->DisableGUIShader();
 #endif
 }
 
-#if HAS_GLES
 CVertexBuffer CGUIFontTTFGL::CreateVertexBuffer(const std::vector<SVertex> &vertices) const
 {
   // Generate a unique buffer object name and put it in bufferHandle
@@ -279,7 +295,7 @@ CVertexBuffer CGUIFontTTFGL::CreateVertexBuffer(const std::vector<SVertex> &vert
   // Unbind GL_ARRAY_BUFFER
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-  return CVertexBuffer((void *) bufferHandle, vertices.size() / 4, this);
+  return CVertexBuffer(bufferHandle, vertices.size() / 4, this);
 }
 
 void CGUIFontTTFGL::DestroyVertexBuffer(CVertexBuffer &buffer) const
@@ -291,7 +307,6 @@ void CGUIFontTTFGL::DestroyVertexBuffer(CVertexBuffer &buffer) const
     buffer.bufferHandle = 0;
   }
 }
-#endif
 
 CBaseTexture* CGUIFontTTFGL::ReallocTexture(unsigned int& newHeight)
 {
@@ -378,27 +393,26 @@ bool CGUIFontTTFGL::CopyCharToTexture(FT_BitmapGlyph bitGlyph, unsigned int x1, 
     break;
   }
   
-  return TRUE;
+  return true;
 }
-
 
 void CGUIFontTTFGL::DeleteHardwareTexture()
 {
   if (m_textureStatus != TEXTURE_VOID)
   {
     if (glIsTexture(m_nTexture))
-      g_TextureManager.ReleaseHwTexture(m_nTexture);
+      CServiceBroker::GetGUI()->GetTextureManager().ReleaseHwTexture(m_nTexture);
 
     m_textureStatus = TEXTURE_VOID;
     m_updateY1 = m_updateY2 = 0;
   }
 }
 
-#if HAS_GLES
 void CGUIFontTTFGL::CreateStaticVertexBuffers(void)
 {
   if (m_staticVertexBufferCreated)
     return;
+
   // Bind a new buffer to the OpenGL context's GL_ELEMENT_ARRAY_BUFFER binding point
   glGenBuffers(1, &m_elementArrayHandle);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_elementArrayHandle);
@@ -428,6 +442,4 @@ void CGUIFontTTFGL::DestroyStaticVertexBuffers(void)
 
 GLuint CGUIFontTTFGL::m_elementArrayHandle;
 bool CGUIFontTTFGL::m_staticVertexBufferCreated;
-#endif
 
-#endif

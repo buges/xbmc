@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@
  */
 
 #include "GUIWindowStartup.h"
+#include "ServiceBroker.h"
 #include "input/Key.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/WindowIDs.h"
 
@@ -28,9 +30,7 @@ CGUIWindowStartup::CGUIWindowStartup(void)
 {
 }
 
-CGUIWindowStartup::~CGUIWindowStartup(void)
-{
-}
+CGUIWindowStartup::~CGUIWindowStartup(void) = default;
 
 bool CGUIWindowStartup::OnAction(const CAction &action)
 {
@@ -45,5 +45,5 @@ void CGUIWindowStartup::OnDeinitWindow(int nextWindowID)
 
   // let everyone know that the user interface is now ready for usage
   CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UI_READY);
-  g_windowManager.SendThreadMessage(msg);
+  CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg);
 }

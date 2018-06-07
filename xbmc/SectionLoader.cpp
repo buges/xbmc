@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,14 +19,11 @@
  */
 
 #include "threads/SystemClock.h"
-#include "system.h"
 #include "SectionLoader.h"
 #include "cores/DllLoader/DllLoaderContainer.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
-
-using namespace std;
 
 #define g_sectionLoader XBMC_GLOBAL_USE(CSectionLoader)
 
@@ -36,8 +33,7 @@ using namespace std;
 //Define this to get loggin on all calls to load/unload sections/dlls
 //#define LOGALL
 
-CSectionLoader::CSectionLoader(void)
-{}
+CSectionLoader::CSectionLoader(void) = default;
 
 CSectionLoader::~CSectionLoader(void)
 {
@@ -130,11 +126,10 @@ void CSectionLoader::UnloadAll()
 {
   // delete the dll's
   CSingleLock lock(g_sectionLoader.m_critSection);
-  vector<CDll>::iterator it = g_sectionLoader.m_vecLoadedDLLs.begin();
+  std::vector<CDll>::iterator it = g_sectionLoader.m_vecLoadedDLLs.begin();
   while (it != g_sectionLoader.m_vecLoadedDLLs.end())
   {
     CDll& dll = *it;
-    CLog::Log(LOGDEBUG,"SECTION:UnloadAll(DLL: %s)", dll.m_strDllName.c_str());
     if (dll.m_pDll)
       DllLoaderContainer::ReleaseModule(dll.m_pDll);
     it = g_sectionLoader.m_vecLoadedDLLs.erase(it);

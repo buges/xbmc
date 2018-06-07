@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,23 +21,25 @@
 #include "FileItemListModification.h"
 
 #include "playlists/SmartPlaylistFileItemListModifier.h"
-
-using namespace std;
+#include "music/windows/MusicFileItemListModifier.h"
+#include "video/windows/VideoFileItemListModifier.h"
 
 CFileItemListModification::CFileItemListModification()
 {
   m_modifiers.insert(new CSmartPlaylistFileItemListModifier());
+  m_modifiers.insert(new CMusicFileItemListModifier());
+  m_modifiers.insert(new CVideoFileItemListModifier());
 }
 
 CFileItemListModification::~CFileItemListModification()
 {
-  for (set<IFileItemListModifier*>::const_iterator modifier = m_modifiers.begin(); modifier != m_modifiers.end(); ++modifier)
+  for (std::set<IFileItemListModifier*>::const_iterator modifier = m_modifiers.begin(); modifier != m_modifiers.end(); ++modifier)
     delete *modifier;
 
   m_modifiers.clear();
 }
 
-CFileItemListModification& CFileItemListModification::Get()
+CFileItemListModification& CFileItemListModification::GetInstance()
 {
   static CFileItemListModification instance;
   return instance;
@@ -45,7 +47,7 @@ CFileItemListModification& CFileItemListModification::Get()
 
 bool CFileItemListModification::CanModify(const CFileItemList &items) const
 {
-  for (set<IFileItemListModifier*>::const_iterator modifier = m_modifiers.begin(); modifier != m_modifiers.end(); ++modifier)
+  for (std::set<IFileItemListModifier*>::const_iterator modifier = m_modifiers.begin(); modifier != m_modifiers.end(); ++modifier)
   {
     if ((*modifier)->CanModify(items))
       return true;
@@ -57,7 +59,7 @@ bool CFileItemListModification::CanModify(const CFileItemList &items) const
 bool CFileItemListModification::Modify(CFileItemList &items) const
 {
   bool result = false;
-  for (set<IFileItemListModifier*>::const_iterator modifier = m_modifiers.begin(); modifier != m_modifiers.end(); ++modifier)
+  for (std::set<IFileItemListModifier*>::const_iterator modifier = m_modifiers.begin(); modifier != m_modifiers.end(); ++modifier)
     result |= (*modifier)->Modify(items);
 
   return result;

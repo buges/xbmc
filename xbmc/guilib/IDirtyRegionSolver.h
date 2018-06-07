@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 class IDirtyRegionSolver
 {
 public:
-  virtual ~IDirtyRegionSolver() { }
+  virtual ~IDirtyRegionSolver() = default;
 
   // Takes a number of dirty regions which will become a number of needed rendering passes.
   virtual void Solve(const CDirtyRegionList &input, CDirtyRegionList &output) = 0;

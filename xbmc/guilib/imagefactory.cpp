@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,9 +19,16 @@
  */
 
 #include "imagefactory.h"
-#include "guilib/JpegIO.h"
-#include "guilib/cximage.h"
+#include "guilib/FFmpegImage.h"
+#include "addons/ImageDecoder.h"
+#include "addons/binary-addons/BinaryAddonBase.h"
 #include "utils/Mime.h"
+#include "utils/StringUtils.h"
+#include "ServiceBroker.h"
+
+#include <algorithm>
+
+using namespace ADDON;
 
 IImage* ImageFactory::CreateLoader(const std::string& strFileName)
 {
@@ -39,12 +46,19 @@ IImage* ImageFactory::CreateLoader(const CURL& url)
 
 IImage* ImageFactory::CreateLoaderFromMimeType(const std::string& strMimeType)
 {
-  if(strMimeType == "image/jpeg" || strMimeType == "image/tbn" || strMimeType == "image/jpg")
-    return new CJpegIO();
-  return new CXImage(strMimeType);
-}
+  BinaryAddonBaseList addonInfos;
 
-IImage* ImageFactory::CreateFallbackLoader(const std::string& strMimeType)
-{
-  return new CXImage(strMimeType);
+  CServiceBroker::GetBinaryAddonManager().GetAddonInfos(addonInfos, true, ADDON_IMAGEDECODER);
+  for (auto addonInfo : addonInfos)
+  {
+    std::vector<std::string> mime = StringUtils::Split(addonInfo->Type(ADDON_IMAGEDECODER)->GetValue("@mimetype").asString(), "|");
+    if (std::find(mime.begin(), mime.end(), strMimeType) != mime.end())
+    {
+      CImageDecoder* result = new CImageDecoder(addonInfo);
+      result->Create(strMimeType);
+      return result;
+    }
+  }
+
+  return new CFFmpegImage(strMimeType);
 }

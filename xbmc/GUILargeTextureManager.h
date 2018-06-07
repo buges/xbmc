@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,9 +20,12 @@
  *
  */
 
+#include <utility>
+#include <vector>
+
+#include "guilib/TextureManager.h"
 #include "threads/CriticalSection.h"
 #include "utils/Job.h"
-#include "guilib/TextureManager.h"
 
 /*!
  \ingroup textures,jobs
@@ -36,12 +39,12 @@ class CImageLoader : public CJob
 {
 public:
   CImageLoader(const std::string &path, const bool useCache);
-  virtual ~CImageLoader();
+  ~CImageLoader() override;
 
   /*!
    \brief Work function that loads in a particular image.
    */
-  virtual bool DoWork();
+  bool DoWork() override;
 
   bool          m_use_cache; ///< Whether or not to use any caching with this image
   std::string    m_path; ///< path of image to load
@@ -61,7 +64,7 @@ class CGUILargeTextureManager : public IJobCallback
 {
 public:
   CGUILargeTextureManager();
-  virtual ~CGUILargeTextureManager();
+  ~CGUILargeTextureManager() override;
 
   /*!
    \brief Callback from CImageLoader on completion of a loaded image
@@ -70,7 +73,7 @@ public:
 
    \sa CImageLoader, IJobCallback
    */
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
   /*!
    \brief Request a texture to be loaded in the background.
@@ -116,7 +119,7 @@ private:
   class CLargeTexture
   {
   public:
-    CLargeTexture(const std::string &path);
+    explicit CLargeTexture(const std::string &path);
     virtual ~CLargeTexture();
 
     void AddRef();
@@ -145,7 +148,4 @@ private:
 
   CCriticalSection m_listSection;
 };
-
-extern CGUILargeTextureManager g_largeTextureManager;
-
 

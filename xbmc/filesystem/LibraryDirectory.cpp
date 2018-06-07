@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,16 +34,11 @@
 #include "GUIInfoManager.h"
 #include "utils/log.h"
 
-using namespace std;
 using namespace XFILE;
 
-CLibraryDirectory::CLibraryDirectory(void)
-{
-}
+CLibraryDirectory::CLibraryDirectory(void) = default;
 
-CLibraryDirectory::~CLibraryDirectory(void)
-{
-}
+CLibraryDirectory::~CLibraryDirectory(void) = default;
 
 bool CLibraryDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -133,7 +128,7 @@ bool CLibraryDirectory::GetDirectory(const CURL& url, CFileItemList &items)
       CFileItemPtr item(new CFileItem(URIUtils::AddFileToFolder(basePath, folder), true));
 
       item->SetLabel(label);
-      if (!icon.empty() && g_TextureManager.HasTexture(icon))
+      if (!icon.empty() && CServiceBroker::GetGUI()->GetTextureManager().HasTexture(icon))
         item->SetIconImage(icon);
       item->m_iprogramCount = order;
       items.Add(item);
@@ -146,21 +141,22 @@ bool CLibraryDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 TiXmlElement *CLibraryDirectory::LoadXML(const std::string &xmlFile)
 {
   if (!CFile::Exists(xmlFile))
-    return NULL;
+    return nullptr;
 
   if (!m_doc.LoadFile(xmlFile))
-    return NULL;
+    return nullptr;
 
   TiXmlElement *xml = m_doc.RootElement();
   if (!xml || xml->ValueStr() != "node")
-    return NULL;
+    return nullptr;
 
   // check the condition
   std::string condition = XMLUtils::GetAttribute(xml, "visible");
-  if (condition.empty() || g_infoManager.EvaluateBool(condition))
+  CGUIComponent* gui = CServiceBroker::GetGUI();
+  if (condition.empty() || (gui && gui->GetInfoManager().EvaluateBool(condition)))
     return xml;
 
-  return NULL;
+  return nullptr;
 }
 
 bool CLibraryDirectory::Exists(const CURL& url)
@@ -170,7 +166,7 @@ bool CLibraryDirectory::Exists(const CURL& url)
 
 std::string CLibraryDirectory::GetNode(const CURL& url)
 {
-  std::string libDir = URIUtils::AddFileToFolder(CProfilesManager::Get().GetLibraryFolder(), url.GetHostName() + "/");
+  std::string libDir = URIUtils::AddFileToFolder(m_profileManager.GetLibraryFolder(), url.GetHostName() + "/");
   if (!CDirectory::Exists(libDir))
     libDir = URIUtils::AddFileToFolder("special://xbmc/system/library/", url.GetHostName() + "/");
 

@@ -7,7 +7,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,17 +36,18 @@ class CGUIListLabel :
       public CGUIControl
 {
 public:
-  CGUIListLabel(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, const CGUIInfoLabel &label, CGUIControl::GUISCROLLVALUE scroll);
-  virtual ~CGUIListLabel(void);
-  virtual CGUIListLabel *Clone() const { return new CGUIListLabel(*this); };
+  CGUIListLabel(int parentID, int controlID, float posX, float posY, float width, float height,
+                const CLabelInfo& labelInfo, const KODI::GUILIB::GUIINFO::CGUIInfoLabel &label, CGUIControl::GUISCROLLVALUE scroll);
+  ~CGUIListLabel(void) override;
+  CGUIListLabel *Clone() const override { return new CGUIListLabel(*this); };
 
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual bool CanFocus() const { return false; };
-  virtual void UpdateInfo(const CGUIListItem *item = NULL);
-  virtual void SetFocus(bool focus);
-  virtual void SetInvalid();
-  virtual void SetWidth(float width);
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  bool CanFocus() const override { return false; };
+  void UpdateInfo(const CGUIListItem *item = NULL) override;
+  void SetFocus(bool focus) override;
+  void SetInvalid() override;
+  void SetWidth(float width) override;
 
   void SetLabel(const std::string &label);
   void SetSelected(bool selected);
@@ -57,12 +58,12 @@ public:
     CGUILabel::CheckAndCorrectOverlap(label1.m_label, label2.m_label);
   }
 
-  virtual CRect CalcRenderRegion() const;
+  CRect CalcRenderRegion() const override;
 
 protected:
-  virtual bool UpdateColors();
+  bool UpdateColors() override;
 
   CGUILabel     m_label;
-  CGUIInfoLabel m_info;
+  KODI::GUILIB::GUIINFO::CGUIInfoLabel m_info;
   CGUIControl::GUISCROLLVALUE m_scroll;
 };

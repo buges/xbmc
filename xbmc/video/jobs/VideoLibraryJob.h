@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ class CVideoDatabase;
 class CVideoLibraryJob : public CJob
 {
 public:
-  virtual ~CVideoLibraryJob();
+  ~CVideoLibraryJob() override;
 
   /*!
    \brief Whether the job can be cancelled or not.
@@ -45,9 +45,9 @@ public:
   virtual bool Cancel() { return false; }
 
   // implementation of CJob
-  virtual bool DoWork();
-  virtual const char *GetType() const { return "VideoLibraryJob"; }
-  virtual bool operator==(const CJob* job) const { return false; }
+  bool DoWork() override;
+  const char *GetType() const override { return "VideoLibraryJob"; }
+  bool operator==(const CJob* job) const override { return false; }
 
 protected:
   CVideoLibraryJob();

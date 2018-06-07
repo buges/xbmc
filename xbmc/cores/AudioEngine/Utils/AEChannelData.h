@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -105,14 +105,8 @@ enum AEDataFormat
   AE_FMT_DOUBLE,
   AE_FMT_FLOAT,
 
-  /* Bitstream formats */
-  AE_FMT_AAC,
-  AE_FMT_AC3,
-  AE_FMT_DTS,
-  AE_FMT_EAC3,
-  AE_FMT_TRUEHD,
-  AE_FMT_DTSHD,
-  AE_FMT_LPCM,
+  // Bitstream
+  AE_FMT_RAW,
 
   /* planar formats */
   AE_FMT_U8P,

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -174,10 +174,10 @@ void CDateTimeSpan::SetDateTimeSpan(int day, int hour, int minute, int second)
   ULARGE_INTEGER time;
   ToULargeInt(time);
 
-  time.QuadPart=(LONGLONG)day*SECONDS_PER_DAY*SECONDS_TO_FILETIME;
-  time.QuadPart+=(LONGLONG)hour*SECONDS_PER_HOUR*SECONDS_TO_FILETIME;
-  time.QuadPart+=(LONGLONG)minute*SECONDS_PER_MINUTE*SECONDS_TO_FILETIME;
-  time.QuadPart+=(LONGLONG)second*SECONDS_TO_FILETIME;
+  time.QuadPart= static_cast<long long>(day) *SECONDS_PER_DAY*SECONDS_TO_FILETIME;
+  time.QuadPart+= static_cast<long long>(hour) *SECONDS_PER_HOUR*SECONDS_TO_FILETIME;
+  time.QuadPart+= static_cast<long long>(minute) *SECONDS_PER_MINUTE*SECONDS_TO_FILETIME;
+  time.QuadPart+= static_cast<long long>(second) *SECONDS_TO_FILETIME;
 
   FromULargeInt(time);
 }
@@ -648,13 +648,15 @@ bool CDateTime::IsValid() const
 
 bool CDateTime::ToFileTime(const SYSTEMTIME& time, FILETIME& fileTime) const
 {
-  return SystemTimeToFileTime(&time, &fileTime) == TRUE &&
+  return SystemTimeToFileTime(&time, &fileTime) == 1 &&
          (fileTime.dwLowDateTime > 0 || fileTime.dwHighDateTime > 0);
 }
 
 bool CDateTime::ToFileTime(const time_t& time, FILETIME& fileTime) const
 {
-  LONGLONG ll = Int32x32To64(time, 10000000)+0x19DB1DED53E8000LL;
+  long long ll = time;
+  ll *= 10000000ll;
+  ll += 0x19DB1DED53E8000LL;
 
   fileTime.dwLowDateTime  = (DWORD)(ll & 0xFFFFFFFF);
   fileTime.dwHighDateTime = (DWORD)(ll >> 32);
@@ -664,8 +666,7 @@ bool CDateTime::ToFileTime(const time_t& time, FILETIME& fileTime) const
 
 bool CDateTime::ToFileTime(const tm& time, FILETIME& fileTime) const
 {
-  SYSTEMTIME st;
-  ZeroMemory(&st, sizeof(SYSTEMTIME));
+  SYSTEMTIME st = { 0 };
 
   st.wYear=time.tm_year+1900;
   st.wMonth=time.tm_mon+1;
@@ -675,7 +676,7 @@ bool CDateTime::ToFileTime(const tm& time, FILETIME& fileTime) const
   st.wMinute=time.tm_min;
   st.wSecond=time.tm_sec;
 
-  return SystemTimeToFileTime(&st, &fileTime)==TRUE;
+  return SystemTimeToFileTime(&st, &fileTime) == 1;
 }
 
 void CDateTime::ToULargeInt(ULARGE_INTEGER& time) const
@@ -692,7 +693,7 @@ void CDateTime::FromULargeInt(const ULARGE_INTEGER& time)
 
 bool CDateTime::SetFromDateString(const std::string &date)
 {
-  /* TODO:STRING_CLEANUP */
+  //! @todo STRING_CLEANUP
   if (date.empty())
   {
     SetValid(false);
@@ -794,8 +795,7 @@ int CDateTime::GetMinuteOfDay() const
 
 bool CDateTime::SetDateTime(int year, int month, int day, int hour, int minute, int second)
 {
-  SYSTEMTIME st;
-  ZeroMemory(&st, sizeof(SYSTEMTIME));
+  SYSTEMTIME st = { 0 };
 
   st.wYear=year;
   st.wMonth=month;
@@ -827,8 +827,7 @@ void CDateTime::GetAsSystemTime(SYSTEMTIME& time) const
 #define UNIX_BASE_TIME 116444736000000000LL /* nanoseconds since epoch */
 void CDateTime::GetAsTime(time_t& time) const
 {
-  LONGLONG ll;
-  ll = ((LONGLONG)m_time.dwHighDateTime << 32) + m_time.dwLowDateTime;
+  long long ll = (static_cast<long long>(m_time.dwHighDateTime) << 32) + m_time.dwLowDateTime;
   time=(time_t)((ll - UNIX_BASE_TIME) / 10000000);
 }
 
@@ -861,6 +860,14 @@ std::string CDateTime::GetAsDBDate() const
   return StringUtils::Format("%04i-%02i-%02i", st.wYear, st.wMonth, st.wDay);
 }
 
+std::string CDateTime::GetAsDBTime() const
+{
+  SYSTEMTIME st;
+  GetAsSystemTime(st);
+
+  return StringUtils::Format("%02i:%02i:%02i", st.wHour, st.wMinute, st.wSecond);
+}
+
 std::string CDateTime::GetAsDBDateTime() const
 {
   SYSTEMTIME st;
@@ -874,7 +881,7 @@ std::string CDateTime::GetAsSaveString() const
   SYSTEMTIME st;
   GetAsSystemTime(st);
 
-  return StringUtils::Format("%04i%02i%02i_%02i%02i%02i", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);;
+  return StringUtils::Format("%04i%02i%02i_%02i%02i%02i", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 }
 
 bool CDateTime::SetFromUTCDateTime(const CDateTime &dateTime)
@@ -1106,6 +1113,69 @@ bool CDateTime::SetFromRFC1123DateTime(const std::string &dateTime)
   return SetDateTime(year, month, day, hour, min, sec);
 }
 
+CDateTime CDateTime::FromDateString(const std::string &date)
+{
+  CDateTime dt;
+  dt.SetFromDateString(date);
+  return dt;
+}
+
+CDateTime CDateTime::FromDBDateTime(const std::string &dateTime)
+{
+  CDateTime dt;
+  dt.SetFromDBDateTime(dateTime);
+  return dt;
+}
+
+CDateTime CDateTime::FromDBDate(const std::string &date)
+{
+  CDateTime dt;
+  dt.SetFromDBDate(date);
+  return dt;
+}
+
+CDateTime CDateTime::FromDBTime(const std::string &time)
+{
+  CDateTime dt;
+  dt.SetFromDBTime(time);
+  return dt;
+}
+
+CDateTime CDateTime::FromW3CDate(const std::string &date)
+{
+  CDateTime dt;
+  dt.SetFromW3CDate(date);
+  return dt;
+}
+
+CDateTime CDateTime::FromW3CDateTime(const std::string &date, bool ignoreTimezone /* = false */)
+{
+  CDateTime dt;
+  dt.SetFromW3CDateTime(date, ignoreTimezone);
+  return dt;
+}
+
+CDateTime CDateTime::FromUTCDateTime(const CDateTime &dateTime)
+{
+  CDateTime dt;
+  dt.SetFromUTCDateTime(dateTime);
+  return dt;
+}
+
+CDateTime CDateTime::FromUTCDateTime(const time_t &dateTime)
+{
+  CDateTime dt;
+  dt.SetFromUTCDateTime(dateTime);
+  return dt;
+}
+
+CDateTime CDateTime::FromRFC1123DateTime(const std::string &dateTime)
+{
+  CDateTime dt;
+  dt.SetFromRFC1123DateTime(dateTime);
+  return dt;
+}
+
 std::string CDateTime::GetAsLocalizedTime(const std::string &format, bool withSeconds) const
 {
   std::string strOut;
@@ -1264,12 +1334,12 @@ std::string CDateTime::GetAsLocalizedTime(const std::string &format, bool withSe
   return strOut;
 }
 
-std::string CDateTime::GetAsLocalizedDate(bool longDate/*=false*/, bool withShortNames/*=true*/) const
+std::string CDateTime::GetAsLocalizedDate(bool longDate/*=false*/) const
 {
-  return GetAsLocalizedDate(g_langInfo.GetDateFormat(longDate), withShortNames);
+  return GetAsLocalizedDate(g_langInfo.GetDateFormat(longDate));
 }
 
-std::string CDateTime::GetAsLocalizedDate(const std::string &strFormat, bool withShortNames/*=true*/) const
+std::string CDateTime::GetAsLocalizedDate(const std::string &strFormat) const
 {
   std::string strOut;
 
@@ -1332,7 +1402,7 @@ std::string CDateTime::GetAsLocalizedDate(const std::string &strFormat, bool wit
       {
         int wday = dateTime.wDayOfWeek;
         if (wday < 1 || wday > 7) wday = 7;
-        str = g_localizeStrings.Get(((withShortNames || c =='d') ? 40 : 10) + wday);
+        str = g_localizeStrings.Get((c =='d' ? 40 : 10) + wday);
       }
       strOut+=str;
     }
@@ -1364,7 +1434,7 @@ std::string CDateTime::GetAsLocalizedDate(const std::string &strFormat, bool wit
       {
         int wmonth = dateTime.wMonth;
         if (wmonth < 1 || wmonth > 12) wmonth = 12;
-        str = g_localizeStrings.Get(((withShortNames || c =='m') ? 50 : 20) + wmonth);
+        str = g_localizeStrings.Get((c =='m' ? 50 : 20) + wmonth);
       }
       strOut+=str;
     }
@@ -1403,6 +1473,46 @@ std::string CDateTime::GetAsLocalizedDate(const std::string &strFormat, bool wit
 std::string CDateTime::GetAsLocalizedDateTime(bool longDate/*=false*/, bool withSeconds/*=true*/) const
 {
   return GetAsLocalizedDate(longDate) + ' ' + GetAsLocalizedTime("", withSeconds);
+}
+
+std::string CDateTime::GetAsLocalizedTime(TIME_FORMAT format, bool withSeconds /* = false */) const
+{
+  const std::string timeFormat = g_langInfo.GetTimeFormat();
+  bool use12hourclock = timeFormat.find('h') != std::string::npos;
+  switch (format)
+  {
+    case TIME_FORMAT_GUESS:
+      return GetAsLocalizedTime("", withSeconds);
+    case TIME_FORMAT_SS:
+      return GetAsLocalizedTime("ss", true);
+    case TIME_FORMAT_MM:
+      return GetAsLocalizedTime("mm", true);
+    case TIME_FORMAT_MM_SS:
+      return GetAsLocalizedTime("mm:ss", true);
+    case TIME_FORMAT_HH:  // this forces it to a 12 hour clock
+      return GetAsLocalizedTime(use12hourclock ? "h" : "HH", false);
+    case TIME_FORMAT_HH_MM:
+      return GetAsLocalizedTime(use12hourclock ? "h:mm" : "HH:mm", false);
+    case TIME_FORMAT_HH_MM_XX:
+      return GetAsLocalizedTime(use12hourclock ? "h:mm xx" : "HH:mm", false);
+    case TIME_FORMAT_HH_MM_SS:
+      return GetAsLocalizedTime(use12hourclock ? "hh:mm:ss" : "HH:mm:ss", true);
+    case TIME_FORMAT_HH_MM_SS_XX:
+      return GetAsLocalizedTime(use12hourclock ? "hh:mm:ss xx" : "HH:mm:ss", true);
+    case TIME_FORMAT_H:
+      return GetAsLocalizedTime("h", false);
+    case TIME_FORMAT_M:
+      return GetAsLocalizedTime("m", false);
+    case TIME_FORMAT_H_MM_SS:
+      return GetAsLocalizedTime("h:mm:ss", true);
+    case TIME_FORMAT_H_MM_SS_XX:
+      return GetAsLocalizedTime("h:mm:ss xx", true);
+    case TIME_FORMAT_XX:
+      return use12hourclock ? GetAsLocalizedTime("xx", false) : "";
+    default:
+      break;
+  }
+  return GetAsLocalizedTime("", false);
 }
 
 CDateTime CDateTime::GetAsUTCDateTime() const

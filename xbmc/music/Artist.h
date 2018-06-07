@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,10 +22,13 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "utils/ScraperUrl.h"
+#include "utils/StringUtils.h"
 #include "utils/Fanart.h"
+#include "utils/ScraperUrl.h"
+#include "XBDateTime.h"
 
 class TiXmlNode;
 class CAlbum;
@@ -34,7 +37,7 @@ class CMusicDatabase;
 class CArtist
 {
 public:
-  long idArtist;
+  long idArtist = -1;
   bool operator<(const CArtist& a) const
   {
     if (strMusicBrainzArtistID.empty() && a.strMusicBrainzArtistID.empty())
@@ -54,6 +57,10 @@ public:
   void Reset()
   {
     strArtist.clear();
+    strSortName.clear();
+    strType.clear();
+    strGender.clear();
+    strDisambiguation.clear();
     genre.clear();
     strBiography.clear();
     styles.clear();
@@ -65,9 +72,13 @@ public:
     strDisbanded.clear();
     yearsActive.clear();
     thumbURL.Clear();
+    art.clear();
     discography.clear();
     idArtist = -1;
     strPath.clear();
+    dateAdded.Reset();
+    bScrapedMBID = false;
+    strLastScraped.clear();
   }
 
   /*! \brief Load artist information from an XML file.
@@ -80,8 +91,14 @@ public:
   bool Load(const TiXmlElement *element, bool append = false, bool prioritise = false);
   bool Save(TiXmlNode *node, const std::string &tag, const std::string& strPath);
 
+  void SetDateAdded(const std::string& strDateAdded);
+
   std::string strArtist;
+  std::string strSortName;
   std::string strMusicBrainzArtistID;
+  std::string strType;
+  std::string strGender;
+  std::string strDisambiguation;
   std::vector<std::string> genre;
   std::string strBiography;
   std::vector<std::string> styles;
@@ -93,9 +110,13 @@ public:
   std::string strDisbanded;
   std::vector<std::string> yearsActive;
   std::string strPath;
-  CScraperUrl thumbURL;
-  CFanart fanart;
+  CScraperUrl thumbURL; // Data for available thumbs
+  CFanart fanart;  // Data for available fanart, urls etc.
+  std::map<std::string, std::string> art;  // Current artwork - thumb, fanart etc.
   std::vector<std::pair<std::string,std::string> > discography;
+  CDateTime dateAdded;
+  bool bScrapedMBID = false;
+  std::string strLastScraped;
 };
 
 class CArtistCredit
@@ -104,10 +125,13 @@ class CArtistCredit
   friend class CMusicDatabase;
 
 public:
-  CArtistCredit() { }
-  CArtistCredit(std::string strArtist, std::string strJoinPhrase) : m_strArtist(strArtist), m_strJoinPhrase(strJoinPhrase), m_boolFeatured(false) { }
-  CArtistCredit(std::string strArtist, std::string strMusicBrainzArtistID, std::string strJoinPhrase)
-  : m_strArtist(strArtist), m_strMusicBrainzArtistID(strMusicBrainzArtistID), m_strJoinPhrase(strJoinPhrase), m_boolFeatured(false)  {  }
+  CArtistCredit() : idArtist(-1), m_bScrapedMBID(false) { }
+  explicit CArtistCredit(std::string strArtist) : m_strArtist(strArtist) { }
+  CArtistCredit(std::string strArtist, std::string strMusicBrainzArtistID)
+    : m_strArtist(strArtist), m_strMusicBrainzArtistID(strMusicBrainzArtistID) {  }
+  CArtistCredit(std::string strArtist, std::string strSortName, std::string strMusicBrainzArtistID)
+    : m_strArtist(strArtist), m_strSortName(strSortName), m_strMusicBrainzArtistID(strMusicBrainzArtistID) {  }
+
   bool operator<(const CArtistCredit& a) const
   {
     if (m_strMusicBrainzArtistID.empty() && a.m_strMusicBrainzArtistID.empty())
@@ -123,22 +147,60 @@ public:
   }
 
   std::string GetArtist() const                { return m_strArtist; }
+  std::string GetSortName() const              { return m_strSortName; }
   std::string GetMusicBrainzArtistID() const   { return m_strMusicBrainzArtistID; }
-  std::string GetJoinPhrase() const            { return m_strJoinPhrase; }
   int         GetArtistId() const              { return idArtist; }
+  bool HasScrapedMBID() const { return m_bScrapedMBID; }
   void SetArtist(const std::string &strArtist) { m_strArtist = strArtist; }
+  void SetSortName(const std::string &strSortName) { m_strSortName = strSortName; }
   void SetMusicBrainzArtistID(const std::string &strMusicBrainzArtistID) { m_strMusicBrainzArtistID = strMusicBrainzArtistID; }
-  void SetJoinPhrase(const std::string &strJoinPhrase) { m_strJoinPhrase = strJoinPhrase; }
   void SetArtistId(int idArtist)               { this->idArtist = idArtist; }
+  void SetScrapedMBID(bool scrapedMBID) { this->m_bScrapedMBID = scrapedMBID; }
 
 private:
-  long idArtist;
+  long idArtist = -1;
   std::string m_strArtist;
+  std::string m_strSortName;
   std::string m_strMusicBrainzArtistID;
-  std::string m_strJoinPhrase;
-  bool m_boolFeatured;
+  bool m_bScrapedMBID = false; // Flag that mbid is from album merge of scarper results not derived from tags
 };
 
 typedef std::vector<CArtist> VECARTISTS;
 typedef std::vector<CArtistCredit> VECARTISTCREDITS;
+
+const std::string BLANKARTIST_FAKEMUSICBRAINZID = "Artist Tag Missing";
+const std::string BLANKARTIST_NAME = "[Missing Tag]";
+const long BLANKARTIST_ID = 1;
+
+#define ROLE_ARTIST 1  //Default role
+
+class CMusicRole
+{
+public:
+  CMusicRole() = default;
+  CMusicRole(std::string strRole, std::string strArtist) : idRole(-1), m_strRole(strRole), m_strArtist(strArtist), idArtist(-1) { }
+  CMusicRole(int role, std::string strRole, std::string strArtist, long ArtistId) : idRole(role), m_strRole(strRole), m_strArtist(strArtist), idArtist(ArtistId) { }
+  std::string GetArtist() const { return m_strArtist; }
+  std::string GetRoleDesc() const { return m_strRole; }
+  int GetRoleId() const { return idRole; }
+  long GetArtistId() const { return idArtist; }
+  void SetArtistId(long iArtistId) { idArtist = iArtistId;  }
+
+  bool operator==(const CMusicRole& a) const
+  {
+    if (StringUtils::EqualsNoCase(m_strRole, a.m_strRole))
+      return StringUtils::EqualsNoCase(m_strArtist, a.m_strArtist);
+    else
+      return false;
+  }
+private:
+  int idRole;
+  std::string m_strRole;
+  std::string m_strArtist;
+  long idArtist;
+};
+
+typedef std::vector<CMusicRole> VECMUSICROLES;
+
+
 

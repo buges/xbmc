@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ bool CSpeed::operator !=(const CSpeed& right) const
   return !operator ==(right.m_value);
 }
 
-const CSpeed& CSpeed::operator =(const CSpeed& right)
+CSpeed& CSpeed::operator =(const CSpeed& right)
 {
   m_valid = right.m_valid;
   m_value = right.m_value;

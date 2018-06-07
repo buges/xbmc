@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,14 +24,16 @@ class CAppParamParser
 {
   public:
     CAppParamParser();
-    void Parse(const char* argv[], int nArgs);
+    void Parse(const char* const* argv, int nArgs);
+
+    const CFileItemList &Playlist() const { return m_playlist; }
 
   private:
     bool m_testmode;
-    CFileItemList m_playlist;
     void ParseArg(const std::string &arg);
     void DisplayHelp();
     void DisplayVersion();
     void EnableDebugMode();
-    void PlayPlaylist();
+
+    CFileItemList m_playlist;
 };

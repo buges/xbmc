@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,54 +19,60 @@
  */
 
 #include "utils/JobManager.h"
-#include "settings/Settings.h"
-#include "utils/SystemInfo.h"
+#include "utils/Job.h"
 
 #include "gtest/gtest.h"
+#include <atomic>
 
-/* CSysInfoJob::GetInternetState() will test for network connectivity. */
+#ifdef TARGET_POSIX
+#include "platform/linux/XTimeUtils.h"
+#endif
+
+std::atomic<bool> cancelled(false);
+
+class DummyJob : public CJob
+{
+public:
+  bool DoWork() override
+  {
+    Sleep(100);
+    if (ShouldCancel(0,0))
+      cancelled = true;
+
+    return true;
+  }
+};
+
 class TestJobManager : public testing::Test
 {
 protected:
   TestJobManager()
   {
-    /* TODO
-    CSettingsCategory* net = CSettings::Get().AddCategory(4, "network", 798);
-    CSettings::Get().AddBool(net, "network.usehttpproxy", 708, false);
-    CSettings::Get().AddString(net, "network.httpproxyserver", 706, "",
-                            EDIT_CONTROL_INPUT);
-    CSettings::Get().AddString(net, "network.httpproxyport", 730, "8080",
-                            EDIT_CONTROL_NUMBER_INPUT, false, 707);
-    CSettings::Get().AddString(net, "network.httpproxyusername", 1048, "",
-                            EDIT_CONTROL_INPUT);
-    CSettings::Get().AddString(net, "network.httpproxypassword", 733, "",
-                            EDIT_CONTROL_HIDDEN_INPUT,true,733);
-    CSettings::Get().AddInt(net, "network.bandwidth", 14041, 0, 0, 512, 100*1024,
-                         SPIN_CONTROL_INT_PLUS, 14048, 351);
-    */
   }
 
-  ~TestJobManager()
+  ~TestJobManager() override
   {
     /* Always cancel jobs test completion */
     CJobManager::GetInstance().CancelJobs();
     CJobManager::GetInstance().Restart();
-    CSettings::Get().Unload();
   }
 };
 
 TEST_F(TestJobManager, AddJob)
 {
-  CJob* job = new CSysInfoJob();
+  CJob* job = new DummyJob();
   CJobManager::GetInstance().AddJob(job, NULL);
 }
 
 TEST_F(TestJobManager, CancelJob)
 {
   unsigned int id;
-  CJob* job = new CSysInfoJob();
+  CJob* job = new DummyJob();
   id = CJobManager::GetInstance().AddJob(job, NULL);
+  Sleep(50);
   CJobManager::GetInstance().CancelJob(id);
+  Sleep(100);
+  EXPECT_TRUE(cancelled);
 }
 
 namespace
@@ -109,12 +115,12 @@ public:
     m_block.notifyAll();
   }
 
-  const char * GetType() const
+  const char * GetType() const override
   {
     return "BroadcastingJob";
   }
 
-  bool DoWork()
+  bool DoWork() override
   {
     {
       CSingleLock lock(m_package.jobCreatedMutex);

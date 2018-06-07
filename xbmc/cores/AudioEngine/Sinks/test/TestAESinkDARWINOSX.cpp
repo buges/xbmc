@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -70,15 +70,15 @@ void addPassthroughFormats(std::vector<AudioStreamBasicDescription> &streamForma
 
   FillOutASBDForLPCM(streamFormat, 96000, 2, 16, 16, false, false, false);
   streamFormat.mFormatID = kAudioFormat60958AC3;
-  streamFormats.push_back(streamFormat); // stereoFormtsWithoutPassthrough.size() + 0
+  streamFormats.push_back(streamFormat); // stereoFormatsWithoutPassthrough.size() + 0
 
   FillOutASBDForLPCM(streamFormat, 48000, 2, 16, 16, false, false, false);
   streamFormat.mFormatID = kAudioFormat60958AC3;
-  streamFormats.push_back(streamFormat); // stereoFormtsWithoutPassthrough.size() + 1
+  streamFormats.push_back(streamFormat); // stereoFormatsWithoutPassthrough.size() + 1
 
   FillOutASBDForLPCM(streamFormat, 44100, 2, 16, 16, false, false, false);
   streamFormat.mFormatID = kAudioFormat60958AC3;
-  streamFormats.push_back(streamFormat); // stereoFormtsWithoutPassthrough.size() + 2
+  streamFormats.push_back(streamFormat); // stereoFormatsWithoutPassthrough.size() + 2
 }
 
 void initStereoFormatsWithoutPassthrough()
@@ -136,12 +136,11 @@ void initStreamFormats()
 AEAudioFormat getAC3AEFormat()
 {
   AEAudioFormat srcFormat;
-  srcFormat.m_dataFormat = AE_FMT_AC3;
+  srcFormat.m_dataFormat = AE_FMT_RAW;
+  srcFormat.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_AC3;
   srcFormat.m_sampleRate = 48000;
-  srcFormat.m_encodedRate = 48000;
   srcFormat.m_channelLayout = AE_CH_LAYOUT_2_0;
   srcFormat.m_frames = 0;
-  srcFormat.m_frameSamples = 0;
   srcFormat.m_frameSize = 0;
   return srcFormat;
 }
@@ -151,10 +150,8 @@ AEAudioFormat getStereo22050AEFormat()
   AEAudioFormat srcFormat;
   srcFormat.m_dataFormat = AE_FMT_FLOAT;
   srcFormat.m_sampleRate = 22050;
-  srcFormat.m_encodedRate = 0;
   srcFormat.m_channelLayout = AE_CH_LAYOUT_2_0;
   srcFormat.m_frames = 0;
-  srcFormat.m_frameSamples = 0;
   srcFormat.m_frameSize = 0;
   return srcFormat;
 }
@@ -164,10 +161,8 @@ AEAudioFormat getStereo48000AEFormat()
   AEAudioFormat srcFormat;
   srcFormat.m_dataFormat = AE_FMT_FLOAT;
   srcFormat.m_sampleRate = 48000;
-  srcFormat.m_encodedRate = 0;
   srcFormat.m_channelLayout = AE_CH_LAYOUT_2_0;
   srcFormat.m_frames = 0;
-  srcFormat.m_frameSamples = 0;
   srcFormat.m_frameSize = 0;
   return srcFormat;
 }
@@ -177,10 +172,8 @@ AEAudioFormat getLPCM96000AEFormat()
   AEAudioFormat srcFormat;
   srcFormat.m_dataFormat = AE_FMT_FLOAT;
   srcFormat.m_sampleRate = 96000;
-  srcFormat.m_encodedRate = 0;
   srcFormat.m_channelLayout = AE_CH_LAYOUT_5_1;
   srcFormat.m_frames = 0;
-  srcFormat.m_frameSamples = 0;
   srcFormat.m_frameSize = 0;
   return srcFormat;
 }

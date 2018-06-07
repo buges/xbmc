@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -34,9 +34,7 @@ const unsigned int CFanart::max_fanart_colors=3;
 /// CFanart Functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CFanart::CFanart()
-{
-}
+CFanart::CFanart() = default;
 
 void CFanart::Pack()
 {
@@ -46,7 +44,6 @@ void CFanart::Pack()
   for (std::vector<SFanartData>::const_iterator it = m_fanart.begin(); it != m_fanart.end(); ++it)
   {
     TiXmlElement thumb("thumb");
-    thumb.SetAttribute("dim", it->strResolution.c_str());
     thumb.SetAttribute("colors", it->strColors.c_str());
     thumb.SetAttribute("preview", it->strPreview.c_str());
     TiXmlText text(it->strImage);
@@ -54,6 +51,21 @@ void CFanart::Pack()
     fanart.InsertEndChild(thumb);
   }
   m_xml << fanart;
+}
+
+void CFanart::AddFanart(const std::string& image, const std::string& preview, const std::string& colors)
+{
+  SFanartData info;
+  info.strPreview = preview;
+  info.strImage = image;
+  ParseColors(colors, info.strColors);
+  m_fanart.push_back(std::move(info));
+}
+
+void CFanart::Clear()
+{
+  m_fanart.clear();
+  m_xml.clear();
 }
 
 bool CFanart::Unpack()
@@ -84,7 +96,6 @@ bool CFanart::Unpack()
           if (fanartThumb->Attribute("preview"))
             data.strPreview = URIUtils::AddFileToFolder(url, fanartThumb->Attribute("preview"));
         }
-        data.strResolution = XMLUtils::GetAttribute(fanartThumb, "dim");
         ParseColors(XMLUtils::GetAttribute(fanartThumb, "colors"), data.strColors);
         m_fanart.push_back(data);
       }
@@ -113,7 +124,7 @@ std::string CFanart::GetPreviewURL(unsigned int index) const
 
 const std::string CFanart::GetColor(unsigned int index) const
 {
-  if (index >= max_fanart_colors || m_fanart.size() == 0 ||
+  if (index >= max_fanart_colors || m_fanart.empty() ||
       m_fanart[0].strColors.size() < index*9+8)
     return "FFFFFFFF";
 
@@ -142,8 +153,8 @@ unsigned int CFanart::GetNumFanarts() const
 bool CFanart::ParseColors(const std::string &colorsIn, std::string &colorsOut)
 {
   // Formats:
-  // 0: XBMC ARGB Hexadecimal string comma seperated "FFFFFFFF,DDDDDDDD,AAAAAAAA"
-  // 1: The TVDB RGB Int Triplets, pipe seperate with leading/trailing pipes "|68,69,59|69,70,58|78,78,68|"
+  // 0: XBMC ARGB Hexadecimal string comma separated "FFFFFFFF,DDDDDDDD,AAAAAAAA"
+  // 1: The TVDB RGB Int Triplets, pipe separate with leading/trailing pipes "|68,69,59|69,70,58|78,78,68|"
 
   // Essentially we read the colors in using the proper format, and store them in our own fixed temporary format (3 DWORDS), and then
   // write them back in in the specified format.

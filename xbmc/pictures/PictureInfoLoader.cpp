@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,12 +20,14 @@
 
 #include "PictureInfoLoader.h"
 #include "PictureInfoTag.h"
+#include "ServiceBroker.h"
 #include "settings/Settings.h"
 #include "FileItem.h"
 
 CPictureInfoLoader::CPictureInfoLoader()
 {
   m_mapFileItems = new CFileItemList;
+  m_tagReads = 0;
 }
 
 CPictureInfoLoader::~CPictureInfoLoader()
@@ -42,7 +44,7 @@ void CPictureInfoLoader::OnLoaderStart()
   m_mapFileItems->SetFastLookup(true);
 
   m_tagReads = 0;
-  m_loadTags = CSettings::Get().GetBool("pictures.usetags");
+  m_loadTags = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PICTURES_USETAGS);
 
   if (m_pProgressCallback)
     m_pProgressCallback->SetProgressMax(m_pVecItems->GetFileCount());

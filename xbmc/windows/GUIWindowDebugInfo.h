@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include "guilib/GUIDialog.h"
 #ifdef TARGET_POSIX
-#include "linux/LinuxResourceCounter.h"
+#include "platform/linux/LinuxResourceCounter.h"
 #endif
 
 class CGUITextLayout;
@@ -32,12 +32,12 @@ class CGUIWindowDebugInfo :
 {
 public:
   CGUIWindowDebugInfo();
-  virtual ~CGUIWindowDebugInfo();
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual bool OnMessage(CGUIMessage &message);
+  ~CGUIWindowDebugInfo() override;
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  bool OnMessage(CGUIMessage &message) override;
 protected:
-  virtual void UpdateVisibility();
+  void UpdateVisibility() override;
 private:
   CGUITextLayout *m_layout;
 #ifdef TARGET_POSIX

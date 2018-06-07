@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,16 +27,23 @@ class CGUIDialogTextViewer :
 {
 public:
   CGUIDialogTextViewer(void);
-  virtual ~CGUIDialogTextViewer(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
+  ~CGUIDialogTextViewer(void) override;
+  bool OnMessage(CGUIMessage& message) override;
   void SetText(const std::string& strText) { m_strText = strText; }
   void SetHeading(const std::string& strHeading) { m_strHeading = strHeading; }
+  void UseMonoFont(bool use);
+
+  //! \brief Load a file into memory and show in dialog.
+  //! \param path Path to file
+  //! \param useMonoFont True to use monospace font
+  static void ShowForFile(const std::string& path, bool useMonoFont);
 protected:
-  virtual void OnDeinitWindow(int nextWindowID);
+  void OnDeinitWindow(int nextWindowID) override;
+  bool OnAction(const CAction &action) override;
 
   std::string m_strText;
   std::string m_strHeading;
+  bool m_mono = false;
 
   void SetText();
   void SetHeading();

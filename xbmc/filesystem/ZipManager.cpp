@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,36 +18,30 @@
  *
  */
 
-#include "system.h"
 #include "ZipManager.h"
-#include "URL.h"
+
+#include <algorithm>
+#include <utility>
+
 #include "File.h"
+#include "URL.h"
+#include "platform/linux/PlatformDefs.h"
 #include "utils/CharsetConverter.h"
-#include "utils/log.h"
 #include "utils/EndianSwap.h"
+#include "utils/log.h"
+#include "utils/RegExp.h"
 #include "utils/URIUtils.h"
 
-
-#ifndef min
-#define min(a,b)            (((a) < (b)) ? (a) : (b))
-#endif
-
 using namespace XFILE;
-using namespace std;
 
-CZipManager::CZipManager()
+static const size_t ZC_FLAG_EFS = 1 << 11; // general purpose bit 11 - zip holds utf-8 filenames
+
+CZipManager::CZipManager() = default;
+
+CZipManager::~CZipManager() = default;
+
+bool CZipManager::GetZipList(const CURL& url, std::vector<SZipEntry>& items)
 {
-}
-
-CZipManager::~CZipManager()
-{
-
-}
-
-bool CZipManager::GetZipList(const CURL& url, vector<SZipEntry>& items)
-{
-  CLog::Log(LOGDEBUG, "%s - Processing %s", __FUNCTION__, url.GetRedacted().c_str());
-
   struct __stat64 m_StatData = {};
 
   std::string strFile = url.GetHostName();
@@ -58,19 +52,18 @@ bool CZipManager::GetZipList(const CURL& url, vector<SZipEntry>& items)
     return false;
   }
 
-  map<std::string,vector<SZipEntry> >::iterator it = mZipMap.find(strFile);
+  std::map<std::string, std::vector<SZipEntry> >::iterator it = mZipMap.find(strFile);
   if (it != mZipMap.end()) // already listed, just return it if not changed, else release and reread
   {
-    map<std::string,int64_t>::iterator it2=mZipDate.find(strFile);
-    CLog::Log(LOGDEBUG,"statdata: %" PRId64" new: %" PRIu64, it2->second, (uint64_t)m_StatData.st_mtime);
+    std::map<std::string,int64_t>::iterator it2=mZipDate.find(strFile);
 
-      if (m_StatData.st_mtime == it2->second)
-      {
-        items = it->second;
-        return true;
-      }
-      mZipMap.erase(it);
-      mZipDate.erase(it2);
+    if (m_StatData.st_mtime == it2->second)
+    {
+      items = it->second;
+      return true;
+    }
+    mZipMap.erase(it);
+    mZipDate.erase(it2);
   }
 
   CFile mFile;
@@ -105,8 +98,13 @@ bool CZipManager::GetZipList(const CURL& url, vector<SZipEntry>& items)
   // Don't need to look in the last 18 bytes (ECDREC_SIZE-4)
   // But as we need to do overlapping between blocks (3 bytes),
   // we start the search at ECDREC_SIZE-1 from the end of file
-  int searchSize = (int) min(65557, fileSize-ECDREC_SIZE+1);
-  int blockSize = (int) min(1024, searchSize);
+  if (fileSize < ECDREC_SIZE - 1)
+  {
+    CLog::Log(LOGERROR, "ZipManager: Invalid zip file length: %" PRId64"", fileSize);
+    return false;
+  }
+  int searchSize = (int) std::min(static_cast<int64_t>(65557), fileSize-ECDREC_SIZE+1);
+  int blockSize = (int) std::min(1024, searchSize);
   int nbBlock = searchSize / blockSize;
   int extraBlockSize = searchSize % blockSize;
   // Signature is on 4 bytes
@@ -171,6 +169,9 @@ bool CZipManager::GetZipList(const CURL& url, vector<SZipEntry>& items)
   // Go to the start of central directory
   mFile.Seek(cdirOffset,SEEK_SET);
 
+  CRegExp pathTraversal;
+  pathTraversal.RegComp(PATH_TRAVERSAL);
+
   char temp[CHDR_SIZE];
   while (mFile.GetPosition() < cdirOffset + cdirSize)
   {
@@ -191,18 +192,23 @@ bool CZipManager::GetZipList(const CURL& url, vector<SZipEntry>& items)
       return false;
     std::string strName(bufName.get(), bufName.size());
     bufName.clear();
-    g_charsetConverter.unknownToUTF8(strName);
-    ZeroMemory(ze.name, 255);
-    strncpy(ze.name, strName.c_str(), strName.size()>254 ? 254 : strName.size());
+    if ((ze.flags & ZC_FLAG_EFS) == 0)
+    {
+      std::string tmp(strName);
+      g_charsetConverter.ToUtf8("CP437", tmp, strName);
+    }
+    memset(ze.name, 0, 255);
+    strncpy(ze.name, strName.c_str(), strName.size() > 254 ? 254 : strName.size());
 
     // Jump after central file header extra field and file comment
     mFile.Seek(ze.eclength + ze.clength,SEEK_CUR);
 
-    items.push_back(ze);
+    if (pathTraversal.RegFind(strName) < 0)
+      items.push_back(ze);
   }
 
   /* go through list and figure out file header lengths */
-  for(vector<SZipEntry>::iterator it = items.begin(); it != items.end(); ++it)
+  for(std::vector<SZipEntry>::iterator it = items.begin(); it != items.end(); ++it)
   {
     SZipEntry& ze = *it;
     // Go to the local file header to get the extra field length
@@ -226,8 +232,8 @@ bool CZipManager::GetZipEntry(const CURL& url, SZipEntry& item)
 {
   std::string strFile = url.GetHostName();
 
-  map<std::string,vector<SZipEntry> >::iterator it = mZipMap.find(strFile);
-  vector<SZipEntry> items;
+  std::map<std::string, std::vector<SZipEntry> >::iterator it = mZipMap.find(strFile);
+  std::vector<SZipEntry> items;
   if (it == mZipMap.end()) // we need to list the zip
   {
     GetZipList(url,items);
@@ -238,7 +244,7 @@ bool CZipManager::GetZipEntry(const CURL& url, SZipEntry& item)
   }
 
   std::string strFileName = url.GetFileName();
-  for (vector<SZipEntry>::iterator it2=items.begin();it2 != items.end();++it2)
+  for (std::vector<SZipEntry>::iterator it2=items.begin();it2 != items.end();++it2)
   {
     if (std::string(it2->name) == strFileName)
     {
@@ -257,10 +263,10 @@ bool CZipManager::ExtractArchive(const std::string& strArchive, const std::strin
 
 bool CZipManager::ExtractArchive(const CURL& archive, const std::string& strPath)
 {
-  vector<SZipEntry> entry;
+  std::vector<SZipEntry> entry;
   CURL url = URIUtils::CreateArchivePath("zip", archive);
   GetZipList(url, entry);
-  for (vector<SZipEntry>::iterator it=entry.begin();it != entry.end();++it)
+  for (std::vector<SZipEntry>::iterator it=entry.begin();it != entry.end();++it)
   {
     if (it->name[strlen(it->name)-1] == '/') // skip dirs
       continue;
@@ -314,10 +320,10 @@ void CZipManager::readCHeader(const char* buffer, SZipEntry& info)
 void CZipManager::release(const std::string& strPath)
 {
   CURL url(strPath);
-  map<std::string,vector<SZipEntry> >::iterator it= mZipMap.find(url.GetHostName());
+  std::map<std::string, std::vector<SZipEntry> >::iterator it= mZipMap.find(url.GetHostName());
   if (it != mZipMap.end())
   {
-    map<std::string,int64_t>::iterator it2=mZipDate.find(url.GetHostName());
+    std::map<std::string,int64_t>::iterator it2=mZipDate.find(url.GetHostName());
     mZipMap.erase(it);
     mZipDate.erase(it2);
   }

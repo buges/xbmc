@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,13 +26,9 @@
 
 using namespace MUSIC_INFO;
 
-CMusicInfoTagLoaderDatabase::CMusicInfoTagLoaderDatabase(void)
-{
-}
+CMusicInfoTagLoaderDatabase::CMusicInfoTagLoaderDatabase(void) = default;
 
-CMusicInfoTagLoaderDatabase::~CMusicInfoTagLoaderDatabase()
-{
-}
+CMusicInfoTagLoaderDatabase::~CMusicInfoTagLoaderDatabase() = default;
 
 bool CMusicInfoTagLoaderDatabase::Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
 {

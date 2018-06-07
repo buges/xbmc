@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  *
  */
 
-#include <map>
+#include <string>
 
 #include "SmartPlaylistFileItemListModifier.h"
 #include "FileItem.h"
@@ -29,7 +29,6 @@
 #define URL_OPTION_XSP              "xsp"
 #define PROPERTY_SORT_ORDER         "sort.order"
 #define PROPERTY_SORT_ASCENDING     "sort.ascending"
-using namespace std;
 
 bool CSmartPlaylistFileItemListModifier::CanModify(const CFileItemList &items) const
 {

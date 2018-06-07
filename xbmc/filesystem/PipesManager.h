@@ -1,9 +1,11 @@
+#pragma once
+
 /*
  * Many concepts and protocol are taken from
  * the Boxee project. http://www.boxee.tv
  * 
- *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2011-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,9 +23,6 @@
  *
  */
 
-#ifndef __PIPES_MANAGER__H__
-#define __PIPES_MANAGER__H__
-
 #include "threads/CriticalSection.h"
 #include "threads/Event.h"
 #include "utils/RingBuffer.h"
@@ -40,7 +39,7 @@ namespace XFILE
 class IPipeListener
 {
 public:
-  virtual ~IPipeListener() {}
+  virtual ~IPipeListener() = default;
   virtual void OnPipeOverFlow() = 0;
   virtual void OnPipeUnderFlow() = 0;
 };
@@ -88,7 +87,7 @@ class Pipe
     bool IsEof();
     
     int	GetAvailableRead();
-    void SetOpenThreashold(int threashold);
+    void SetOpenThreshold(int threshold);
 
   protected:
     
@@ -99,7 +98,7 @@ class Pipe
     CRingBuffer m_buffer;
     std::string  m_strPipeName;
     int         m_nRefCount;
-    int         m_nOpenThreashold;
+    int         m_nOpenThreshold;
 
     CEvent     m_readEvent;
     CEvent     m_writeEvent;
@@ -131,6 +130,4 @@ protected:
 };
 
 }
-
-#endif
 

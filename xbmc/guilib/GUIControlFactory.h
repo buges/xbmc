@@ -1,5 +1,5 @@
 /*!
-\file GuiControlFactory.h
+\file GUIControlFactory.h
 \brief
 */
 
@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,13 +28,27 @@
  *
  */
 
+#include <string>
+#include <vector>
+
 #include "GUIControl.h"
+#include "utils/Color.h"
 
 class CTextureInfo; // forward
 class CAspectRatio;
-class CGUIInfoLabel;
 class TiXmlNode;
 class CGUIAction;
+
+namespace KODI
+{
+namespace GUILIB
+{
+namespace GUIINFO
+{
+  class CGUIInfoLabel;
+}
+}
+}
 
 /*!
  \ingroup controls
@@ -60,7 +74,7 @@ public:
   static std::string TranslateControlType(CGUIControl::GUICONTROLTYPES type);
 
   static bool GetAspectRatio(const TiXmlNode* pRootNode, const char* strTag, CAspectRatio &aspectRatio);
-  static bool GetInfoTexture(const TiXmlNode* pRootNode, const char* strTag, CTextureInfo &image, CGUIInfoLabel &info, int parentID);
+  static bool GetInfoTexture(const TiXmlNode* pRootNode, const char* strTag, CTextureInfo &image, KODI::GUILIB::GUIINFO::CGUIInfoLabel &info, int parentID);
   static bool GetTexture(const TiXmlNode* pRootNode, const char* strTag, CTextureInfo &image);
   static bool GetAlignment(const TiXmlNode* pRootNode, const char* strTag, uint32_t& dwAlignment);
   static bool GetAlignmentY(const TiXmlNode* pRootNode, const char* strTag, uint32_t& dwAlignment);
@@ -73,19 +87,32 @@ public:
    If either the fallback_value or info_value are natural numbers they are interpreted
    as ids for lookup in strings.xml. The fallback attribute is optional.
    \param element XML element to process
-   \param infoLabel returned infoLabel
+   \param infoLabel Returned infoLabel
+   \param parentID The parent id
    \return true if a valid info label was read, false otherwise
    */
-  static bool GetInfoLabelFromElement(const TiXmlElement *element, CGUIInfoLabel &infoLabel, int parentID);
-  static void GetInfoLabel(const TiXmlNode *pControlNode, const std::string &labelTag, CGUIInfoLabel &infoLabel, int parentID);
-  static void GetInfoLabels(const TiXmlNode *pControlNode, const std::string &labelTag, std::vector<CGUIInfoLabel> &infoLabels, int parentID);
-  static bool GetColor(const TiXmlNode* pRootNode, const char* strTag, color_t &value);
-  static bool GetInfoColor(const TiXmlNode* pRootNode, const char* strTag, CGUIInfoColor &value, int parentID);
+
+   /*! \brief Parse a position string
+   Handles strings of the form
+   ###   number of pixels
+   ###r  number of pixels measured from the right
+   ###%  percentage of parent size
+   \param pos the string to parse.
+   \param parentSize the size of the parent.
+   \sa GetPosition
+   */
+  static float ParsePosition(const char* pos, const float parentSize);
+
+  static bool GetInfoLabelFromElement(const TiXmlElement *element, KODI::GUILIB::GUIINFO::CGUIInfoLabel &infoLabel, int parentID);
+  static void GetInfoLabel(const TiXmlNode *pControlNode, const std::string &labelTag, KODI::GUILIB::GUIINFO::CGUIInfoLabel &infoLabel, int parentID);
+  static void GetInfoLabels(const TiXmlNode *pControlNode, const std::string &labelTag, std::vector<KODI::GUILIB::GUIINFO::CGUIInfoLabel> &infoLabels, int parentID);
+  static bool GetColor(const TiXmlNode* pRootNode, const char* strTag, UTILS::Color &value);
+  static bool GetInfoColor(const TiXmlNode* pRootNode, const char* strTag, KODI::GUILIB::GUIINFO::CGUIInfoColor &value, int parentID);
   static std::string FilterLabel(const std::string &label);
   static bool GetConditionalVisibility(const TiXmlNode* control, std::string &condition);
   static bool GetActions(const TiXmlNode* pRootNode, const char* strTag, CGUIAction& actions);
   static void GetRectFromString(const std::string &string, CRect &rect);
-  static bool GetHitRect(const TiXmlNode* pRootNode, CRect &rect);
+  static bool GetHitRect(const TiXmlNode* pRootNode, CRect &rect, const CRect &parentRect);
   static bool GetScroller(const TiXmlNode *pControlNode, const std::string &scrollerTag, CScroller& scroller);
 private:
   static std::string GetType(const TiXmlElement *pControlNode);
@@ -93,17 +120,6 @@ private:
   bool GetString(const TiXmlNode* pRootNode, const char* strTag, std::string& strString);
   static bool GetFloatRange(const TiXmlNode* pRootNode, const char* strTag, float& iMinValue, float& iMaxValue, float& iIntervalValue);
   static bool GetIntRange(const TiXmlNode* pRootNode, const char* strTag, int& iMinValue, int& iMaxValue, int& iIntervalValue);
-
-  /*! \brief Parse a position string
-   Handles strings of the form
-     ###   number of pixels
-     ###r  number of pixels measured from the right
-     ###%  percentage of parent size
-   \param pos the string to parse.
-   \param parentSize the size of the parent.
-   \sa GetPosition
-   */
-  static float ParsePosition(const char* pos, const float parentSize);
 
   /*! \brief Get the value of a position tag from XML
    Handles both absolute and relative values.

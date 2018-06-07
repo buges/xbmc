@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,10 +18,13 @@
  *
  */
 
+#include "GUIComponent.h"
 #include "GUIFontManager.h"
-#include "GraphicContext.h"
+#include "windowing/GraphicContext.h"
 #include "GUIWindowManager.h"
 #include "addons/Skin.h"
+#include "addons/AddonManager.h"
+#include "addons/FontResource.h"
 #include "GUIFontTTF.h"
 #include "GUIFont.h"
 #include "utils/XMLUtils.h"
@@ -34,12 +37,13 @@
 #include "utils/StringUtils.h"
 #include "FileItem.h"
 #include "URL.h"
+#include "ServiceBroker.h"
 
 #ifdef TARGET_POSIX
 #include "filesystem/SpecialProtocol.h"
 #endif
 
-using namespace std;
+using namespace ADDON;
 
 GUIFontManager::GUIFontManager(void)
 {
@@ -57,16 +61,16 @@ void GUIFontManager::RescaleFontSizeAndAspect(float *size, float *aspect, const 
   // as fonts aren't scaled at render time (due to aliasing) we must scale
   // the size of the fonts before they are drawn to bitmaps
   float scaleX, scaleY;
-  g_graphicsContext.GetGUIScaling(sourceRes, scaleX, scaleY);
+  CServiceBroker::GetWinSystem()->GetGfxContext().GetGUIScaling(sourceRes, scaleX, scaleY);
 
   if (preserveAspect)
   {
     // font always displayed in the aspect specified by the aspect parameter
-    *aspect /= g_graphicsContext.GetResInfo().fPixelRatio;
+    *aspect /= CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo().fPixelRatio;
   }
   else
   {
-    // font streched like the rest of the UI, aspect parameter being the original aspect
+    // font stretched like the rest of the UI, aspect parameter being the original aspect
 
     // adjust aspect ratio
     *aspect *= sourceRes.fPixelRatio;
@@ -92,7 +96,7 @@ static bool CheckFont(std::string& strPath, const std::string& newPath,
   return true;
 }
 
-CGUIFont* GUIFontManager::LoadTTF(const std::string& strFontName, const std::string& strFilename, color_t textColor, color_t shadowColor, const int iSize, const int iStyle, bool border, float lineSpacing, float aspect, const RESOLUTION_INFO *sourceRes, bool preserveAspect)
+CGUIFont* GUIFontManager::LoadTTF(const std::string& strFontName, const std::string& strFilename, UTILS::Color textColor, UTILS::Color shadowColor, const int iSize, const int iStyle, bool border, float lineSpacing, float aspect, const RESOLUTION_INFO *sourceRes, bool preserveAspect)
 {
   float originalAspect = aspect;
 
@@ -111,8 +115,7 @@ CGUIFont* GUIFontManager::LoadTTF(const std::string& strFontName, const std::str
   std::string strPath;
   if (!CURL::IsFullPath(strFilename))
   {
-    strPath = URIUtils::AddFileToFolder(g_graphicsContext.GetMediaDir(), "fonts");
-    strPath = URIUtils::AddFileToFolder(strPath, strFilename);
+    strPath = URIUtils::AddFileToFolder(CServiceBroker::GetWinSystem()->GetGfxContext().GetMediaDir(), "fonts", strFilename);
   }
   else
     strPath = strFilename;
@@ -123,8 +126,18 @@ CGUIFont* GUIFontManager::LoadTTF(const std::string& strFontName, const std::str
 
   // Check if the file exists, otherwise try loading it from the global media dir
   std::string file = URIUtils::GetFileName(strFilename);
-  if (!CheckFont(strPath,"special://home/media/Fonts",file))
-    CheckFont(strPath,"special://xbmc/media/Fonts",file);
+  if (!CheckFont(strPath, "special://home/media/Fonts", file) &&
+      !CheckFont(strPath, "special://xbmc/media/Fonts", file))
+  {
+    VECADDONS addons;
+    CServiceBroker::GetAddonMgr().GetAddons(addons, ADDON_RESOURCE_FONT);
+    for (auto& it : addons)
+    {
+      std::shared_ptr<CFontResource> font(std::static_pointer_cast<CFontResource>(it));
+      if (font->GetFont(file, strPath))
+        break;
+    }
+  }
 
   // check if we already have this font file loaded (font object could differ only by color or style)
   std::string TTFfontName = StringUtils::Format("%s_%f_%f%s", strFilename.c_str(), newSize, aspect, border ? "_border" : "");
@@ -186,7 +199,7 @@ bool GUIFontManager::OnMessage(CGUIMessage &message)
   { // our device has been reset - we have to reload our ttf fonts, and send
     // a message to controls that we have done so
     ReloadTTFFonts();
-    g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
+    CServiceBroker::GetGUI()->GetWindowManager().SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
     m_canReload = true;
     return true;
   }
@@ -242,7 +255,7 @@ void GUIFontManager::ReloadTTFFonts(void)
 
 void GUIFontManager::Unload(const std::string& strFontName)
 {
-  for (vector<CGUIFont*>::iterator iFont = m_vecFonts.begin(); iFont != m_vecFonts.end(); ++iFont)
+  for (std::vector<CGUIFont*>::iterator iFont = m_vecFonts.begin(); iFont != m_vecFonts.end(); ++iFont)
   {
     if (StringUtils::EqualsNoCase((*iFont)->GetFontName(), strFontName))
     {
@@ -255,7 +268,7 @@ void GUIFontManager::Unload(const std::string& strFontName)
 
 void GUIFontManager::FreeFontFile(CGUIFontTTFBase *pFont)
 {
-  for (vector<CGUIFontTTFBase*>::iterator it = m_vecFontFiles.begin(); it != m_vecFontFiles.end(); ++it)
+  for (std::vector<CGUIFontTTFBase*>::iterator it = m_vecFontFiles.begin(); it != m_vecFontFiles.end(); ++it)
   {
     if (pFont == *it)
     {
@@ -270,7 +283,7 @@ CGUIFontTTFBase* GUIFontManager::GetFontFile(const std::string& strFileName)
 {
   for (int i = 0; i < (int)m_vecFontFiles.size(); ++i)
   {
-    CGUIFontTTFBase* pFont = (CGUIFontTTFBase *)m_vecFontFiles[i];
+    CGUIFontTTFBase* pFont = static_cast<CGUIFontTTFBase*>(m_vecFontFiles[i]);
     if (StringUtils::EqualsNoCase(pFont->GetFileName(), strFileName))
       return pFont;
   }
@@ -286,7 +299,7 @@ CGUIFont* GUIFontManager::GetFont(const std::string& strFontName, bool fallback 
       return pFont;
   }
   // fall back to "font13" if we have none
-  if (fallback && !strFontName.empty() && strFontName != "-" && !StringUtils::EqualsNoCase(strFontName, "font13"))
+  if (fallback && !strFontName.empty() && !StringUtils::EqualsNoCase(strFontName, "font13"))
     return GetFont("font13");
   return NULL;
 }
@@ -357,7 +370,8 @@ void GUIFontManager::LoadFonts(const std::string& fontSet)
     CLog::Log(LOGERROR, "file %s doesnt start with <fonts>", strPath.c_str());
     return;
   }
-
+  // Resolve includes in Font.xml
+  g_SkinInfo->ResolveIncludes(pRootElement);
   // take note of the first font available in case we can't load the one specified
   std::string firstFont;
 
@@ -398,8 +412,8 @@ void GUIFontManager::LoadFonts(const TiXmlNode* fontNode)
     int iSize = 20;
     float aspect = 1.0f;
     float lineSpacing = 1.0f;
-    color_t shadowColor = 0;
-    color_t textColor = 0;
+    UTILS::Color shadowColor = 0;
+    UTILS::Color textColor = 0;
     int iStyle = FONT_STYLE_NORMAL;
 
     XMLUtils::GetString(fontNode, "name", fontName);
@@ -413,7 +427,7 @@ void GUIFontManager::LoadFonts(const TiXmlNode* fontNode)
 
     if (!fontName.empty() && URIUtils::HasExtension(fileName, ".ttf"))
     {
-      // TODO: Why do we tolower() this shit?
+      //! @todo Why do we tolower() this shit?
       std::string strFontFileName = fileName;
       StringUtils::ToLower(strFontFileName);
       LoadTTF(fontName, strFontFileName, textColor, shadowColor, iSize, iStyle, false, lineSpacing, aspect);
@@ -428,8 +442,8 @@ void GUIFontManager::GetStyle(const TiXmlNode *fontNode, int &iStyle)
   iStyle = FONT_STYLE_NORMAL;
   if (XMLUtils::GetString(fontNode, "style", style))
   {
-    vector<string> styles = StringUtils::Tokenize(style, " ");
-    for (vector<string>::const_iterator i = styles.begin(); i != styles.end(); ++i)
+    std::vector<std::string> styles = StringUtils::Tokenize(style, " ");
+    for (std::vector<std::string>::const_iterator i = styles.begin(); i != styles.end(); ++i)
     {
       if (*i == "bold")
         iStyle |= FONT_STYLE_BOLD;
@@ -443,19 +457,21 @@ void GUIFontManager::GetStyle(const TiXmlNode *fontNode, int &iStyle)
         iStyle |= FONT_STYLE_LOWERCASE;
       else if (*i == "capitalize")
         iStyle |= FONT_STYLE_CAPITALIZE;
+      else if (*i == "lighten")
+        iStyle |= FONT_STYLE_LIGHT;
     }
   }
 }
 
-void GUIFontManager::SettingOptionsFontsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void GUIFontManager::SettingOptionsFontsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
 {
   CFileItemList items;
   CFileItemList items2;
 
   // find TTF fonts
-  XFILE::CDirectory::GetDirectory("special://home/media/Fonts/", items2);
+  XFILE::CDirectory::GetDirectory("special://home/media/Fonts/", items2, "", XFILE::DIR_FLAG_DEFAULTS);
 
-  if (XFILE::CDirectory::GetDirectory("special://xbmc/media/Fonts/", items))
+  if (XFILE::CDirectory::GetDirectory("special://xbmc/media/Fonts/", items, "", XFILE::DIR_FLAG_DEFAULTS))
   {
     items.Append(items2);
     for (int i = 0; i < items.Size(); ++i)

@@ -1,12 +1,8 @@
-#ifndef __COFF_H_
-#define __COFF_H_
 #pragma once
 
-#include "system.h"
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -164,7 +160,7 @@ WindowsHeader_t;
 
 typedef struct
 {
-  unsigned __int64 ImageBase;
+  unsigned long long ImageBase;
   unsigned long SectionAlignment;
   unsigned long FileAlignment;
   unsigned long OSVer;
@@ -176,10 +172,10 @@ typedef struct
   unsigned long CheckSum;
   unsigned short Subsystem;
   unsigned short DLLFlags;
-  unsigned __int64 SizeOfStackReserve;
-  unsigned __int64 SizeOfStackCommit;
-  unsigned __int64 SizeOfHeapReserve;
-  unsigned __int64 SizeOfHeapCommit;
+  unsigned long long SizeOfStackReserve;
+  unsigned long long SizeOfStackCommit;
+  unsigned long long SizeOfHeapReserve;
+  unsigned long long SizeOfHeapCommit;
   unsigned long LoaderFlags;
   unsigned long NumDirectories;
 }
@@ -340,7 +336,7 @@ typedef struct
 {
   union {
     unsigned char ShortName[8];
-    unsigned __int64 Offset;
+    unsigned long long Offset;
   } Name;
   unsigned long Value;
   unsigned short SectionNumber;
@@ -505,4 +501,3 @@ ImportDirTable_t;
 
 #pragma pack()
 
-#endif // __COFF_H_

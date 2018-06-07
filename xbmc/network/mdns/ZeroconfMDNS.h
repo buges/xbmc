@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,12 +19,15 @@
  */
 #pragma once
 
-#include <memory>
-
 #include "network/Zeroconf.h"
 #include "threads/CriticalSection.h"
 #include <dns_sd.h>
 #include "threads/Thread.h"
+
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 class CZeroconfMDNS : public CZeroconf,public CThread
 {

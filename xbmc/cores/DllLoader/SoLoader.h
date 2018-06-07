@@ -3,7 +3,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
  */
 
 #include <stdio.h>
-#include "system.h"
 #ifdef TARGET_POSIX
 #include "PlatformDefs.h"
 #endif
@@ -32,15 +31,15 @@ class SoLoader : public LibraryLoader
 {
 public:
   SoLoader(const std::string &so, bool bGlobal = false);
-  ~SoLoader();
+  ~SoLoader() override;
 
-  virtual bool Load();
-  virtual void Unload();
+  bool Load() override;
+  void Unload() override;
 
-  virtual int ResolveExport(const char* symbol, void** ptr, bool logging = true);
-  virtual bool IsSystemDll();
-  virtual HMODULE GetHModule();
-  virtual bool HasSymbols();
+  int ResolveExport(const char* symbol, void** ptr, bool logging = true) override;
+  bool IsSystemDll() override;
+  HMODULE GetHModule() override;
+  bool HasSymbols() override;
 
 private:
   void* m_soHandle;

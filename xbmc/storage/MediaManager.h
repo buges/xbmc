@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,11 +19,14 @@
  *
  */
 
-#include "MediaSource.h" // for VECSOURCES
 #include <map>
+#include <vector>
+
+#include "MediaSource.h" // for VECSOURCES
 #include "utils/Job.h"
 #include "IStorageProvider.h"
 #include "threads/CriticalSection.h"
+#include "PlatformDefs.h"
 
 #define TRAY_OPEN     16
 #define TRAY_CLOSED_NO_MEDIA  64
@@ -89,11 +92,11 @@ public:
 
   std::vector<std::string> GetDiskUsage();
 
-  virtual void OnStorageAdded(const std::string &label, const std::string &path);
-  virtual void OnStorageSafelyRemoved(const std::string &label);
-  virtual void OnStorageUnsafelyRemoved(const std::string &label);
+  void OnStorageAdded(const std::string &label, const std::string &path) override;
+  void OnStorageSafelyRemoved(const std::string &label) override;
+  void OnStorageUnsafelyRemoved(const std::string &label) override;
 
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job) { }
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override { }
 protected:
   std::vector<CNetworkLocation> m_locations;
 
@@ -106,6 +109,22 @@ protected:
 
 private:
   IStorageProvider *m_platformStorage;
+  
+  struct DiscInfo
+  {
+    std::string name;
+    std::string serial;
+    std::string type;
+
+    bool empty()
+    {
+      return (name.empty() && serial.empty());
+    }
+  };
+
+  DiscInfo GetDiscInfo(const std::string& mediaPath);
+  void RemoveDiscInfo(const std::string& devicePath);
+  std::map<std::string, DiscInfo> m_mapDiscInfo;
 };
 
 extern class CMediaManager g_mediaManager;

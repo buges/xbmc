@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ class CAELimiter
 
     void SetAmplification(float amplify)
     {
-      m_amplify = std::max(std::min(amplify, 1000.0f), 1.0f);
+      m_amplify = std::max(std::min(amplify, 1000.0f), 0.0f);
     }
 
     float GetAmplification()

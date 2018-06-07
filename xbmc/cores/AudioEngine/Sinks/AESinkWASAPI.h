@@ -1,7 +1,7 @@
 #pragma once
 /*
 *      Copyright (C) 2010-2013 Team XBMC
-*      http://xbmc.org
+*      http://kodi.tv
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -23,43 +23,42 @@
 #include <mmdeviceapi.h>
 #include <Audioclient.h>
 #include "cores/AudioEngine/Interfaces/AESink.h"
+#include "cores/AudioEngine/Sinks/windows/AESinkFactoryWin.h"
 #include "cores/AudioEngine/Utils/AEDeviceInfo.h"
 
+#include <wrl/client.h>
 
 class CAESinkWASAPI : public IAESink
 {
 public:
-    virtual const char *GetName() { return "WASAPI"; }
-
     CAESinkWASAPI();
     virtual ~CAESinkWASAPI();
 
-    virtual bool Initialize  (AEAudioFormat &format, std::string &device);
-    virtual void Deinitialize();
+    static void Register();
+    static IAESink* Create(std::string &device, AEAudioFormat &desiredFormat);
+    static void EnumerateDevicesEx(AEDeviceInfoList &deviceInfoList, bool force = false);
 
-    virtual void         GetDelay(AEDelayStatus& status);
-    virtual double       GetCacheTotal               ();
-    virtual unsigned int AddPackets                  (uint8_t **data, unsigned int frames, unsigned int offset);
-    virtual void         Drain                       ();
-    static  void         EnumerateDevicesEx          (AEDeviceInfoList &deviceInfoList, bool force = false);
+    // IAESink overrides
+    const char *GetName() override { return "WASAPI"; }
+    bool Initialize(AEAudioFormat &format, std::string &device) override;
+    void Deinitialize() override;
+    void GetDelay(AEDelayStatus& status) override;
+    double GetCacheTotal() override;
+    unsigned int AddPackets(uint8_t **data, unsigned int frames, unsigned int offset) override;
+    void Drain() override;
+
 private:
-    bool         InitializeExclusive(AEAudioFormat &format);
-    void         AEChannelsFromSpeakerMask(DWORD speakers);
-    static DWORD        SpeakerMaskFromAEChannels(const CAEChannelInfo &channels);
-    static void         BuildWaveFormatExtensible(AEAudioFormat &format, WAVEFORMATEXTENSIBLE &wfxex);
-    static void         BuildWaveFormatExtensibleIEC61397(AEAudioFormat &format, WAVEFORMATEXTENSIBLE_IEC61937 &wfxex);
+    bool InitializeExclusive(AEAudioFormat &format);
+    static void BuildWaveFormatExtensibleIEC61397(AEAudioFormat &format, WAVEFORMATEXTENSIBLE_IEC61937 &wfxex);
     bool IsUSBDevice();
 
-    static const char  *WASAPIErrToStr(HRESULT err);
-
-    HANDLE              m_needDataEvent;
-    IMMDevice          *m_pDevice;
-    IAudioClient       *m_pAudioClient;
-    IAudioRenderClient *m_pRenderClient;
-    IAudioClock        *m_pAudioClock;
+    HANDLE m_needDataEvent;
+    IAEWASAPIDevice* m_pDevice;
+    Microsoft::WRL::ComPtr<IAudioClient> m_pAudioClient;
+    Microsoft::WRL::ComPtr<IAudioRenderClient> m_pRenderClient;
+    Microsoft::WRL::ComPtr<IAudioClock> m_pAudioClock;
 
     AEAudioFormat       m_format;
-    enum AEDataFormat   m_encodedFormat;
     unsigned int        m_encodedChannels;
     unsigned int        m_encodedSampleRate;
     CAEChannelInfo      m_channelLayout;

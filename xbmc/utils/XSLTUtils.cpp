@@ -23,10 +23,7 @@
 #include <libxslt/xslt.h>
 #include <libxslt/transform.h>
 
-#ifdef TARGET_WINDOWS
-#pragma comment(lib, "libxslt.lib")
-#pragma comment(lib, "libxml2.lib")
-#else
+#ifndef TARGET_WINDOWS
 #include <iostream>
 #endif
 
@@ -42,7 +39,7 @@ void err(void *ctx, const char *msg, ...) {
 }
 
 XSLTUtils::XSLTUtils() :
-m_xmlInput(NULL), m_xmlStylesheet(NULL), m_xsltStylesheet(NULL)
+m_xmlInput(nullptr), m_xmlOutput(nullptr), m_xmlStylesheet(nullptr), m_xsltStylesheet(nullptr)
 {
   // initialize libxslt
   xmlSubstituteEntitiesDefault(1);

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,11 +23,8 @@
 #include "TextureCache.h"
 
 using namespace XFILE;
-using namespace std;
 
-CImageFile::CImageFile(void)
-{
-}
+CImageFile::CImageFile(void) = default;
 
 CImageFile::~CImageFile(void)
 {
@@ -38,10 +35,10 @@ bool CImageFile::Open(const CURL& url)
 {
   std::string file = url.Get();
   bool needsRecaching = false;
-  std::string cachedFile = CTextureCache::Get().CheckCachedImage(file, false, needsRecaching);
+  std::string cachedFile = CTextureCache::GetInstance().CheckCachedImage(file, needsRecaching);
   if (cachedFile.empty())
   { // not in the cache, so cache it
-    cachedFile = CTextureCache::Get().CacheImage(file);
+    cachedFile = CTextureCache::GetInstance().CacheImage(file);
   }
   if (!cachedFile.empty())
   { // in the cache, return what we have
@@ -54,7 +51,7 @@ bool CImageFile::Open(const CURL& url)
 bool CImageFile::Exists(const CURL& url)
 {
   bool needsRecaching = false;
-  std::string cachedFile = CTextureCache::Get().CheckCachedImage(url.Get(), false, needsRecaching);
+  std::string cachedFile = CTextureCache::GetInstance().CheckCachedImage(url.Get(), needsRecaching);
   if (!cachedFile.empty())
     return CFile::Exists(cachedFile, false);
 
@@ -68,7 +65,7 @@ bool CImageFile::Exists(const CURL& url)
 int CImageFile::Stat(const CURL& url, struct __stat64* buffer)
 {
   bool needsRecaching = false;
-  std::string cachedFile = CTextureCache::Get().CheckCachedImage(url.Get(), false, needsRecaching);
+  std::string cachedFile = CTextureCache::GetInstance().CheckCachedImage(url.Get(), needsRecaching);
   if (!cachedFile.empty())
     return CFile::Stat(cachedFile, buffer);
 

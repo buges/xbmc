@@ -2,7 +2,7 @@
  *      Copyright (c) 2002 Frodo
  *      Portions Copyright (c) by the authors of ffmpeg and xvid
  *      Copyright (C) 2002-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,25 +22,22 @@
 
 #include "threads/SystemClock.h"
 #include "Thread.h"
-#include "threads/ThreadLocal.h"
+#include "IRunnable.h"
 #include "threads/SingleLock.h"
 #include "commons/Exception.h"
 #include <stdlib.h>
+#include "utils/log.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
-static XbmcThreads::ThreadLocal<CThread> currentThread;
-
-XbmcCommons::ILogger* CThread::logger = NULL;
+static thread_local CThread* currentThread;
 
 #include "threads/platform/ThreadImpl.cpp"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
-
-#define LOG if(logger) logger->Log
 
 CThread::CThread(const char* ThreadName)
 : m_StopEvent(true,true), m_TermEvent(true), m_StartEvent(true)
@@ -85,10 +82,10 @@ void CThread::Create(bool bAutoDelete, unsigned stacksize)
 {
   if (m_ThreadId != 0)
   {
-    LOG(LOGERROR, "%s - fatal error creating thread- old thread id not null", __FUNCTION__);
+    CLog::Log(LOGERROR, "%s - fatal error creating thread %s - old thread id not null", __FUNCTION__, m_ThreadName.c_str());
     exit(1);
   }
-  m_iLastTime = XbmcThreads::SystemClockMillis() * 10000;
+  m_iLastTime = XbmcThreads::SystemClockMillis() * 10000ULL;
   m_iLastUsage = 0;
   m_fLastUsage = 0.0f;
   m_bAutoDelete = bAutoDelete;
@@ -107,13 +104,13 @@ bool CThread::IsRunning() const
 
 THREADFUNC CThread::staticThread(void* data)
 {
-  CThread* pThread = (CThread*)(data);
+  CThread* pThread = static_cast<CThread*>(data);
   std::string name;
   ThreadIdentifier id;
   bool autodelete;
 
   if (!pThread) {
-    LOG(LOGERROR,"%s, sanity failed. thread is NULL.",__FUNCTION__);
+    CLog::Log(LOGERROR,"%s, sanity failed. thread is NULL.",__FUNCTION__);
     return 1;
   }
 
@@ -123,9 +120,9 @@ THREADFUNC CThread::staticThread(void* data)
 
   pThread->SetThreadInfo();
 
-  LOG(LOGNOTICE,"Thread %s start, auto delete: %s", name.c_str(), (autodelete ? "true" : "false"));
+  CLog::Log(LOGDEBUG,"Thread %s start, auto delete: %s", name.c_str(), (autodelete ? "true" : "false"));
 
-  currentThread.set(pThread);
+  currentThread = pThread;
   pThread->m_StartEvent.Set();
 
   pThread->Action();
@@ -141,12 +138,12 @@ THREADFUNC CThread::staticThread(void* data)
 
   if (autodelete)
   {
-    LOG(LOGDEBUG,"Thread %s %" PRIu64" terminating (autodelete)", name.c_str(), (uint64_t)id);
+    CLog::Log(LOGDEBUG,"Thread %s %" PRIu64" terminating (autodelete)", name.c_str(), (uint64_t)id);
     delete pThread;
     pThread = NULL;
   }
   else
-    LOG(LOGDEBUG,"Thread %s %" PRIu64" terminating", name.c_str(), (uint64_t)id);
+    CLog::Log(LOGDEBUG,"Thread %s %" PRIu64" terminating", name.c_str(), (uint64_t)id);
 
   return 0;
 }
@@ -161,7 +158,7 @@ void CThread::StopThread(bool bWait /*= true*/)
   m_bStop = true;
   m_StopEvent.Set();
   CSingleLock lock(m_CriticalSection);
-  if (m_ThreadId && bWait)
+  if (m_ThreadId && bWait && !IsCurrentThread(m_ThreadId))
   {
     lock.Leave();
     WaitForThreadExit(0xFFFFFFFF);
@@ -186,7 +183,7 @@ bool CThread::IsCurrentThread() const
 
 CThread* CThread::GetCurrentThread()
 {
-  return currentThread.get();
+  return currentThread;
 }
 
 void CThread::Sleep(unsigned int milliseconds)
@@ -209,12 +206,6 @@ void CThread::Action()
     if (IsAutoDelete())
       return;
   }
-  catch (...)
-  {
-    LOG(LOGERROR, "%s - thread %s, Unhandled exception caught in thread startup, aborting. auto delete: %d", __FUNCTION__, m_ThreadName.c_str(), IsAutoDelete());
-    if (IsAutoDelete())
-      return;
-  }
 
   try
   {
@@ -224,10 +215,6 @@ void CThread::Action()
   {
     e.LogThrowMessage("Process");
   }
-  catch (...)
-  {
-    LOG(LOGERROR, "%s - thread %s, Unhandled exception caught in thread process, aborting. auto delete: %d", __FUNCTION__, m_ThreadName.c_str(), IsAutoDelete());
-  }
 
   try
   {
@@ -236,10 +223,6 @@ void CThread::Action()
   catch (const XbmcCommons::UncheckedException &e)
   {
     e.LogThrowMessage("OnExit");
-  }
-  catch (...)
-  {
-    LOG(LOGERROR, "%s - thread %s, Unhandled exception caught in thread OnExit, aborting. auto delete: %d", __FUNCTION__, m_ThreadName.c_str(), IsAutoDelete());
   }
 }
 

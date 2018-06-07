@@ -1,6 +1,7 @@
+#pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +20,6 @@
  */
 
 #include <string>
-#include <boost/operators.hpp>
 
 namespace ADDON
 {
@@ -35,19 +35,24 @@ namespace ADDON
 
     See here for more info: http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Version
     */
-  class AddonVersion : public boost::totally_ordered<AddonVersion> {
+  class AddonVersion
+  {
   public:
     AddonVersion(const AddonVersion& other) { *this = other; }
     explicit AddonVersion(const std::string& version);
-    virtual ~AddonVersion() {};
+    virtual ~AddonVersion() = default;
 
     int Epoch() const { return mEpoch; }
     const std::string &Upstream() const { return mUpstream; }
     const std::string &Revision() const { return mRevision; }
 
     AddonVersion& operator=(const AddonVersion& other);
-    bool operator<(const AddonVersion& other) const;
+    bool operator< (const AddonVersion& other) const;
+    bool operator> (const AddonVersion& other) const;
+    bool operator<=(const AddonVersion& other) const;
+    bool operator>=(const AddonVersion& other) const;
     bool operator==(const AddonVersion& other) const;
+    bool operator!=(const AddonVersion& other) const;
     std::string asString() const;
     bool empty() const;
 

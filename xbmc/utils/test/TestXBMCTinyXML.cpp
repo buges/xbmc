@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ TEST(TestXBMCTinyXML, ParseFromString)
                   "http://api.themoviedb.org/3/movie/12244"
                   "?api_key=57983e31fb435df4df77afb854740ea9"
                   "&language=en&#x3f;&#x003F;&#0063;</url></details>");
-  doc.Parse(data.c_str());
+  doc.Parse(data);
   TiXmlNode *root = doc.RootElement();
   if (root && root->ValueStr() == "details")
   {

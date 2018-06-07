@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  */
 
 #include "ZeroconfMDNS.h"
+#include <arpa/inet.h>
 
 #include <string>
 #include <sstream>
@@ -27,14 +28,12 @@
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/LocalizeStrings.h"
 #if defined(TARGET_WINDOWS)
-#include "win32/WIN32Util.h"
+#include "platform/win32/WIN32Util.h"
 #endif //TARGET_WINDOWS
 
 #if defined(HAS_MDNS_EMBEDDED)
 #include <mDnsEmbedded.h>
 #endif //HAS_MDNS_EMBEDDED
-
-#pragma comment(lib, "dnssd.lib")
 
 extern HWND g_hWnd;
 
@@ -51,7 +50,7 @@ void CZeroconfMDNS::Process()
 }
 
 
-CZeroconfMDNS::CZeroconfMDNS()  : CThread("ZerocconfEmbedded")
+CZeroconfMDNS::CZeroconfMDNS()  : CThread("ZeroconfEmbedded")
 {
   m_service = NULL;
 #if defined(HAS_MDNS_EMBEDDED)
@@ -108,9 +107,13 @@ bool CZeroconfMDNS::doPublishService(const std::string& fcr_identifier,
       CLog::Log(LOGERROR, "ZeroconfMDNS: DNSServiceCreateConnection failed with error = %ld", (int) err);
       return false;
     }
+#ifdef TARGET_WINDOWS_STORE
+    CLog::Log(LOGERROR, "ZeroconfMDNS: WSAAsyncSelect not yet supported for TARGET_WINDOWS_STORE");
+#else
     err = WSAAsyncSelect( (SOCKET) DNSServiceRefSockFD( m_service ), g_hWnd, BONJOUR_EVENT, FD_READ | FD_CLOSE );
     if (err != kDNSServiceErr_NoError)
       CLog::Log(LOGERROR, "ZeroconfMDNS: WSAAsyncSelect failed with error = %ld", (int) err);
+#endif
   }
 #endif //!HAS_MDNS_EMBEDDED
 
@@ -207,7 +210,9 @@ void CZeroconfMDNS::doStop()
   }
   {
     CSingleLock lock(m_data_guard);
-#if defined(TARGET_WINDOWS)
+#if defined(TARGET_WINDOWS_STORE)
+    CLog::Log(LOGERROR, "ZeroconfMDNS: WSAAsyncSelect not yet supported for TARGET_WINDOWS_STORE");
+#else
     WSAAsyncSelect( (SOCKET) DNSServiceRefSockFD( m_service ), g_hWnd, BONJOUR_EVENT, 0 );
 #endif //TARGET_WINDOWS
 

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <initializer_list>
+#include <memory>
 #include <vector>
 
 #include "threads/Condition.h"
@@ -41,14 +43,14 @@ namespace XbmcThreads
  *
  * This class manages 'spurious returns' from the condition variable.
  */
-class CEvent : public XbmcThreads::NonCopyable
+class CEvent
 {
   bool manualReset;
   volatile bool signaled;
   unsigned int numWaits;
 
   CCriticalSection groupListMutex; // lock for the groups list
-  std::vector<XbmcThreads::CEventGroup*> * groups;
+  std::unique_ptr<std::vector<XbmcThreads::CEventGroup*>> groups;
 
   /**
    * To satisfy the TightConditionVariable requirements and allow the 
@@ -67,9 +69,12 @@ class CEvent : public XbmcThreads::NonCopyable
   // helper for the two wait methods
   inline bool prepReturn() { bool ret = signaled; if (!manualReset && numWaits == 0) signaled = false; return ret; }
 
+  CEvent(const CEvent&) = delete;
+  CEvent& operator=(const CEvent&) = delete;
+
 public:
   inline CEvent(bool manual = false, bool signaled_ = false) : 
-    manualReset(manual), signaled(signaled_), numWaits(0), groups(NULL), condVar(actualCv,signaled) {}
+    manualReset(manual), signaled(signaled_), numWaits(0), condVar(actualCv,signaled) {}
 
   inline void Reset() { CSingleLock lock(mutex); signaled = false; }
   void Set();
@@ -108,38 +113,30 @@ namespace XbmcThreads
    * It is equivalent to WaitOnMultipleObject that returns when "any" Event
    * in the group signaled.
    */
-  class CEventGroup : public NonCopyable
+  class CEventGroup
   {
     std::vector<CEvent*> events;
-    CEvent* signaled;
+    CEvent* signaled{};
     XbmcThreads::ConditionVariable actualCv;
-    XbmcThreads::TightConditionVariable<CEvent*&> condVar;
+    XbmcThreads::TightConditionVariable<CEvent*&> condVar{actualCv, signaled};
     CCriticalSection mutex;
 
-    unsigned int numWaits;
+    unsigned int numWaits{0};
 
     // This is ONLY called from CEvent::Set.
     inline void Set(CEvent* child) { CSingleLock l(mutex); signaled = child; condVar.notifyAll(); }
 
     friend class ::CEvent;
 
+    CEventGroup(const CEventGroup&) = delete;
+    CEventGroup& operator=(const CEventGroup&) = delete;
+
   public:
-
     /**
-     * Create a CEventGroup from a number of CEvents. num is the number
-     *  of Events that follow. E.g.:
-     *
-     *  CEventGroup g(3, event1, event2, event3);
+     * Create a CEventGroup from a number of CEvents.
      */
-    CEventGroup(int num, CEvent* v1, ...);
+    CEventGroup(std::initializer_list<CEvent*> events);
 
-    /**
-     * Create a CEventGroup from a number of CEvents. The parameters
-     *  should form a NULL terminated list of CEvent*'s
-     *
-     *  CEventGroup g(event1, event2, event3, NULL);
-     */
-    CEventGroup(CEvent* v1, ...);
     ~CEventGroup();
 
     /**
@@ -151,7 +148,7 @@ namespace XbmcThreads
 
     /**
      * This will block until any one of the CEvents in the group are
-     * signaled or the timeout is reachec. If an event is signaled then
+     * signaled or the timeout is reached. If an event is signaled then
      * it will return a pointer to that CEvent, otherwise it will return
      * NULL.
      */

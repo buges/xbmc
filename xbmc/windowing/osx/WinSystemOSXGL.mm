@@ -18,16 +18,18 @@
  *
  */
 
-#if defined(TARGET_DARWIN_OSX)
-
-//hack around problem with xbmc's typedef int BOOL
-// and obj-c's typedef unsigned char BOOL
-#define BOOL XBMC_BOOL
 #include "guilib/Texture.h"
 #include "WinSystemOSXGL.h"
 #include "rendering/gl/RenderSystemGL.h"
-#undef BOOL
 
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+std::unique_ptr<CWinSystemBase> CWinSystemBase::CreateWinSystem()
+{
+  std::unique_ptr<CWinSystemBase> winSystem(new CWinSystemOSXGL());
+  return winSystem;
+}
 
 CWinSystemOSXGL::CWinSystemOSXGL()
 {
@@ -37,46 +39,56 @@ CWinSystemOSXGL::~CWinSystemOSXGL()
 {
 }
 
-bool CWinSystemOSXGL::PresentRenderImpl(const CDirtyRegionList &dirty)
+void CWinSystemOSXGL::PresentRenderImpl(bool rendered)
 {
-  return FlushBuffer();
+  if (rendered)
+    FlushBuffer();
+
+  // FlushBuffer does not block if window is obscured
+  // in this case we need to throttle the render loop
+  if (IsObscured())
+    usleep(10000);
+
+  if (m_delayDispReset && m_dispResetTimer.IsTimePast())
+  {
+    m_delayDispReset = false;
+    AnnounceOnResetDevice();
+  }
 }
 
 void CWinSystemOSXGL::SetVSyncImpl(bool enable)
 {
   EnableVSync(false);
-  
-  if (enable && m_iVSyncMode == 0)
+
+  if (enable)
   {
     EnableVSync(true);
-    m_iVSyncMode = 10;
   }
 }
 
 bool CWinSystemOSXGL::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
 {
   CWinSystemOSX::ResizeWindow(newWidth, newHeight, newLeft, newTop);
-  CRenderSystemGL::ResetRenderSystem(newWidth, newHeight, false, 0);
-  
+  CRenderSystemGL::ResetRenderSystem(newWidth, newHeight);
+
   if (m_bVSync)
   {
     EnableVSync(m_bVSync);
-  } 
-  
+  }
+
   return true;
 }
 
 bool CWinSystemOSXGL::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
   CWinSystemOSX::SetFullScreen(fullScreen, res, blankOtherDisplays);
-  CRenderSystemGL::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate);
-  
+  CRenderSystemGL::ResetRenderSystem(res.iWidth, res.iHeight);
+
   if (m_bVSync)
   {
     EnableVSync(m_bVSync);
-  } 
-  
+  }
+
   return true;
 }
 
-#endif

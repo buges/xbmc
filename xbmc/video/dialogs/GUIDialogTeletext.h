@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,14 +28,14 @@ class CGUIDialogTeletext : public CGUIDialog
 {
 public:
   CGUIDialogTeletext(void);
-  virtual ~CGUIDialogTeletext(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction& action);
-  virtual bool OnBack(int actionID);
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual void OnInitWindow();
-  virtual void OnDeinitWindow(int nextWindowID);
+  ~CGUIDialogTeletext(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction& action) override;
+  bool OnBack(int actionID) override;
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  void OnInitWindow() override;
+  void OnDeinitWindow(int nextWindowID) override;
 
 protected:
   bool                m_bClose;           /* Close sendet, needed for fade out */

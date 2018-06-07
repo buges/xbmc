@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,13 +18,13 @@
  *
  */
 
-#include "system.h"
 #include "CodecFactory.h"
 #include "URL.h"
-#include "DVDPlayerCodec.h"
+#include "VideoPlayerCodec.h"
 #include "utils/StringUtils.h"
-#include "addons/AddonManager.h"
 #include "addons/AudioDecoder.h"
+#include "addons/binary-addons/BinaryAddonBase.h"
+#include "ServiceBroker.h"
 
 using namespace ADDON;
 
@@ -32,41 +32,46 @@ ICodec* CodecFactory::CreateCodec(const std::string &strFileType)
 {
   std::string fileType = strFileType;
   StringUtils::ToLower(fileType);
-  VECADDONS codecs;
-  CAddonMgr::Get().GetAddons(ADDON_AUDIODECODER, codecs);
-  for (size_t i=0;i<codecs.size();++i)
+
+  BinaryAddonBaseList addonInfos;
+  CServiceBroker::GetBinaryAddonManager().GetAddonInfos(addonInfos, true, ADDON_AUDIODECODER);
+  for (const auto& addonInfo : addonInfos)
   {
-    std::shared_ptr<CAudioDecoder> dec(std::static_pointer_cast<CAudioDecoder>(codecs[i]));
-    std::vector<std::string> exts = StringUtils::Split(dec->GetExtensions(), "|");
-    if (std::find(exts.begin(), exts.end(), "."+fileType) != exts.end())
+    if (CAudioDecoder::GetExtensions(addonInfo).find("."+fileType) != std::string::npos)
     {
-      CAudioDecoder* result = new CAudioDecoder(*dec);
-      static_cast<AudioDecoderDll&>(*result).Create();
+      CAudioDecoder* result = new CAudioDecoder(addonInfo);
+      if (!result->CreateDecoder())
+      {
+        delete result;
+        return nullptr;
+      }
       return result;
     }
   }
 
-  DVDPlayerCodec *dvdcodec = new DVDPlayerCodec();
+  VideoPlayerCodec *dvdcodec = new VideoPlayerCodec();
   return dvdcodec;
 }
 
-ICodec* CodecFactory::CreateCodecDemux(const std::string& strFile, const std::string& strContent, unsigned int filecache)
+ICodec* CodecFactory::CreateCodecDemux(const CFileItem& file, unsigned int filecache)
 {
-  CURL urlFile(strFile);
-  std::string content = strContent;
+  CURL urlFile(file.GetDynPath());
+  std::string content = file.GetMimeType();
   StringUtils::ToLower(content);
   if (!content.empty())
   {
-    VECADDONS codecs;
-    CAddonMgr::Get().GetAddons(ADDON_AUDIODECODER, codecs);
-    for (size_t i=0;i<codecs.size();++i)
+    BinaryAddonBaseList addonInfos;
+    CServiceBroker::GetBinaryAddonManager().GetAddonInfos(addonInfos, true, ADDON_AUDIODECODER);
+    for (const auto& addonInfo : addonInfos)
     {
-      std::shared_ptr<CAudioDecoder> dec(std::static_pointer_cast<CAudioDecoder>(codecs[i]));
-      std::vector<std::string> mime = StringUtils::Split(dec->GetMimetypes(), "|");
-      if (std::find(mime.begin(), mime.end(), content) != mime.end())
+      if (CAudioDecoder::GetMimetypes(addonInfo).find(content) != std::string::npos)
       {
-        CAudioDecoder* result = new CAudioDecoder(*dec);
-        static_cast<AudioDecoderDll&>(*result).Create();
+        CAudioDecoder* result = new CAudioDecoder(addonInfo);
+        if (!result->CreateDecoder())
+        {
+          delete result;
+          return nullptr;
+        }
         return result;
       }
     }
@@ -88,13 +93,13 @@ ICodec* CodecFactory::CreateCodecDemux(const std::string& strFile, const std::st
       content == "application/x-flac"
       )
   {
-    DVDPlayerCodec *dvdcodec = new DVDPlayerCodec();
+    VideoPlayerCodec *dvdcodec = new VideoPlayerCodec();
     dvdcodec->SetContentType(content);
     return dvdcodec;
   }
   else if (urlFile.IsProtocol("shout"))
   {
-    DVDPlayerCodec *dvdcodec = new DVDPlayerCodec();
+    VideoPlayerCodec *dvdcodec = new VideoPlayerCodec();
     dvdcodec->SetContentType("audio/mp3");
     return dvdcodec; // if we got this far with internet radio - content-type was wrong. gamble on mp3.
   }
@@ -102,14 +107,14 @@ ICodec* CodecFactory::CreateCodecDemux(const std::string& strFile, const std::st
       content == "audio/wav" ||
       content == "audio/x-wav")
   {
-    DVDPlayerCodec *dvdcodec = new DVDPlayerCodec();
+    VideoPlayerCodec *dvdcodec = new VideoPlayerCodec();
     dvdcodec->SetContentType("audio/x-spdif-compressed");
-    if (dvdcodec->Init(strFile, filecache))
+    if (dvdcodec->Init(file, filecache))
     {
       return dvdcodec;
     }
 
-    dvdcodec = new DVDPlayerCodec();
+    dvdcodec = new VideoPlayerCodec();
     dvdcodec->SetContentType(content);
     return dvdcodec;
   }

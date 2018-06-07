@@ -21,6 +21,10 @@
 %module(directors="1") xbmcgui
 
 %{
+#if defined(TARGET_WINDOWS)
+#  include <windows.h>
+#endif
+
 #include "interfaces/legacy/Dialog.h"
 #include "interfaces/legacy/ModuleXbmcgui.h"
 #include "interfaces/legacy/Control.h"
@@ -28,12 +32,13 @@
 #include "interfaces/legacy/WindowDialog.h"
 #include "interfaces/legacy/Dialog.h"
 #include "interfaces/legacy/WindowXML.h"
+#include "input/ActionIDs.h"
 #include "input/Key.h"
 
 using namespace XBMCAddon;
 using namespace xbmcgui;
 
-#if defined(__GNUG__) && (__GNUC__>4) || (__GNUC__==4 && __GNUC_MINOR__>=2)
+#if defined(__GNUG__)
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 
@@ -116,4 +121,5 @@ using namespace xbmcgui;
 
 %include "interfaces/legacy/WindowXML.h"
 
+%include "input/ActionIDs.h"
 %include "input/Key.h"

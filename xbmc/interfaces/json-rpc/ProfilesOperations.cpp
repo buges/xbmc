@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,19 +19,27 @@
  */
 
 #include "ProfilesOperations.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
+#include "guilib/LocalizeStrings.h"
+#include "GUIPassword.h"
 #include "profiles/ProfilesManager.h"
-#include "utils/md5.h"
+#include "utils/Digest.h"
+#include "utils/Variant.h"
+#include "ServiceBroker.h"
 
 using namespace JSONRPC;
+using namespace KODI::MESSAGING;
+using KODI::UTILITY::CDigest;
 
 JSONRPC_STATUS CProfilesOperations::GetProfiles(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
+  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+
   CFileItemList listItems;
 
-  for (unsigned int i = 0; i < CProfilesManager::Get().GetNumberOfProfiles(); ++i)
+  for (unsigned int i = 0; i < profileManager.GetNumberOfProfiles(); ++i)
   {
-    const CProfile *profile = CProfilesManager::Get().GetProfile(i);
+    const CProfile *profile = profileManager.GetProfile(i);
     CFileItemPtr item(new CFileItem(profile->getName()));
     item->SetArt("thumb", profile->getThumb());
     listItems.Add(item);
@@ -47,11 +55,11 @@ JSONRPC_STATUS CProfilesOperations::GetProfiles(const std::string &method, ITran
       for (CVariant::iterator_array profileiter = result["profiles"].begin_array(); profileiter != result["profiles"].end_array(); ++profileiter)
       {
         std::string profilename = (*profileiter)["label"].asString();
-        int index = CProfilesManager::Get().GetProfileIndex(profilename);
-        const CProfile *profile = CProfilesManager::Get().GetProfile(index);
+        int index = profileManager.GetProfileIndex(profilename);
+        const CProfile *profile = profileManager.GetProfile(index);
         LockType locktype = LOCK_MODE_UNKNOWN;
         if (index == 0)
-          locktype = CProfilesManager::Get().GetMasterProfile().getLockMode();
+          locktype = profileManager.GetMasterProfile().getLockMode();
         else
           locktype = profile->getLockMode();
         (*profileiter)["lockmode"] = locktype;
@@ -64,7 +72,9 @@ JSONRPC_STATUS CProfilesOperations::GetProfiles(const std::string &method, ITran
 
 JSONRPC_STATUS CProfilesOperations::GetCurrentProfile(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  const CProfile& currentProfile = CProfilesManager::Get().GetCurrentProfile();
+  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+
+  const CProfile& currentProfile = profileManager.GetCurrentProfile();
   CVariant profileVariant = CVariant(CVariant::VariantTypeObject);
   profileVariant["label"] = currentProfile.getName();
   for (CVariant::const_iterator_array propertyiter = parameterObject["properties"].begin_array(); propertyiter != parameterObject["properties"].end_array(); ++propertyiter)
@@ -85,14 +95,16 @@ JSONRPC_STATUS CProfilesOperations::GetCurrentProfile(const std::string &method,
 
 JSONRPC_STATUS CProfilesOperations::LoadProfile(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
+  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+
   std::string profilename = parameterObject["profile"].asString();
-  int index = CProfilesManager::Get().GetProfileIndex(profilename);
+  int index = profileManager.GetProfileIndex(profilename);
   
   if (index < 0)
     return InvalidParams;
 
   // get the profile
-  const CProfile *profile = CProfilesManager::Get().GetProfile(index);
+  const CProfile *profile = profileManager.GetProfile(index);
   if (profile == NULL)
     return InvalidParams;
 
@@ -116,18 +128,18 @@ JSONRPC_STATUS CProfilesOperations::LoadProfile(const std::string &method, ITran
     std::string md5pword2;
     std::string encryption = passwordObject["encryption"].asString();
     if (encryption == "none")
-      md5pword2 = XBMC::XBMC_MD5::GetMD5(password);
+      md5pword2 = CDigest::Calculate(CDigest::Type::MD5, password);
     else if (encryption == "md5")
       md5pword2 = password;
 
-    // Verify profided password
+    // Verify provided password
     if (StringUtils::EqualsNoCase(strToVerify, md5pword2))
       bLoadProfile = true;
   }
 
   if (bLoadProfile)
   {
-    CApplicationMessenger::Get().LoadProfile(index);
+    CApplicationMessenger::GetInstance().PostMsg(TMSG_LOADPROFILE, index);
     return ACK;
   }
   return InvalidParams;

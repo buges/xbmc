@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ namespace JSONRPC
   class IClient
   {
   public:
-    virtual ~IClient() { };
+    virtual ~IClient() = default;
     virtual int GetPermissionFlags() = 0;
     virtual int GetAnnouncementFlags() = 0;
     virtual bool SetAnnouncementFlags(int flags) = 0;

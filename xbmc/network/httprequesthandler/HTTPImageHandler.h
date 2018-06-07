@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,13 +26,14 @@
 class CHTTPImageHandler : public CHTTPFileHandler
 {
 public:
-  CHTTPImageHandler() { }
-  virtual ~CHTTPImageHandler() { }
+  CHTTPImageHandler() = default;
+  ~CHTTPImageHandler() override = default;
 
-  virtual IHTTPRequestHandler* Create(const HTTPRequest &request) { return new CHTTPImageHandler(request); }
-  virtual bool CanHandleRequest(const HTTPRequest &request);
+  IHTTPRequestHandler* Create(const HTTPRequest &request) const override { return new CHTTPImageHandler(request); }
+  bool CanHandleRequest(const HTTPRequest &request) const override;
 
-  virtual int GetPriority() const { return 5; }
+  int GetPriority() const override { return 5; }
+  int GetMaximumAgeForCaching() const override { return 60 * 60 * 24 * 7; }
 
 protected:
   explicit CHTTPImageHandler(const HTTPRequest &request);

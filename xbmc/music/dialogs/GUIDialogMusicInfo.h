@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2018 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include "music/Artist.h"
 #include "music/Album.h"
 #include "FileItem.h"
+#include "MediaSource.h"
+#include "threads/Event.h"
 
 class CFileItem;
 class CFileItemList;
@@ -34,34 +36,55 @@ class CGUIDialogMusicInfo :
 {
 public:
   CGUIDialogMusicInfo(void);
-  virtual ~CGUIDialogMusicInfo(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
+  ~CGUIDialogMusicInfo(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
+  bool SetItem(CFileItem* item);
   void SetAlbum(const CAlbum& album, const std::string &path);
   void SetArtist(const CArtist& artist, const std::string &path);
-  bool NeedRefresh() const;
-  bool HasUpdatedThumb() const { return m_hasUpdatedThumb; };
+  bool HasUpdatedUserrating() const { return m_hasUpdatedUserrating; };
+  bool HasRefreshed() const { return m_hasRefreshed; };
 
-  virtual bool HasListItems() const { return true; };
-  virtual CFileItemPtr GetCurrentListItem(int offset = 0);
-  const CFileItemList& CurrentDirectory() const { return *m_albumSongs; };
+  bool HasListItems() const override { return true; };
+  CFileItemPtr GetCurrentListItem(int offset = 0) override;
+  std::string GetContent();
   static void AddItemPathToFileBrowserSources(VECSOURCES &sources, const CFileItem &item);
+  void SetDiscography(CMusicDatabase& database) const;
+  void SetSongs(const VECSONGS &songs) const;
+  void SetArtTypeList(CFileItemList& artlist);
+  void SetScrapedInfo(bool bScraped) { m_scraperAddInfo = bScraped;  }
+  CArtist& GetArtist() { return m_artist; };
+  CAlbum& GetAlbum() { return m_album; };
+  bool IsArtistInfo() const { return m_bArtistInfo; };
+  bool IsCancelled() const { return m_cancelled; };
+  bool HasScrapedInfo() const { return m_scraperAddInfo; };
+  void FetchComplete();
+  void RefreshInfo();
+
+  static void ShowForAlbum(int idAlbum);
+  static void ShowForArtist(int idArtist);
+  static void ShowFor(CFileItem* pItem);
 protected:
-  virtual void OnInitWindow();
+  void OnInitWindow() override;
   void Update();
   void SetLabel(int iControl, const std::string& strLabel);
-  void OnGetThumb();
-  void OnGetFanart();
-  void SetSongs(const VECSONGS &songs);
-  void SetDiscography();
-  void OnSearch(const CFileItem* pItem);
+  void OnGetArt();
+  void OnAlbumInfo(int id);
+  void OnArtistInfo(int id);
+  void OnSetUserrating() const;
+  void SetUserrating(int userrating) const;
 
   CAlbum m_album;
   CArtist m_artist;
-  bool m_bViewReview;
-  bool m_bRefresh;
-  bool m_hasUpdatedThumb;
+  int m_startUserrating;
+  bool m_hasUpdatedUserrating;
+  bool m_hasRefreshed;
   bool m_bArtistInfo;
-  CFileItemPtr   m_albumItem;
+  bool m_cancelled;
+  bool m_scraperAddInfo;
   CFileItemList* m_albumSongs;
+  CFileItemPtr m_item;
+  CFileItemList m_artTypeList;
+  CEvent m_event;
+  std::string m_fallbackartpath;
 };

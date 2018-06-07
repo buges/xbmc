@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,9 @@
  *
  */
 
+#include <string>
+#include <vector>
+
 #include "guilib/GUIWindow.h"
 #include "filesystem/VirtualDirectory.h"
 #include "filesystem/DirectoryHistory.h"
@@ -36,22 +39,22 @@ class CGUIWindowFileManager :
 public:
 
   CGUIWindowFileManager(void);
-  virtual ~CGUIWindowFileManager(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
-  virtual bool OnBack(int actionID);
+  ~CGUIWindowFileManager(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
+  bool OnBack(int actionID) override;
   const CFileItem &CurrentDirectory(int indx) const;
 
   static int64_t CalculateFolderSize(const std::string &strDirectory, CGUIDialogProgress *pProgress = NULL);
 
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 protected:
-  virtual void OnInitWindow();
+  void OnInitWindow() override;
   void SetInitialPath(const std::string &path);
   void GoParentFolder(int iList);
   void UpdateControl(int iList, int item);
   bool Update(int iList, const std::string &strDirectory); //???
-  void OnStart(CFileItem *pItem);
+  void OnStart(CFileItem *pItem, const std::string &player);
   bool SelectItem(int iList, int &item);
   void ClearFileItems(int iList);
   void OnClick(int iList, int iItem);

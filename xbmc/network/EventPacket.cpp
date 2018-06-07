@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,10 +17,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-#include "system.h"
-
-#ifdef HAS_EVENT_SERVER
 
 #include "EventPacket.h"
 #include "Socket.h"
@@ -100,5 +96,3 @@ bool CEventPacket::Parse(int datasize, const void *data)
   m_bValid = true;
   return true;
 }
-
-#endif // HAS_EVENT_SERVER

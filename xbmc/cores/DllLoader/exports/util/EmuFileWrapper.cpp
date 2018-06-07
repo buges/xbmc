@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,13 +17,22 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
- 
+
 #include "EmuFileWrapper.h"
 #include "filesystem/File.h"
 #include "threads/SingleLock.h"
 
 CEmuFileWrapper g_emuFileWrapper;
 
+namespace
+{
+
+constexpr bool isValidFilePtr(FILE* f)
+{
+  return (f != nullptr);
+}
+
+}
 CEmuFileWrapper::CEmuFileWrapper()
 {
   // since we always use dlls we might just initialize it directly
@@ -31,12 +40,13 @@ CEmuFileWrapper::CEmuFileWrapper()
   {
     memset(&m_files[i], 0, sizeof(EmuFileObject));
     m_files[i].used = false;
-    m_files[i].file_emu._file = -1;
+    m_files[i].fd = -1;
   }
 }
 
 CEmuFileWrapper::~CEmuFileWrapper()
 {
+  CleanUp();
 }
 
 void CEmuFileWrapper::CleanUp()
@@ -52,18 +62,17 @@ void CEmuFileWrapper::CleanUp()
       if (m_files[i].file_lock)
       {
         delete m_files[i].file_lock;
-        m_files[i].file_lock = NULL;
+        m_files[i].file_lock = nullptr;
       }
-      memset(&m_files[i], 0, sizeof(EmuFileObject));
       m_files[i].used = false;
-      m_files[i].file_emu._file = -1;
+      m_files[i].fd = -1;
     }
   }
 }
 
 EmuFileObject* CEmuFileWrapper::RegisterFileObject(XFILE::CFile* pFile)
 {
-  EmuFileObject* object = NULL;
+  EmuFileObject* object = nullptr;
 
   CSingleLock lock(m_criticalSection);
 
@@ -75,7 +84,7 @@ EmuFileObject* CEmuFileWrapper::RegisterFileObject(XFILE::CFile* pFile)
       object = &m_files[i];
       object->used = true;
       object->file_xbmc = pFile;
-      object->file_emu._file = (i + FILE_WRAPPER_OFFSET);
+      object->fd = (i + FILE_WRAPPER_OFFSET);
       object->file_lock = new CCriticalSection();
       break;
     }
@@ -87,33 +96,30 @@ EmuFileObject* CEmuFileWrapper::RegisterFileObject(XFILE::CFile* pFile)
 void CEmuFileWrapper::UnRegisterFileObjectByDescriptor(int fd)
 {
   int i = fd - FILE_WRAPPER_OFFSET;
-  if (i >= 0 && i < MAX_EMULATED_FILES)
-  {
-    if (m_files[i].used)
-    {
-      CSingleLock lock(m_criticalSection);
+  if (! (i >= 0 && i < MAX_EMULATED_FILES))
+    return;
 
-      // we assume the emulated function alreay deleted the CFile object
-      if (m_files[i].used)
-      {
-        if (m_files[i].file_lock)
-        {
-          delete m_files[i].file_lock;
-          m_files[i].file_lock = NULL;
-        }
-        memset(&m_files[i], 0, sizeof(EmuFileObject));
-        m_files[i].used = false;
-        m_files[i].file_emu._file = -1;
-      }
-    }
+  if (!m_files[i].used)
+    return;
+
+  CSingleLock lock(m_criticalSection);
+
+  // we assume the emulated function already deleted the CFile object
+  if (m_files[i].file_lock)
+  {
+    delete m_files[i].file_lock;
+    m_files[i].file_lock = nullptr;
   }
+  m_files[i].used = false;
+  m_files[i].fd = -1;
 }
 
 void CEmuFileWrapper::UnRegisterFileObjectByStream(FILE* stream)
 {
-  if (stream != NULL)
+  if (isValidFilePtr(stream))
   {
-    return UnRegisterFileObjectByDescriptor(stream->_file);
+    EmuFileObject* o = reinterpret_cast<EmuFileObject*>(stream);
+    return UnRegisterFileObjectByDescriptor(o->fd);
   }
 }
 
@@ -130,12 +136,12 @@ void CEmuFileWrapper::LockFileObjectByDescriptor(int fd)
 }
 
 bool CEmuFileWrapper::TryLockFileObjectByDescriptor(int fd)
-{ 
-  int i = fd - FILE_WRAPPER_OFFSET;  
+{
+  int i = fd - FILE_WRAPPER_OFFSET;
   if (i >= 0 && i < MAX_EMULATED_FILES)
-  { 
+  {
     if (m_files[i].used)
-    {   
+    {
       return m_files[i].file_lock->try_lock();
     }
   }
@@ -143,12 +149,12 @@ bool CEmuFileWrapper::TryLockFileObjectByDescriptor(int fd)
 }
 
 void CEmuFileWrapper::UnlockFileObjectByDescriptor(int fd)
-{ 
-  int i = fd - FILE_WRAPPER_OFFSET;  
+{
+  int i = fd - FILE_WRAPPER_OFFSET;
   if (i >= 0 && i < MAX_EMULATED_FILES)
-  { 
+  {
     if (m_files[i].used)
-    {   
+    {
       m_files[i].file_lock->unlock();
     }
   }
@@ -164,50 +170,52 @@ EmuFileObject* CEmuFileWrapper::GetFileObjectByDescriptor(int fd)
       return &m_files[i];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 EmuFileObject* CEmuFileWrapper::GetFileObjectByStream(FILE* stream)
 {
-  if (stream != NULL)
+  if (isValidFilePtr(stream))
   {
-    return GetFileObjectByDescriptor(stream->_file);
+    EmuFileObject* o = reinterpret_cast<EmuFileObject*>(stream);
+    return GetFileObjectByDescriptor(o->fd);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 XFILE::CFile* CEmuFileWrapper::GetFileXbmcByDescriptor(int fd)
 {
-  EmuFileObject* object = GetFileObjectByDescriptor(fd);
-  if (object != NULL && object->used)
+  auto object = GetFileObjectByDescriptor(fd);
+  if (object != nullptr && object->used)
   {
     return object->file_xbmc;
   }
-  return NULL;
+  return nullptr;
 }
 
 XFILE::CFile* CEmuFileWrapper::GetFileXbmcByStream(FILE* stream)
 {
-  if (stream != NULL)
+  if (isValidFilePtr(stream))
   {
-    EmuFileObject* object = GetFileObjectByDescriptor(stream->_file);
-    if (object != NULL && object->used)
+    EmuFileObject* object = reinterpret_cast<EmuFileObject*>(stream);
+    if (object != nullptr && object->used)
     {
       return object->file_xbmc;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 int CEmuFileWrapper::GetDescriptorByStream(FILE* stream)
 {
-  if (stream != NULL)
+  if (isValidFilePtr(stream))
   {
-    int i = stream->_file - FILE_WRAPPER_OFFSET;
+    EmuFileObject* obj = reinterpret_cast<EmuFileObject*>(stream);
+    int i = obj->fd - FILE_WRAPPER_OFFSET;
     if (i >= 0 && i < MAX_EMULATED_FILES)
     {
-      return stream->_file;
+      return i + FILE_WRAPPER_OFFSET;
     }
   }
   return -1;
@@ -215,29 +223,20 @@ int CEmuFileWrapper::GetDescriptorByStream(FILE* stream)
 
 FILE* CEmuFileWrapper::GetStreamByDescriptor(int fd)
 {
-  EmuFileObject* object = GetFileObjectByDescriptor(fd);
-  if (object != NULL && object->used)
+  auto object = GetFileObjectByDescriptor(fd);
+  if (object != nullptr && object->used)
   {
-    return &object->file_emu;
+    return reinterpret_cast<FILE*>(object);
   }
-  return NULL;
-}
-
-bool CEmuFileWrapper::DescriptorIsEmulatedFile(int fd)
-{
-  int i = fd - FILE_WRAPPER_OFFSET;
-  if (i >= 0 && i < MAX_EMULATED_FILES)
-  {
-    return true;
-  }
-  return false;
+  return nullptr;
 }
 
 bool CEmuFileWrapper::StreamIsEmulatedFile(FILE* stream)
 {
-  if (stream != NULL)
+  if (isValidFilePtr(stream))
   {
-    return DescriptorIsEmulatedFile(stream->_file);
+    EmuFileObject* obj = reinterpret_cast<EmuFileObject*>(stream);
+    return DescriptorIsEmulatedFile(obj->fd);
   }
   return false;
 }

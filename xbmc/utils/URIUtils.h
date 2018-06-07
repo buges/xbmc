@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@ class URIUtils
 public:
   URIUtils(void);
   virtual ~URIUtils(void);
-  static bool IsInPath(const std::string &uri, const std::string &baseURI);
 
   static std::string GetDirectory(const std::string &strFilePath);
 
@@ -51,7 +50,7 @@ public:
   /*!
    \brief Check if filename have any of the listed extensions
    \param strFileName Path or URL to check
-   \param strExtensions List of '.' prefixed lowercase extensions seperated with '|'
+   \param strExtensions List of '.' prefixed lowercase extensions separated with '|'
    \return \e true if strFileName have any one of the extensions.
    \note The check is case insensitive for strFileName, but requires
          strExtensions to be lowercase. Returns false when strFileName or
@@ -91,23 +90,24 @@ public:
   static std::string SubstitutePath(const std::string& strPath, bool reverse = false);
 
   /*! \brief Check whether a URL is a given URL scheme.
-   Comparison is case-insensitve as per RFC1738
+   Comparison is case-insensitive as per RFC1738
    \param url a std::string path.
    \param type a lower-case scheme name, e.g. "smb".
    \return true if the url is of the given scheme, false otherwise.
-   \sa PathStarts, PathEquals
+   \sa PathHasParent, PathEquals
    */
   static bool IsProtocol(const std::string& url, const std::string& type);
 
-  /*! \brief Check whether a path starts with a given start.
+  /*! \brief Check whether a path has a given parent.
    Comparison is case-sensitive.
    Use IsProtocol() to compare the protocol portion only.
    \param path a std::string path.
-   \param start the string the start of the path should be compared against.
-   \return true if the path starts with the given string, false otherwise.
+   \param parent the string the parent of the path should be compared against.
+   \param translate whether to translate any special paths into real paths
+   \return true if the path has the given parent string, false otherwise.
    \sa IsProtocol, PathEquals
    */
-  static bool PathStarts(const std::string& path, const char *start);
+  static bool PathHasParent(std::string path, std::string parent, bool translate = false);
 
   /*! \brief Check whether a path equals another path.
    Comparison is case-sensitive.
@@ -115,9 +115,9 @@ public:
    \param path2 the second path the path should be compared against.
    \param ignoreTrailingSlash ignore any trailing slashes in both paths
    \return true if the paths are equal, false otherwise.
-   \sa IsProtocol, PathStarts
+   \sa IsProtocol, PathHasParent
    */
-  static bool PathEquals(const std::string& path1, const std::string &path2, bool ignoreTrailingSlash = false);
+  static bool PathEquals(std::string path1, std::string path2, bool ignoreTrailingSlash = false, bool ignoreURLOptions = false);
 
   static bool IsAddonsPath(const std::string& strFile);
   static bool IsSourcesPath(const std::string& strFile);
@@ -130,8 +130,6 @@ public:
   static bool IsUDP(const std::string& strFile);
   static bool IsTCP(const std::string& strFile);
   static bool IsHD(const std::string& strFileName);
-  static bool IsHDHomeRun(const std::string& strFile);
-  static bool IsSlingbox(const std::string& strFile);
   static bool IsInArchive(const std::string& strFile);
   static bool IsInRAR(const std::string& strFile);
   static bool IsInternetStream(const std::string& path, bool bStrictCheck = false);
@@ -165,8 +163,10 @@ public:
   static bool IsLibraryFolder(const std::string& strFile);
   static bool IsLibraryContent(const std::string& strFile);
   static bool IsPVRChannel(const std::string& strFile);
+  static bool IsPVRGuideItem(const std::string& strFile);
   static bool IsUsingFastSwitch(const std::string& strFile);
 
+  static std::string AppendSlash(std::string strFolder);
   static void AddSlashAtEnd(std::string& strFolder);
   static bool HasSlashAtEnd(const std::string& strFile, bool checkURL = false);
   static void RemoveSlashAtEnd(std::string& strFolder);
@@ -190,7 +190,13 @@ public:
                                 const std::string& pathInArchive = "",
                                 const std::string& password = "");
 
-  static std::string AddFileToFolder(const std::string &strFolder, const std::string &strFile);
+  static std::string AddFileToFolder(const std::string& strFolder, const std::string& strFile);
+  template <typename... T>
+  static std::string AddFileToFolder(const std::string& strFolder, const std::string& strFile, T... args)
+  {
+    auto newPath = AddFileToFolder(strFolder, strFile);
+    return AddFileToFolder(newPath, args...);
+  }
 
   static bool HasParentInHostname(const CURL& url);
   static bool HasEncodedHostname(const CURL& url);

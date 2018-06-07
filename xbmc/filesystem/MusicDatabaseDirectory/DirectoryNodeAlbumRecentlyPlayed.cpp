@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,10 @@
  */
 
 #include "DirectoryNodeAlbumRecentlyPlayed.h"
-#include "music/MusicDatabase.h"
+
 #include "FileItem.h"
+#include "guilib/LocalizeStrings.h"
+#include "music/MusicDatabase.h"
 #include "utils/StringUtils.h"
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;
@@ -70,8 +72,6 @@ bool CDirectoryNodeAlbumRecentlyPlayed::GetContent(CFileItemList& items) const
     items.Add(pItem);
   }
 
-
   musicdatabase.Close();
-
   return true;
 }

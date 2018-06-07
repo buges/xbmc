@@ -5,7 +5,7 @@
  * Code was taken from http://refactormycode.com/codes/778-an-efficient-http-parser
  *
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 
 HttpParser::HttpParser() :
     _headerStart(0),
-    _bodyStart(0),
     _parsedTo( 0 ),
     _state( 0 ),
     _keyIndex(0),
@@ -40,10 +39,7 @@ HttpParser::HttpParser() :
 
 }
 
-HttpParser::~HttpParser()
-{
-
-}
+HttpParser::~HttpParser() = default;
 
 void
 HttpParser::parseHeader()

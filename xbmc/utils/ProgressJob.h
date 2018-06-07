@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,12 +33,12 @@ class CGUIDialogProgressBarHandle;
 class CProgressJob : public CJob
 {
 public:
-  virtual ~CProgressJob();
+  ~CProgressJob() override;
 
   // implementation of CJob
-  virtual const char *GetType() const { return "ProgressJob"; }
-  virtual bool operator==(const CJob* job) const { return false; }
-  virtual bool ShouldCancel(unsigned int progress, unsigned int total) const;
+  const char *GetType() const override { return "ProgressJob"; }
+  bool operator==(const CJob* job) const override { return false; }
+  bool ShouldCancel(unsigned int progress, unsigned int total) const override;
 
   /*!
    \brief Executes the job showing a modal progress dialog.
@@ -63,7 +63,7 @@ public:
 
 protected:
   CProgressJob();
-  CProgressJob(CGUIDialogProgressBarHandle* progressBar);
+  explicit CProgressJob(CGUIDialogProgressBarHandle* progressBar);
 
   /*!
    \brief Whether the job is being run modally or in the background.

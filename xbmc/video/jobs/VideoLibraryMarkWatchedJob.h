@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,13 +35,13 @@ public:
    \param[in] mark Whether to mark the item as watched or unwatched
   */
   CVideoLibraryMarkWatchedJob(const CFileItemPtr &item, bool mark);
-  virtual ~CVideoLibraryMarkWatchedJob();
+  ~CVideoLibraryMarkWatchedJob() override;
 
-  virtual const char *GetType() const { return "CVideoLibraryMarkWatchedJob"; }
-  virtual bool operator==(const CJob* job) const;
+  const char *GetType() const override { return "CVideoLibraryMarkWatchedJob"; }
+  bool operator==(const CJob* job) const override;
 
 protected:
-  virtual bool Work(CVideoDatabase &db);
+  bool Work(CVideoDatabase &db) override;
 
 private:
   CFileItemPtr m_item;

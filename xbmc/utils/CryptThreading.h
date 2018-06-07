@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,24 +20,25 @@
 
 #pragma once
 
+#include <memory>
+#include <vector>
 #include "utils/GlobalsHandling.h"
 #include "threads/CriticalSection.h"
 
 class CryptThreadingInitializer
 {
-  CCriticalSection** locks;
-  int numlocks;
-  CCriticalSection locksLock;
+  std::vector<std::unique_ptr<CCriticalSection>> m_locks;
+  CCriticalSection m_locksLock;
 
 public:
   CryptThreadingInitializer();
   ~CryptThreadingInitializer();
 
-  CCriticalSection* get_lock(int index);
+  CCriticalSection* GetLock(int index);
 
 private:
-    CryptThreadingInitializer(const CryptThreadingInitializer &rhs);
-    CryptThreadingInitializer& operator=(const CryptThreadingInitializer&);
+  CryptThreadingInitializer(const CryptThreadingInitializer &rhs) = delete;
+  CryptThreadingInitializer& operator=(const CryptThreadingInitializer&) = delete;
 };
 
 XBMC_GLOBAL_REF(CryptThreadingInitializer,g_cryptThreadingInitializer);

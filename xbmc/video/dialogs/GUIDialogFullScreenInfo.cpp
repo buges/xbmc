@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,9 +27,7 @@ CGUIDialogFullScreenInfo::CGUIDialogFullScreenInfo(void)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIDialogFullScreenInfo::~CGUIDialogFullScreenInfo(void)
-{
-}
+CGUIDialogFullScreenInfo::~CGUIDialogFullScreenInfo(void) = default;
 
 bool CGUIDialogFullScreenInfo::OnAction(const CAction &action)
 {

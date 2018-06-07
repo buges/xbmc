@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,17 @@ CAEDeviceInfo::operator std::string()
       ss << ',';
     ss << CAEUtil::DataFormatToStr(*itt);
   }
+  ss << '\n';
+
+  ss << "m_streamTypes     : ";
+  for (AEDataTypeList::iterator itt = m_streamTypes.begin(); itt != m_streamTypes.end(); ++itt)
+  {
+    if (itt != m_streamTypes.begin())
+      ss << ',';
+    ss << CAEUtil::StreamTypeToStr(*itt);
+  }
+  if (m_streamTypes.empty())
+    ss << "No passthrough capabilities";
   ss << '\n';
 
   return ss.str();

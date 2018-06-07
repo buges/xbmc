@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
  *  SWIGHIDDENVIRTUAL to 'hide' the polymorphic behavior from the scripting
  *  language using the macro instead.
  *
- * Note: You should not hide virtual destructors from the scripting langage.
+ * Note: You should not hide virtual destructors from the scripting language.
  */
 #ifdef SWIG
 #define SWIGHIDDENVIRTUAL 

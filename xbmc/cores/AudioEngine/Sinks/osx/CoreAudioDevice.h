@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,11 +19,11 @@
  *
  */
 
-#include "system.h"
-
 #if defined(TARGET_DARWIN_OSX)
 
+#include <list>
 #include <string>
+#include <vector>
 
 #include "cores/AudioEngine/Sinks/osx/CoreAudioStream.h"
 
@@ -38,7 +38,7 @@ class CCoreAudioDevice
 {
 public:
   CCoreAudioDevice();
-  CCoreAudioDevice(AudioDeviceID deviceId);
+  explicit CCoreAudioDevice(AudioDeviceID deviceId);
   virtual ~CCoreAudioDevice();
   
   bool          Open(AudioDeviceID deviceId);

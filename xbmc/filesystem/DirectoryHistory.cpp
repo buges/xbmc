@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,8 +24,6 @@
 #include "utils/URIUtils.h"
 
 #include <algorithm>
-
-using namespace std;
 
 const std::string& CDirectoryHistory::CPathHistoryItem::GetPath(bool filter /* = false */) const
 {
@@ -113,7 +111,7 @@ bool CDirectoryHistory::IsInHistory(const std::string &path) const
 {
   std::string slashEnded(path);
   URIUtils::AddSlashAtEnd(slashEnded);
-  for (vector<CPathHistoryItem>::const_iterator i = m_vecPathHistory.begin(); i != m_vecPathHistory.end(); ++i)
+  for (std::vector<CPathHistoryItem>::const_iterator i = m_vecPathHistory.begin(); i != m_vecPathHistory.end(); ++i)
   {
     std::string testPath(i->GetPath());
     URIUtils::AddSlashAtEnd(testPath);

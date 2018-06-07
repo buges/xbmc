@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ namespace dbiplus {
 
 class DatabaseSettings; // forward
 class CDbUrl;
+class CProfilesManager;
 struct SortDescription;
 
 class CDatabase
@@ -40,8 +41,8 @@ public:
   {
   public:
     Filter() : fields("*") {};
-    Filter(const char *w) : fields("*"), where(w) {};
-    Filter(const std::string &w) : fields("*"), where(w) {};
+    explicit Filter(const char *w) : fields("*"), where(w) {};
+    explicit Filter(const std::string &w) : fields("*"), where(w) {};
     
     void AppendField(const std::string &strField);
     void AppendJoin(const std::string &strJoin);
@@ -57,12 +58,28 @@ public:
     std::string limit;
   };
 
-  CDatabase(void);
+  class ExistsSubQuery
+  {
+  public:
+    explicit ExistsSubQuery(const std::string &table) : tablename(table) {};
+    ExistsSubQuery(const std::string &table, const std::string &parameter) : tablename(table), param(parameter) {};
+    void AppendJoin(const std::string &strJoin);
+    void AppendWhere(const std::string &strWhere, bool combineWithAnd = true);
+    bool BuildSQL(std::string &strSQL);
+    
+    std::string tablename;
+    std::string param;
+    std::string join;
+    std::string where;
+  };
+
+
+  CDatabase();
   virtual ~CDatabase(void);
   bool IsOpen();
-  void Close();
+  virtual void Close();
   bool Compress(bool bForce=true);
-  void Interupt();
+  void Interrupt();
 
   bool Open(const DatabaseSettings &db);
 
@@ -70,6 +87,8 @@ public:
   virtual bool CommitTransaction();
   void RollbackTransaction();
   bool InTransaction();
+  void CopyDB(const std::string& latestDb);
+  void DropAnalytics();
 
   std::string PrepareSQL(std::string strStmt, ...) const;
 
@@ -139,12 +158,6 @@ public:
   bool CommitMultipleExecute();
 
   /*!
-   * @brief Open a new dataset.
-   * @return True if the dataset was created successfully, false otherwise.
-   */
-  bool OpenDS();
-
-  /*!
    * @brief Put an INSERT or REPLACE query in the queue.
    * @param strQuery The query to queue.
    * @return True if the query was added successfully, false otherwise.
@@ -161,9 +174,10 @@ public:
   virtual bool BuildSQL(const std::string &strBaseDir, const std::string &strQuery, Filter &filter, std::string &strSQL, CDbUrl &dbUrl);
   virtual bool BuildSQL(const std::string &strBaseDir, const std::string &strQuery, Filter &filter, std::string &strSQL, CDbUrl &dbUrl, SortDescription &sorting);
 
+  bool Connect(const std::string &dbName, const DatabaseSettings &db, bool create);
+
 protected:
   friend class CDatabaseManager;
-  bool Update(const DatabaseSettings &db);
 
   void Split(const std::string& strFileNameAndPath, std::string& strPath, std::string& strFileName);
 
@@ -200,7 +214,6 @@ protected:
   virtual const char *GetBaseDBName() const=0;
 
   int GetDBVersion();
-  bool UpdateVersion(const std::string &dbName);
 
   bool BuildSQL(const std::string &strQuery, const Filter &filter, std::string &strSQL);
 
@@ -210,9 +223,12 @@ protected:
   std::unique_ptr<dbiplus::Dataset> m_pDS;
   std::unique_ptr<dbiplus::Dataset> m_pDS2;
 
+protected:
+  // Construction parameters
+  const CProfilesManager &m_profileManager;
+
 private:
   void InitSettings(DatabaseSettings &dbSettings);
-  bool Connect(const std::string &dbName, const DatabaseSettings &db, bool create);
   void UpdateVersionNumber();
 
   bool m_bMultiWrite; /*!< True if there are any queries in the queue, false otherwise */

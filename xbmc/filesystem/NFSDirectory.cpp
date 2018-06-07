@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,13 +18,14 @@
  *
  */
 
-#include "system.h"
-
-#ifdef HAS_FILESYSTEM_NFS
 #include "DllLibNfs.h"
 
 #ifdef TARGET_WINDOWS
 #include <sys\stat.h>
+#endif
+
+#ifdef TARGET_POSIX
+#include "platform/linux/XTimeUtils.h"
 #endif
 
 #include "NFSDirectory.h"
@@ -34,7 +35,6 @@
 #include "utils/StringUtils.h"
 #include "threads/SingleLock.h"
 using namespace XFILE;
-using namespace std;
 #include <limits.h>
 #include <nfsc/libnfs-raw-nfs.h>
 
@@ -135,7 +135,7 @@ bool CNFSDirectory::ResolveSymlink( const std::string &dirName, struct nfsdirent
     if(resolvedLink[0] == '/')
     {    
       //use the special stat function for using an extra context
-      //because we are inside of a dir traversation
+      //because we are inside of a dir traversal
       //and just can't change the global nfs context here
       //without destroying something...
       fullpath = resolvedLink;
@@ -151,16 +151,16 @@ bool CNFSDirectory::ResolveSymlink( const std::string &dirName, struct nfsdirent
     if (ret != 0) 
     {
       CLog::Log(LOGERROR, "NFS: Failed to stat(%s) on link resolve %s\n", fullpath.c_str(), gNfsConnection.GetImpl()->nfs_get_error(gNfsConnection.GetNfsContext()));
-      retVal = false;;
+      retVal = false;
     }
     else
     {  
       dirent->inode = tmpBuffer.st_ino;
       dirent->mode = tmpBuffer.st_mode;
       dirent->size = tmpBuffer.st_size;
-      dirent->atime.tv_sec = tmpBuffer.st_atime;
-      dirent->mtime.tv_sec = tmpBuffer.st_mtime;
-      dirent->ctime.tv_sec = tmpBuffer.st_ctime;
+      dirent->atime.tv_sec = static_cast<long>(tmpBuffer.st_atime);
+      dirent->mtime.tv_sec = static_cast<long>(tmpBuffer.st_mtime);
+      dirent->ctime.tv_sec = static_cast<long>(tmpBuffer.st_ctime);
       
       //map stat mode to nf3type
       if(S_ISBLK(tmpBuffer.st_mode)){ dirent->type = NF3BLK; }
@@ -192,7 +192,7 @@ bool CNFSDirectory::GetDirectory(const CURL& url, CFileItemList &items)
    
   if(!gNfsConnection.Connect(url,strDirName))
   {
-    //connect has failed - so try to get the exported filesystms if no path is given to the url
+    //connect has failed - so try to get the exported filesystems if no path is given to the url
     if(url.GetShareName().empty())
     {
       if(url.GetHostName().empty())
@@ -224,18 +224,19 @@ bool CNFSDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   
   while((nfsdirent = gNfsConnection.GetImpl()->nfs_readdir(gNfsConnection.GetNfsContext(), nfsdir)) != NULL) 
   {
-    std::string strName = nfsdirent->name;
-    std::string path(myStrPath + strName);    
+    struct nfsdirent tmpDirent = *nfsdirent;
+    std::string strName = tmpDirent.name;
+    std::string path(myStrPath + strName);
     int64_t iSize = 0;
     bool bIsDir = false;
     int64_t lTimeDate = 0;
 
     //reslove symlinks
-    if(nfsdirent->type == NF3LNK)
+    if(tmpDirent.type == NF3LNK)
     {
       CURL linkUrl;
-      //resolve symlink changes nfsdirent and strName
-      if(!ResolveSymlink(strDirName,nfsdirent,linkUrl))
+      //resolve symlink changes tmpDirent and strName
+      if(!ResolveSymlink(strDirName,&tmpDirent,linkUrl))
       { 
         continue;
       }
@@ -243,24 +244,26 @@ bool CNFSDirectory::GetDirectory(const CURL& url, CFileItemList &items)
       path = linkUrl.Get();
     }
     
-    iSize = nfsdirent->size;
-    bIsDir = nfsdirent->type == NF3DIR;
-    lTimeDate = nfsdirent->mtime.tv_sec;
+    iSize = tmpDirent.size;
+    bIsDir = tmpDirent.type == NF3DIR;
+    lTimeDate = tmpDirent.mtime.tv_sec;
 
     if (!StringUtils::EqualsNoCase(strName,".") && !StringUtils::EqualsNoCase(strName,"..")
         && !StringUtils::EqualsNoCase(strName,"lost+found"))
     {
       if(lTimeDate == 0) // if modification date is missing, use create date
       {
-        lTimeDate = nfsdirent->ctime.tv_sec;
+        lTimeDate = tmpDirent.ctime.tv_sec;
       }
 
-      LONGLONG ll = Int32x32To64(lTimeDate & 0xffffffff, 10000000) + 116444736000000000ll;
+      long long ll = lTimeDate & 0xffffffff;
+      ll *= 10000000ll;
+      ll += 116444736000000000ll;
       fileTime.dwLowDateTime = (DWORD) (ll & 0xffffffff);
       fileTime.dwHighDateTime = (DWORD)(ll >> 32);
       FileTimeToLocalFileTime(&fileTime, &localTime);
 
-      CFileItemPtr pItem(new CFileItem(nfsdirent->name));
+      CFileItemPtr pItem(new CFileItem(tmpDirent.name));
       pItem->m_dateTime=localTime;   
       pItem->m_dwSize = iSize;        
       
@@ -356,5 +359,3 @@ bool CNFSDirectory::Exists(const CURL& url2)
   }
   return S_ISDIR(info.st_mode) ? true : false;
 }
-
-#endif

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -236,7 +236,7 @@ TEST(TestVariant, swap)
   EXPECT_TRUE(a.isString());
 }
 
-TEST(TestVariant, interator_array)
+TEST(TestVariant, iterator_array)
 {
   std::vector<std::string> strarray;
   strarray.push_back("string");
@@ -248,14 +248,13 @@ TEST(TestVariant, interator_array)
   EXPECT_TRUE(a.isArray());
   EXPECT_EQ(CVariant::VariantTypeArray, a.type());
 
-  CVariant::iterator_array it;
-  for (it = a.begin_array(); it < a.end_array(); it++)
+  for (auto it = a.begin_array(); it != a.end_array(); it++)
   {
     EXPECT_STREQ("string", it->c_str());
   }
 
   CVariant::const_iterator_array const_it;
-  for (const_it = a.begin_array(); const_it < a.end_array(); const_it++)
+  for (auto const_it = a.begin_array(); const_it != a.end_array(); const_it++)
   {
     EXPECT_STREQ("string", const_it->c_str());
   }
@@ -272,14 +271,12 @@ TEST(TestVariant, iterator_map)
   EXPECT_TRUE(a.isObject());
   EXPECT_EQ(CVariant::VariantTypeObject, a.type());
 
-  CVariant::iterator_map it;
-  for (it = a.begin_map(); it != a.end_map(); it++)
+  for (auto it = a.begin_map(); it != a.end_map(); it++)
   {
     EXPECT_STREQ("string", it->second.c_str());
   }
 
-  CVariant::const_iterator_map const_it;
-  for (const_it = a.begin_map(); const_it != a.end_map(); const_it++)
+  for (auto const_it = a.begin_map(); const_it != a.end_map(); const_it++)
   {
     EXPECT_STREQ("string", const_it->second.c_str());
   }

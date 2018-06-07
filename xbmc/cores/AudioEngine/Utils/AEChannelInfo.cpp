@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,9 +39,7 @@ CAEChannelInfo::CAEChannelInfo(const AEStdChLayout rhs)
   *this = rhs;
 }
 
-CAEChannelInfo::~CAEChannelInfo()
-{
-}
+CAEChannelInfo::~CAEChannelInfo() = default;
 
 void CAEChannelInfo::ResolveChannels(const CAEChannelInfo& rhs)
 {
@@ -205,7 +203,7 @@ bool CAEChannelInfo::operator==(const CAEChannelInfo& rhs) const
   return true;
 }
 
-bool CAEChannelInfo::operator!=(const CAEChannelInfo& rhs)
+bool CAEChannelInfo::operator!=(const CAEChannelInfo& rhs) const
 {
   return !(*this == rhs);
 }
@@ -237,7 +235,7 @@ CAEChannelInfo& CAEChannelInfo::operator-=(const enum AEChannel& rhs)
   return *this;
 }
 
-const enum AEChannel CAEChannelInfo::operator[](unsigned int i) const
+enum AEChannel CAEChannelInfo::operator[](unsigned int i) const
 {
   assert(i < m_channelCount);
   return m_channels[i];
@@ -252,11 +250,35 @@ CAEChannelInfo::operator std::string() const
   for (unsigned int i = 0; i < m_channelCount - 1; ++i)
   {
     s.append(GetChName(m_channels[i]));
-    s.append(",");
+    s.append(", ");
   }
   s.append(GetChName(m_channels[m_channelCount-1]));
 
   return s;
+}
+
+bool CAEChannelInfo::IsChannelValid(const unsigned int pos)
+{
+  assert(pos < m_channelCount);
+  bool isValid = false;
+  if (m_channels[pos] > AE_CH_NULL && m_channels[pos] < AE_CH_UNKNOWN1)
+    isValid = true;
+
+  return isValid;
+}
+
+bool CAEChannelInfo::IsLayoutValid()
+{
+  if (m_channelCount == 0)
+    return false;
+
+  for (unsigned int i = 0; i < m_channelCount; ++i)
+  {
+    // we need at least one valid channel
+    if (IsChannelValid(i))
+      return true;
+  }
+  return false;
 }
 
 const char* CAEChannelInfo::GetChName(const enum AEChannel ch)

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,89 +19,54 @@
  */
 
 #include "AppParamParser.h"
-#include "GUIInfoManager.h"
 #include "PlayListPlayer.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
+#include "utils/SystemInfo.h"
 #include "utils/StringUtils.h"
-#include "input/InputManager.h"
 #ifdef TARGET_WINDOWS
 #include "WIN32Util.h"
 #endif
 #ifndef TARGET_WINDOWS
-#include "linux/XTimeUtils.h"
+#include "platform/linux/XTimeUtils.h"
 #endif
 #include <stdlib.h>
+
+using namespace KODI::MESSAGING;
 
 CAppParamParser::CAppParamParser()
 {
   m_testmode = false;
 }
 
-void CAppParamParser::Parse(const char* argv[], int nArgs)
+void CAppParamParser::Parse(const char* const* argv, int nArgs)
 {
   if (nArgs > 1)
   {
     for (int i = 1; i < nArgs; i++)
-    {
       ParseArg(argv[i]);
-      if (strnicmp(argv[i], "-l", 2) == 0 || strnicmp(argv[i], "--lircdev", 9) == 0)
-      {
-        // check the next arg with the proper value.
-        int next = i + 1;
-        if (next < nArgs)
-        {
-          if ((argv[next][0] != '-') && (argv[next][0] == '/'))
-          {
-            CInputManager::Get().SetRemoteControlName(argv[next]);
-            i++;
-          }
-        }
-      }
-      else if (strnicmp(argv[i], "-n", 2) == 0 || strnicmp(argv[i], "--nolirc", 8) == 0)
-        CInputManager::Get().DisableRemoteControl();
-
-      if (stricmp(argv[i], "-d") == 0)
-      {
-        if (i + 1 < nArgs)
-        {
-          int sleeptime = atoi(argv[i + 1]);
-          if (sleeptime > 0 && sleeptime < 360)
-            Sleep(sleeptime*1000);
-        }
-        i++;
-      }
-    }
   }
-  PlayPlaylist();
 }
 
 void CAppParamParser::DisplayVersion()
 {
-  printf("%s Media Center %s\n", g_infoManager.GetVersion().c_str(), g_infoManager.GetAppName().c_str());
-  printf("Copyright (C) 2005-2013 Team %s - http://kodi.tv\n", g_infoManager.GetAppName().c_str());
+  printf("%s Media Center %s\n", CSysInfo::GetVersion().c_str(), CSysInfo::GetAppName().c_str());
+  printf("Copyright (C) 2005-2013 Team %s - http://kodi.tv\n", CSysInfo::GetAppName().c_str());
   exit(0);
 }
 
 void CAppParamParser::DisplayHelp()
 {
-  std::string lcAppName = g_infoManager.GetAppName();
+  std::string lcAppName = CSysInfo::GetAppName();
   StringUtils::ToLower(lcAppName);
   printf("Usage: %s [OPTION]... [FILE]...\n\n", lcAppName.c_str());
   printf("Arguments:\n");
-  printf("  -d <n>\t\tdelay <n> seconds before starting\n");
-  printf("  -fs\t\t\tRuns %s in full screen\n", g_infoManager.GetAppName().c_str());
-  printf("  --standalone\t\t%s runs in a stand alone environment without a window \n", g_infoManager.GetAppName().c_str());
+  printf("  -fs\t\t\tRuns %s in full screen\n", CSysInfo::GetAppName().c_str());
+  printf("  --standalone\t\t%s runs in a stand alone environment without a window \n", CSysInfo::GetAppName().c_str());
   printf("\t\t\tmanager and supporting applications. For example, that\n");
   printf("\t\t\tenables network settings.\n");
-  printf("  -p or --portable\t%s will look for configurations in install folder instead of ~/.%s\n", g_infoManager.GetAppName().c_str(), lcAppName.c_str());
-  printf("  --legacy-res\t\tEnables screen resolutions such as PAL, NTSC, etc.\n");
-#ifdef HAS_LIRC
-  printf("  -l or --lircdev\tLircDevice to use default is " LIRC_DEVICE " .\n");
-  printf("  -n or --nolirc\tdo not use Lirc, i.e. no remote input.\n");
-#endif
+  printf("  -p or --portable\t%s will look for configurations in install folder instead of ~/.%s\n", CSysInfo::GetAppName().c_str(), lcAppName.c_str());
   printf("  --debug\t\tEnable debug logging\n");
   printf("  --version\t\tPrint version information\n");
   printf("  --test\t\tEnable test mode. [FILE] required.\n");
@@ -131,8 +96,6 @@ void CAppParamParser::ParseArg(const std::string &arg)
     g_application.EnablePlatformDirectories(false);
   else if (arg == "--debug")
     EnableDebugMode();
-  else if (arg == "--legacy-res")
-    g_application.SetEnableLegacyRes(true);
   else if (arg == "--test")
     m_testmode = true;
   else if (arg.substr(0, 11) == "--settings=")
@@ -141,20 +104,11 @@ void CAppParamParser::ParseArg(const std::string &arg)
   {
     if (m_testmode)
       g_application.SetEnableTestMode(true);
+
     CFileItemPtr pItem(new CFileItem(arg));
     pItem->SetPath(arg);
+
     m_playlist.Add(pItem);
   }
 }
 
-void CAppParamParser::PlayPlaylist()
-{
-  if (m_playlist.Size() > 0)
-  {
-    g_playlistPlayer.Add(0, m_playlist);
-    g_playlistPlayer.SetCurrentPlaylist(0);
-  }
-
-  ThreadMessage tMsg = {TMSG_PLAYLISTPLAYER_PLAY, -1};
-  CApplicationMessenger::Get().SendMessage(tMsg, false);
-}

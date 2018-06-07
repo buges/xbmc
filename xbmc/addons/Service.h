@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,41 +18,56 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
 #include "Addon.h"
+#include "AddonEvents.h"
+#include "threads/CriticalSection.h"
 
 namespace ADDON
 {
-
   class CService: public CAddon
   {
   public:
+    static std::unique_ptr<CService> FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext);
 
-    enum TYPE
-    {
-      UNKNOWN,
-      PYTHON
-    };
+    explicit CService(CAddonInfo addonInfo) : CAddon(std::move(addonInfo)) {}
+  };
 
-    enum START_OPTION
-    {
-      STARTUP,
-      LOGIN
-    };
+  class CServiceAddonManager
+  {
+  public:
+    explicit CServiceAddonManager(CAddonMgr& addonMgr);
+    ~CServiceAddonManager();
 
-    CService(const cp_extension_t *ext);
-    CService(const AddonProps &props);
-    virtual AddonPtr Clone() const;
+    /**
+     * Start all services.
+     */
+    void Start();
 
-    bool Start();
-    bool Stop();
-    TYPE GetServiceType() { return m_type; }
-    START_OPTION GetStartOption() { return m_startOption; }
+    /**
+     * Start service by add-on id.
+     */
+    void Start(const AddonPtr& addon);
+    void Start(const std::string& addonId);
 
-  protected:
-    void BuildServiceType();
+    /**
+     * Stop all services.
+     */
+    void Stop();
+
+    /**
+     * Stop service by add-on id.
+     */
+    void Stop(const std::string& addonId);
 
   private:
-    TYPE m_type;
-    START_OPTION m_startOption;
+    void OnEvent(const AddonEvent& event);
+
+    void Stop(std::map<std::string, int>::value_type service);
+
+    CAddonMgr& m_addonMgr;
+    CCriticalSection m_criticalSection;
+    /** add-on id -> script id */
+    std::map<std::string, int> m_services;
   };
 }

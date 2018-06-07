@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,19 +19,19 @@
  */
 
 #include "GUISettingsSliderControl.h"
+#include "input/Key.h"
 
 CGUISettingsSliderControl::CGUISettingsSliderControl(int parentID, int controlID, float posX, float posY, float width, float height, float sliderWidth, float sliderHeight, const CTextureInfo &textureFocus, const CTextureInfo &textureNoFocus, const CTextureInfo& backGroundTexture, const CTextureInfo& nibTexture, const CTextureInfo& nibTextureFocus, const CLabelInfo &labelInfo, int iType)
-    : CGUISliderControl(parentID, controlID, posX, posY, sliderWidth, sliderHeight, backGroundTexture, nibTexture,nibTextureFocus, iType)
+    : CGUISliderControl(parentID, controlID, posX, posY, sliderWidth, sliderHeight, backGroundTexture, nibTexture,nibTextureFocus, iType, HORIZONTAL)
     , m_buttonControl(parentID, controlID, posX, posY, width, height, textureFocus, textureNoFocus, labelInfo)
     , m_label(posX, posY, width, height, labelInfo)
 {
   m_label.SetAlign((labelInfo.align & XBFONT_CENTER_Y) | XBFONT_RIGHT);  
   ControlType = GUICONTROL_SETTINGS_SLIDER;
+  m_active = false;
 }
 
-CGUISettingsSliderControl::~CGUISettingsSliderControl(void)
-{
-}
+CGUISettingsSliderControl::~CGUISettingsSliderControl(void) = default;
 
 void CGUISettingsSliderControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
@@ -75,7 +75,39 @@ void CGUISettingsSliderControl::ProcessText()
 
 bool CGUISettingsSliderControl::OnAction(const CAction &action)
 {
+  // intercept ACTION_SELECT_ITEM because onclick functionality is different from base class
+  if (action.GetID() == ACTION_SELECT_ITEM)
+  { 
+    if (!IsActive())
+      m_active = true;
+     // switch between the two sliders
+    else if (m_rangeSelection && m_currentSelector == RangeSelectorLower)
+      SwitchRangeSelector();
+    else
+    {
+      m_active = false;
+      if (m_rangeSelection)
+        SwitchRangeSelector();
+    }
+    return true;
+  }
   return CGUISliderControl::OnAction(action);
+}
+
+void CGUISettingsSliderControl::OnUnFocus()
+{
+  m_active = false;
+}
+
+EVENT_RESULT CGUISettingsSliderControl::OnMouseEvent(const CPoint &point, const CMouseEvent &event)
+{
+  SetActive();
+  return CGUISliderControl::OnMouseEvent(point, event);
+}
+
+void CGUISettingsSliderControl::SetActive()
+{
+  m_active = true;
 }
 
 void CGUISettingsSliderControl::FreeResources(bool immediately)
@@ -136,6 +168,7 @@ bool CGUISettingsSliderControl::UpdateColors()
   bool changed = CGUISliderControl::UpdateColors();
   changed |= m_buttonControl.SetColorDiffuse(m_diffuseColor);
   changed |= m_buttonControl.UpdateColors();
+  changed |= m_label.UpdateColors();
 
   return changed;
 }

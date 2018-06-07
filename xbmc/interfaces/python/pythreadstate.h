@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 class CPyThreadState
 {
   public:
-    CPyThreadState(bool save = true)
+    explicit CPyThreadState(bool save = true)
     {
       m_threadState = NULL;
 
@@ -68,6 +68,6 @@ class CPyThreadState
 class GilSafeSingleLock : public CPyThreadState, public CSingleLock
 {
 public:
-  GilSafeSingleLock(const CCriticalSection& critSec) : CPyThreadState(true), CSingleLock(critSec) { CPyThreadState::Restore(); }
+  explicit GilSafeSingleLock(const CCriticalSection& critSec) : CPyThreadState(true), CSingleLock(critSec) { CPyThreadState::Restore(); }
 };
 

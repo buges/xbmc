@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "VideoLibrary.h"
 #include "AudioLibrary.h"
 #include "MediaSource.h"
+#include "ServiceBroker.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "FileItem.h"
@@ -29,8 +30,11 @@
 #include "settings/MediaSourceSettings.h"
 #include "Util.h"
 #include "URL.h"
+#include "utils/FileExtensionProvider.h"
 #include "utils/URIUtils.h"
 #include "utils/FileUtils.h"
+#include "utils/Variant.h"
+#include "video/VideoDatabase.h"
 
 using namespace XFILE;
 using namespace JSONRPC;
@@ -40,7 +44,7 @@ JSONRPC_STATUS CFileOperations::GetRootDirectory(const std::string &method, ITra
   std::string media = parameterObject["media"].asString();
   StringUtils::ToLower(media);
 
-  VECSOURCES *sources = CMediaSourceSettings::Get().GetSources(media);
+  VECSOURCES *sources = CMediaSourceSettings::GetInstance().GetSources(media);
   if (sources)
   {
     CFileItemList items;
@@ -88,20 +92,20 @@ JSONRPC_STATUS CFileOperations::GetDirectory(const std::string &method, ITranspo
   if (media == "video")
   {
     regexps = g_advancedSettings.m_videoExcludeFromListingRegExps;
-    extensions = g_advancedSettings.m_videoExtensions;
+    extensions = CServiceBroker::GetFileExtensionProvider().GetVideoExtensions();
   }
   else if (media == "music")
   {
     regexps = g_advancedSettings.m_audioExcludeFromListingRegExps;
-    extensions = g_advancedSettings.GetMusicExtensions();
+    extensions = CServiceBroker::GetFileExtensionProvider().GetMusicExtensions();
   }
   else if (media == "pictures")
   {
     regexps = g_advancedSettings.m_pictureExcludeFromListingRegExps;
-    extensions = g_advancedSettings.m_pictureExtensions;
+    extensions = CServiceBroker::GetFileExtensionProvider().GetPictureExtensions();
   }
 
-  if (CDirectory::GetDirectory(strPath, items, extensions))
+  if (CDirectory::GetDirectory(strPath, items, extensions, DIR_FLAG_DEFAULTS))
   {
     // we might need to get additional information for music items
     if (media == "music")
@@ -180,7 +184,7 @@ JSONRPC_STATUS CFileOperations::GetFileDetails(const std::string &method, ITrans
   std::string path = URIUtils::GetDirectory(file);
 
   CFileItemList items;
-  if (path.empty() || !CDirectory::GetDirectory(path, items) || !items.Contains(file))
+  if (path.empty() || !CDirectory::GetDirectory(path, items, "", DIR_FLAG_DEFAULTS) || !items.Contains(file))
     return InvalidParams;
 
   CFileItemPtr item = items.Get(file);
@@ -210,6 +214,51 @@ JSONRPC_STATUS CFileOperations::GetFileDetails(const std::string &method, ITrans
 
   HandleFileItem("id", true, "filedetails", item, parameterObject, param["properties"], result, false);
   return OK;
+}
+
+JSONRPC_STATUS CFileOperations::SetFileDetails(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+{
+  std::string media = parameterObject["media"].asString();
+  StringUtils::ToLower(media);
+
+  if (media.compare("video") != 0)
+    return InvalidParams;
+
+  std::string file = parameterObject["file"].asString();
+  if (!CFile::Exists(file))
+    return InvalidParams;
+
+  if (!CFileUtils::RemoteAccessAllowed(file))
+    return InvalidParams;
+
+  CVideoDatabase videodatabase;
+  if (!videodatabase.Open())
+    return InternalError;
+
+  int fileId = videodatabase.AddFile(file);
+
+  CVideoInfoTag infos;
+  if (!videodatabase.GetFileInfo("", infos, fileId))
+    return InvalidParams;
+
+  CDateTime lastPlayed = infos.m_lastPlayed;
+  int playcount = infos.GetPlayCount();
+  if (!parameterObject["lastplayed"].isNull())
+  {
+    lastPlayed.Reset();
+    SetFromDBDateTime(parameterObject["lastplayed"], lastPlayed);
+    playcount = lastPlayed.IsValid() ? std::max(1, playcount) : 0;
+  }
+  if (!parameterObject["playcount"].isNull())
+    playcount = parameterObject["playcount"].asInteger();
+  if (playcount != infos.GetPlayCount() || lastPlayed != infos.m_lastPlayed)
+    videodatabase.SetPlayCount(CFileItem(infos), playcount, lastPlayed);
+
+  CVideoLibrary::UpdateResumePoint(parameterObject, infos, videodatabase);
+
+  videodatabase.GetFileInfo("", infos, fileId);
+  CJSONRPCUtils::NotifyItemUpdated(infos);
+  return ACK;
 }
 
 JSONRPC_STATUS CFileOperations::PrepareDownload(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
@@ -305,23 +354,27 @@ bool CFileOperations::FillFileItemList(const CVariant &parameterObject, CFileIte
       if (media == "video")
       {
         regexps = g_advancedSettings.m_videoExcludeFromListingRegExps;
-        extensions = g_advancedSettings.m_videoExtensions;
+        extensions = CServiceBroker::GetFileExtensionProvider().GetVideoExtensions();
       }
       else if (media == "music")
       {
         regexps = g_advancedSettings.m_audioExcludeFromListingRegExps;
-        extensions = g_advancedSettings.GetMusicExtensions();
+        extensions = CServiceBroker::GetFileExtensionProvider().GetMusicExtensions();
       }
       else if (media == "pictures")
       {
         regexps = g_advancedSettings.m_pictureExcludeFromListingRegExps;
-        extensions = g_advancedSettings.m_pictureExtensions;
+        extensions = CServiceBroker::GetFileExtensionProvider().GetPictureExtensions();
       }
 
       CDirectory directory;
-      if (directory.GetDirectory(strPath, items, extensions))
+      if (directory.GetDirectory(strPath, items, extensions, DIR_FLAG_DEFAULTS))
       {
-        items.Sort(SortByFile, SortOrderAscending);
+        // Sort folders and files by filename to avoid reverse item order bug on some platforms,
+        // but leave items from a playlist, smartplaylist or upnp container in order supplied
+        if (!items.IsPlayList() && !items.IsSmartPlayList() && !URIUtils::IsUPnP(items.GetPath()))
+          items.Sort(SortByFile, SortOrderAscending);
+
         CFileItemList filteredDirectories;
         for (unsigned int i = 0; i < (unsigned int)items.Size(); i++)
         {

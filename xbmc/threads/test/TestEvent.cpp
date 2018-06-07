@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  */
 
 #include "threads/Event.h"
-#include "threads/Atomics.h"
+#include "threads/IRunnable.h"
 
 #include "threads/test/TestHelpers.h"
 
@@ -42,7 +42,7 @@ public:
 
   waiter(CEvent& o, bool& flag) : event(o), result(flag), waiting(false) {}
   
-  void Run()
+  void Run() override
   {
     waiting = true;
     result = event.Wait();
@@ -61,7 +61,7 @@ public:
 
   timed_waiter(CEvent& o, int& flag, int waitTimeMillis) : event(o), waitTime(waitTimeMillis), result(flag), waiting(false) {}
   
-  void Run()
+  void Run() override
   {
     waiting = true;
     result = 0;
@@ -81,7 +81,7 @@ public:
   group_wait(CEventGroup& o) : event(o), timeout(-1), result(NULL), waiting(false) {}
   group_wait(CEventGroup& o, int timeout_) : event(o), timeout(timeout_), result(NULL), waiting(false) {}
 
-  void Run()
+  void Run() override
   {
     waiting = true;
     if (timeout == -1)
@@ -176,7 +176,7 @@ TEST(TestEvent, Group)
   CEvent event1;
   CEvent event2;
 
-  CEventGroup group(&event1,&event2,NULL);
+  CEventGroup group{&event1,&event2};
 
   bool result1 = false;
   bool result2 = false;
@@ -272,8 +272,8 @@ TEST(TestEvent, TwoGroups)
   CEvent event1;
   CEvent event2;
 
-  CEventGroup group1(2, &event1,&event2);
-  CEventGroup group2(&event1,&event2,NULL);
+  CEventGroup group1{&event1,&event2};
+  CEventGroup group2{&event1,&event2};
 
   bool result1 = false;
   bool result2 = false;
@@ -376,7 +376,7 @@ TEST(TestEvent, GroupChildSet)
   CEvent event2;
 
   event1.Set();
-  CEventGroup group(&event1,&event2,NULL);
+  CEventGroup group{&event1,&event2};
 
   bool result1 = false;
   bool result2 = false;
@@ -410,7 +410,7 @@ TEST(TestEvent, GroupChildSet2)
   CEvent event1(true,true);
   CEvent event2;
 
-  CEventGroup group(&event1,&event2,NULL);
+  CEventGroup group{&event1,&event2};
 
   bool result1 = false;
   bool result2 = false;
@@ -444,7 +444,7 @@ TEST(TestEvent, GroupWaitResetsChild)
   CEvent event1;
   CEvent event2;
 
-  CEventGroup group(&event1,&event2,NULL);
+  CEventGroup group{&event1,&event2};
 
   group_wait w3(group);
 
@@ -469,7 +469,7 @@ TEST(TestEvent, GroupTimedWait)
 {
   CEvent event1;
   CEvent event2;
-  CEventGroup group(&event1,&event2,NULL);
+  CEventGroup group{&event1,&event2};
 
   bool result1 = false;
   bool result2 = false;
@@ -531,7 +531,7 @@ TEST(TestEvent, GroupTimedWait)
 #define NUMTHREADS 100l
 
 CEvent* g_event = NULL;
-volatile long g_mutex;
+std::atomic<long> g_mutex;
 
 class mass_waiter : public IRunnable
 {
@@ -543,7 +543,7 @@ public:
 
   mass_waiter() : event(*g_event), waiting(false) {}
   
-  void Run()
+  void Run() override
   {
     waiting = true;
     AtomicGuard g(&g_mutex);
@@ -562,7 +562,7 @@ public:
 
   poll_mass_waiter() : event(*g_event), waiting(false) {}
   
-  void Run()
+  void Run() override
   {
     waiting = true;
     AtomicGuard g(&g_mutex);

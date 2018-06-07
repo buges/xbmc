@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,19 +35,32 @@ class CBlurayDirectory: public XFILE::IDirectory
 {
 public:
   CBlurayDirectory();
-  virtual ~CBlurayDirectory();
-  virtual bool GetDirectory(const CURL& url, CFileItemList &items);
+  ~CBlurayDirectory() override;
+  bool GetDirectory(const CURL& url, CFileItemList &items) override;
+
+  bool InitializeBluray(const std::string &root);
+  std::string GetBlurayTitle();
+  std::string GetBlurayID();
 
 private:
+  enum class DiscInfo
+  {
+    TITLE,
+    ID
+  };
 
   void         Dispose();
+  std::string  GetDiscInfoString(DiscInfo info);
   void         GetRoot  (CFileItemList &items);
   void         GetTitles(bool main, CFileItemList &items);
+  std::vector<BLURAY_TITLE_INFO*> GetUserPlaylists();
   CFileItemPtr GetTitle(const BLURAY_TITLE_INFO* title, const std::string& label);
   CURL         GetUnderlyingCURL(const CURL& url);
+  std::string  HexToString(const uint8_t * buf, int count);
   CURL          m_url;
   DllLibbluray* m_dll;
   BLURAY*       m_bd;
+  bool          m_blurayInitialized = false;
 };
 
 }

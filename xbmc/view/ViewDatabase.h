@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,17 +27,17 @@ class CViewDatabase : public CDatabase
 {
 public:
   CViewDatabase();
-  virtual ~CViewDatabase();
-  virtual bool Open();
+  ~CViewDatabase() override;
+  bool Open() override;
 
   bool GetViewState(const std::string &path, int windowID, CViewState &state, const std::string &skin);
   bool SetViewState(const std::string &path, int windowID, const CViewState &state, const std::string &skin);
   bool ClearViewStates(int windowID);
 
 protected:
-  virtual void CreateTables();
-  virtual void CreateAnalytics();
-  virtual void UpdateTables(int version);
-  virtual int GetSchemaVersion() const { return 6; }
-  const char *GetBaseDBName() const { return "ViewModes"; }
+  void CreateTables() override;
+  void CreateAnalytics() override;
+  void UpdateTables(int version) override;
+  int GetSchemaVersion() const override { return 6; }
+  const char *GetBaseDBName() const override { return "ViewModes"; }
 };

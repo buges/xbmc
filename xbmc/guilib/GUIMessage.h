@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2013 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@
 
 #define GUI_MSG_PAGE_UP      30 // page up
 #define GUI_MSG_PAGE_DOWN    31 // page down
-#define GUI_MSG_MOVE_OFFSET  32 // Instruct the contorl to MoveUp or MoveDown by offset amount
+#define GUI_MSG_MOVE_OFFSET  32 // Instruct the control to MoveUp or MoveDown by offset amount
 
 #define GUI_MSG_SET_TYPE     33 ///< Instruct a control to set it's type appropriately
 
@@ -161,7 +161,23 @@
  */
 #define GUI_MSG_UI_READY       49
 
+ /*!
+ \brief Called every 500ms to allow time dependent updates
+ */
+#define GUI_MSG_REFRESH_TIMER  50
+
+ /*!
+ \brief Called if state has changed wich could lead to GUI changes
+ */
+#define GUI_MSG_STATE_CHANGED  51
+
+
 #define GUI_MSG_USER         1000
+
+/*!
+\brief Complete to get codingtable page
+*/
+#define GUI_MSG_CODINGTABLE_LOOKUP_COMPLETED 65000
 
 /*!
  \ingroup winmsg
@@ -248,7 +264,7 @@ do { \
  if(g_application.IsCurrentThread()) \
    OnMessage(msg); \
  else \
-   g_windowManager.SendThreadMessage(msg, GetID()); \
+   CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg, GetID()); \
 }
 
 /*!
@@ -342,14 +358,14 @@ class CFileItemList;
  \ingroup winmsg
  \brief
  */
-class CGUIMessage
+class CGUIMessage final
 {
 public:
   CGUIMessage(int dwMsg, int senderID, int controlID, int param1 = 0, int param2 = 0);
   CGUIMessage(int msg, int senderID, int controlID, int param1, int param2, CFileItemList* item);
   CGUIMessage(int msg, int senderID, int controlID, int param1, int param2, const CGUIListItemPtr &item);
   CGUIMessage(const CGUIMessage& msg);
-  virtual ~CGUIMessage(void);
+  ~CGUIMessage(void);
   CGUIMessage& operator = (const CGUIMessage& msg);
 
   int GetControlId() const ;
@@ -363,7 +379,7 @@ public:
   void SetParam2(int param2);
   void SetPointer(void* pointer);
   void SetLabel(const std::string& strLabel);
-  void SetLabel(int iString);               // for convience - looks up in strings.xml
+  void SetLabel(int iString);               // for convenience - looks up in strings.xml
   const std::string& GetLabel() const;
   void SetStringParam(const std::string &strParam);
   void SetStringParams(const std::vector<std::string> &params);

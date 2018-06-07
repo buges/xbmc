@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,12 +27,12 @@ class CResourceFile : public COverrideFile
 {
 public:
   CResourceFile();
-  virtual ~CResourceFile();
+  ~CResourceFile() override;
 
   static bool TranslatePath(const std::string &path, std::string &translatedPath);
   static bool TranslatePath(const CURL &url, std::string &translatedPath);
 
 protected:
-  virtual std::string TranslatePath(const CURL &url);
+  std::string TranslatePath(const CURL &url) override;
 };
 }

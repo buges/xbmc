@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,9 @@
  *
  */
 
+#include <string>
+#include <vector>
+
 #include "guilib/GUIDialog.h"
 
 class CFileItemList;
@@ -30,10 +33,10 @@ class CGUIDialogMediaSource :
 {
 public:
   CGUIDialogMediaSource(void);
-  virtual ~CGUIDialogMediaSource(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual void OnDeinitWindow(int nextWindowID);
-  virtual bool OnBack(int actionID);
+  ~CGUIDialogMediaSource(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  void OnDeinitWindow(int nextWindowID) override;
+  bool OnBack(int actionID) override;
   static bool ShowAndAddMediaSource(const std::string &type);
   static bool ShowAndEditMediaSource(const std::string &type, const CMediaSource &share);
   static bool ShowAndEditMediaSource(const std::string &type, const std::string &share);
@@ -52,6 +55,8 @@ protected:
   void UpdateButtons();
   int GetSelectedItem();
   void HighlightItem(int item);
+  std::string GetUniqueMediaSourceName();
+  static void OnMediaSourceChanged(const std::string& type, const std::string& oldName, const CMediaSource& share);
 
   std::vector<std::string> GetPaths() const;
 

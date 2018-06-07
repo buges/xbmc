@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include <string>
 #include <stdint.h>
-#include "addons/include/xbmc_audioenc_types.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/AudioEncoder.h"
 
 class IEncoder
 {
@@ -33,8 +33,8 @@ public:
     m_iInBitsPerSample(0)
   {
   }
-  virtual ~IEncoder() {}
-  virtual bool Init(audioenc_callbacks &callbacks) = 0;
+  virtual ~IEncoder() = default;
+  virtual bool Init(AddonToKodiFuncTable_AudioEncoder& callbacks) = 0;
   virtual int Encode(int nNumBytesRead, uint8_t* pbtStream) = 0;
   virtual bool Close() = 0;
 

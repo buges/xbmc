@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
  *
  */
 
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "cores/AudioEngine/Utils/AEDeviceInfo.h"
 #include "cores/AudioEngine/Sinks/osx/CoreAudioDevice.h"
 
@@ -30,14 +34,7 @@ struct CADeviceInstance
 };
 typedef std::vector< std::pair<struct CADeviceInstance, CAEDeviceInfo> > CADeviceList;
 
-typedef enum PassthroughMode
-{
-  PassthroughModeNone = 0,
-  PassthroughModeNative,
-  PassthroughModeBitstream
-} EPassthroughMode;
-
-//Hirarchy:
+//Hierarchy:
 // Device
 //       - 1..n streams
 //            1..n formats
@@ -92,12 +89,11 @@ public:
   *
   * @param format    [in]     - the requested AE format which should be matched to the stream formats of CA
   * @param outputFormat [out] - the found CA format which matches best to the requested AE format
-  * @param passthrough [out]  - flag indicating that the found CA format is a native passthrough format, bitstreamed passthroughformat or no passthroughformat
   * @param outputStream [out] - the coreaudio streamid which contains the coreaudio format returned in outputFormat
   * @return true if a matching corea audio format was found - else false
   */
-  bool          FindSuitableFormatForStream(UInt32 &streamIdx, const AEAudioFormat &format, 
-                                            AudioStreamBasicDescription &outputFormat, EPassthroughMode &passthrough,
+  bool          FindSuitableFormatForStream(UInt32 &streamIdx, const AEAudioFormat &format, bool virt, 
+                                            AudioStreamBasicDescription &outputFormat,
                                             AudioStreamID &outputStream) const;
 
   /*!
@@ -179,9 +175,10 @@ private:
 
   bool              hasSampleRate(const AESampleRateList &list, const unsigned int samplerate) const;
   bool              hasDataFormat(const AEDataFormatList &list, const enum AEDataFormat format) const;
+  bool              hasDataType(const AEDataTypeList &list, CAEStreamInfo::DataType type) const;
 
   /*!
-  * @brief Converts a CA format description to a list of AEFormat desciptions (as one format can result
+  * @brief Converts a CA format description to a list of AEFormat descriptions (as one format can result
   *        in more then 1 AE format - e.x. AC3 ca format results in AC3 and DTS AE format
   *
   * @param formatDesc [in] - The CA format description to be converted
@@ -190,9 +187,11 @@ private:
   * @return The list of converted AE formats.
   */
   AEDataFormatList  caFormatToAE(const AudioStreamBasicDescription &formatDesc, bool isDigital) const;
+  AEDataTypeList caFormatToAEType(const AudioStreamBasicDescription &formatDesc, bool isDigital) const;
+
 
   /*!
-  * @brief Convet a CA channel label to an AE channel.
+  * @brief Convert a CA channel label to an AE channel.
   * @param CAChannelLabel - the CA channel label to be converted
   * @return the corresponding AEChannel
   */
@@ -206,6 +205,8 @@ private:
   * @return - the list of AE formats in that stream.
   */
   AEDataFormatList  getFormatListForStream(UInt32 streamIdx) const;
+
+  AEDataTypeList  getTypeListForStream(UInt32 streamIdx) const;
 
   /*!
   * @brief Returns the AE channelinfo/channel map for the CA stream at the given index
@@ -244,6 +245,7 @@ private:
   {
     AudioStreamID streamID;
     StreamFormatList formatList;
+    StreamFormatList formatListVirt;
     UInt32 numChannels;
     bool isDigital;
     bool hasPassthroughFormats;

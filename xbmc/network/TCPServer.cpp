@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -34,10 +34,16 @@
 #include "websocket/WebSocketManager.h"
 #include "Network.h"
 
+#if defined(TARGET_WINDOWS) || defined(HAVE_LIBBLUETOOTH)
 static const char     bt_service_name[] = "XBMC JSON-RPC";
 static const char     bt_service_desc[] = "Interface for XBMC remote control over bluetooth";
 static const char     bt_service_prov[] = "XBMC JSON-RPC Provider";
 static const uint32_t bt_service_guid[] = {0x65AE4CC0, 0x775D11E0, 0xBE16CE28, 0x4824019B};
+#endif
+
+#if defined(TARGET_WINDOWS)
+#include "platform/win32/CharsetConverter.h"
+#endif
 
 #ifdef HAVE_LIBBLUETOOTH
 #include <bluetooth/bluetooth.h>
@@ -53,7 +59,6 @@ static const bdaddr_t bt_bdaddr_local = {{0, 0, 0, 0xff, 0xff, 0xff}};
 
 using namespace JSONRPC;
 using namespace ANNOUNCEMENT;
-//using namespace std; On VS2010, bind conflicts with std::bind
 
 #define RECEIVEBUFFER 1024
 
@@ -66,7 +71,20 @@ bool CTCPServer::StartServer(int port, bool nonlocal)
   ServerInstance = new CTCPServer(port, nonlocal);
   if (ServerInstance->Initialize())
   {
-    ServerInstance->Create();
+    size_t thread_stacksize = 0;
+#if defined(TARGET_DARWIN_TVOS)
+    void *stack_addr;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_getstack(&attr, &stack_addr, &thread_stacksize);
+    pthread_attr_destroy(&attr);
+    // double the stack size under tvos, not sure why yet
+    // but it stoped crashing using Kodi json -> play video.
+    // non-tvos will pass a value of zero which means 'system default'
+    thread_stacksize *= 2;
+  CLog::Log(LOGDEBUG, "CTCPServer: increasing thread stack to %zu", thread_stacksize);
+#endif
+    ServerInstance->Create(false, thread_stacksize);
     return true;
   }
   else
@@ -151,7 +169,7 @@ void CTCPServer::Process()
             {
               CWebSocket *websocket = CWebSocketManager::Handle(buffer, nread, response);
 
-              if (response.size() > 0)
+              if (!response.empty())
                 m_connections[i]->Send(response.c_str(), response.size());
 
               if (websocket != NULL)
@@ -255,13 +273,21 @@ bool CTCPServer::Initialize()
 
   if (started)
   {
-    CAnnouncementManager::Get().AddAnnouncer(this);
+    CAnnouncementManager::GetInstance().AddAnnouncer(this);
     CLog::Log(LOGINFO, "JSONRPC Server: Successfully initialized");
     return true;
   }
   return false;
 }
 
+#ifdef TARGET_WINDOWS_STORE
+bool CTCPServer::InitializeBlue()
+{
+  CLog::Log(LOGDEBUG, "%s is not implemented", __FUNCTION__);
+  return true; // need to fake it for now
+}
+
+#else
 bool CTCPServer::InitializeBlue()
 {
   if (!m_nonlocal)
@@ -315,11 +341,13 @@ bool CTCPServer::InitializeBlue()
   addrinfo.RemoteAddr.lpSockaddr      = (SOCKADDR*)&sa;
   addrinfo.RemoteAddr.iSockaddrLength = sizeof(sa);
 
+  using KODI::PLATFORM::WINDOWS::ToW;
+
   WSAQUERYSET service = {};
   service.dwSize = sizeof(service);
-  service.lpszServiceInstanceName = (LPSTR)bt_service_name;
+  service.lpszServiceInstanceName = const_cast<LPWSTR>(ToW(bt_service_name).c_str());
   service.lpServiceClassId        = (LPGUID)&bt_service_guid;
-  service.lpszComment             = (LPSTR)bt_service_desc;
+  service.lpszComment             = const_cast<LPWSTR>(ToW(bt_service_desc).c_str());
   service.dwNameSpace             = NS_BTH;
   service.lpNSProviderId          = NULL; /* RFCOMM? */
   service.lpcsaBuffer             = &addrinfo;
@@ -380,7 +408,7 @@ bool CTCPServer::InitializeBlue()
   sdp_uuid128_create(&svc_uuid, &bt_service_guid);
   sdp_set_service_id(record, svc_uuid);
 
-  // make the service record publicly browsable
+  // make the service record publicly browseable
   sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
   root_list = sdp_list_append(0, &root_uuid);
   sdp_set_browse_groups(record, root_list);
@@ -442,17 +470,17 @@ bool CTCPServer::InitializeBlue()
 #endif
   return false;
 }
+#endif
 
 bool CTCPServer::InitializeTCP()
 {
-  SOCKET fd;
-
   Deinitialize();
 
-  if ((fd = CreateTCPServerSocket(m_port, !m_nonlocal, 10, "JSONRPC")) == INVALID_SOCKET)
+  std::vector<SOCKET> sockets = CreateTCPServerSocket(m_port, !m_nonlocal, 10, "JSONRPC");
+  if (sockets.empty())
     return false;
 
-  m_servers.push_back(fd);
+  m_servers.insert(m_servers.end(), sockets.begin(), sockets.end());
   return true;
 }
 
@@ -477,7 +505,7 @@ void CTCPServer::Deinitialize()
   m_sdpd = NULL;
 #endif
 
-  CAnnouncementManager::Get().RemoveAnnouncer(this);
+  CAnnouncementManager::GetInstance().RemoveAnnouncer(this);
 }
 
 CTCPServer::CTCPClient::CTCPClient()

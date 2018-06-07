@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  */
 
 #include "GUIFixedListContainer.h"
+#include "GUIListItemLayout.h"
 #include "input/Key.h"
 
 CGUIFixedListContainer::CGUIFixedListContainer(int parentID, int controlID, float posX, float posY, float width, float height, ORIENTATION orientation, const CScroller& scroller, int preloadItems, int fixedPosition, int cursorRange)
@@ -31,9 +32,7 @@ CGUIFixedListContainer::CGUIFixedListContainer(int parentID, int controlID, floa
   SetCursor(m_fixedCursor);
 }
 
-CGUIFixedListContainer::~CGUIFixedListContainer(void)
-{
-}
+CGUIFixedListContainer::~CGUIFixedListContainer(void) = default;
 
 bool CGUIFixedListContainer::OnAction(const CAction &action)
 {
@@ -202,6 +201,8 @@ bool CGUIFixedListContainer::SelectItemFromPoint(const CPoint &point)
   if (!m_focusedLayout || !m_layout)
     return false;
 
+  MarkDirtyRegion();
+
   const float mouse_scroll_speed = 0.25f;
   const float mouse_max_amount = 1.5f;
   float sizeOfItem = m_layout->Size(m_orientation);
@@ -272,6 +273,7 @@ void CGUIFixedListContainer::SelectItem(int item)
       SetContainerMoving(cursor - GetCursor());
     SetCursor(cursor);
     ScrollToOffset(item - GetCursor());
+    MarkDirtyRegion();
   }
 }
 

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@
  */
 
 #include <stdint.h>
-#include <cassert>
+#include <assert.h>
 #include <climits>
 #include <cmath>
 
-#ifdef __SSE2__
+#if defined(HAVE_SSE2) && defined(__SSE2__)
 #include <emmintrin.h>
 #endif
 
@@ -35,7 +35,13 @@
 #if defined(__ppc__) || \
     defined(__powerpc__) || \
     defined(__mips__) || \
-    defined(__arm__)
+    defined(__arm__) || \
+    defined(__aarch64__) || \
+    defined(__SH4__) || \
+    defined(__sparc__) || \
+    defined(__arc__) || \
+    defined(_M_ARM) || \
+    defined(__xtensa__)
   #define DISABLE_MATHUTILS_ASM_ROUND_INT
 #endif
 
@@ -62,8 +68,8 @@ namespace MathUtils
   */
   inline int round_int(double x)
   {
-    assert(x > static_cast<double>(INT_MIN / 2) - 1.0);
-    assert(x < static_cast<double>(INT_MAX / 2) + 1.0);
+    assert(x > static_cast<double>((int) (INT_MIN / 2)) - 1.0);
+    assert(x < static_cast<double>((int) (INT_MAX / 2)) + 1.0);
 
 #if defined(DISABLE_MATHUTILS_ASM_ROUND_INT)
     /* This implementation warrants some further explanation.
@@ -115,12 +121,12 @@ namespace MathUtils
      *    The representation once the offset is applied has equal or greater
      *    precision than the input, so the addition does not cause rounding.
      */
-    return ((unsigned int) (x + 0x80000000.8p0)) - 0x80000000;
+    return ((unsigned int) (x + 2147483648.5)) - 0x80000000;
 
 #else
     const float round_to_nearest = 0.5f;
     int i;
-#if defined(__SSE2__)
+#if defined(HAVE_SSE2) && defined(__SSE2__)
     const float round_dn_to_nearest = 0.4999999f;
     i = (x > 0) ? _mm_cvttsd_si32(_mm_set_sd(x + round_to_nearest)) : _mm_cvttsd_si32(_mm_set_sd(x - round_dn_to_nearest));
 
@@ -182,6 +188,20 @@ namespace MathUtils
     MathUtils::round_int(0.0);
     MathUtils::truncate_int(0.0);
     MathUtils::abs(0);
+  }
+
+  /**
+   * Compare two floating-point numbers for equality and regard them
+   * as equal if their difference is below a given threshold.
+   *
+   * It is usually not useful to compare float numbers for equality with
+   * the standard operator== since very close numbers might have different
+   * representations.
+   */
+  template<typename FloatT>
+  inline bool FloatEquals(FloatT f1, FloatT f2, FloatT maxDelta)
+  {
+    return (std::abs(f2 - f1) < maxDelta);
   }
 
 #if 0

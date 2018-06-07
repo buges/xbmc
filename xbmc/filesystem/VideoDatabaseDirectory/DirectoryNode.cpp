@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2016 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -30,35 +30,29 @@
 #include "DirectoryNodeTvShowsOverview.h"
 #include "DirectoryNodeSeasons.h"
 #include "DirectoryNodeEpisodes.h"
+#include "DirectoryNodeInProgressTvShows.h"
 #include "DirectoryNodeRecentlyAddedMovies.h"
 #include "DirectoryNodeRecentlyAddedEpisodes.h"
 #include "DirectoryNodeMusicVideosOverview.h"
 #include "DirectoryNodeRecentlyAddedMusicVideos.h"
 #include "DirectoryNodeTitleMusicVideos.h"
-#include "video/VideoInfoTag.h"
 #include "URL.h"
-#include "settings/AdvancedSettings.h"
 #include "FileItem.h"
 #include "utils/StringUtils.h"
-#include "guilib/LocalizeStrings.h"
-#include "utils/Variant.h"
-#include "video/VideoDatabase.h"
-#include "settings/Settings.h"
 
-using namespace std;
 using namespace XFILE::VIDEODATABASEDIRECTORY;
 
 //  Constructor is protected use ParseURL()
 CDirectoryNode::CDirectoryNode(NODE_TYPE Type, const std::string& strName, CDirectoryNode* pParent)
 {
-  m_Type=Type;
-  m_strName=strName;
-  m_pParent=pParent;
+  m_Type = Type;
+  m_strName = strName;
+  m_pParent = pParent;
 }
 
 CDirectoryNode::~CDirectoryNode()
 {
-  delete m_pParent;
+  delete m_pParent, m_pParent = nullptr;
 }
 
 //  Parses a given path and returns the current node of the path
@@ -66,21 +60,23 @@ CDirectoryNode* CDirectoryNode::ParseURL(const std::string& strPath)
 {
   CURL url(strPath);
 
-  std::string strDirectory=url.GetFileName();
+  std::string strDirectory = url.GetFileName();
   URIUtils::RemoveSlashAtEnd(strDirectory);
 
-  vector<string> Path = StringUtils::Split(strDirectory, '/');
+  std::vector<std::string> Path = StringUtils::Tokenize(strDirectory, '/');
+  // we always have a root node, it is special and has a path of ""
   Path.insert(Path.begin(), "");
 
-  CDirectoryNode* pNode=NULL;
-  CDirectoryNode* pParent=NULL;
-  NODE_TYPE NodeType=NODE_TYPE_ROOT;
-
-  for (int i=0; i<(int)Path.size(); ++i)
+  CDirectoryNode *pNode = nullptr;
+  CDirectoryNode *pParent = nullptr;
+  NODE_TYPE NodeType = NODE_TYPE_ROOT;
+  // loop down the dir path, creating a node with a parent.
+  // if we hit a child type of NODE_TYPE_NONE, then we are done.
+  for (size_t i = 0; i < Path.size() && NodeType != NODE_TYPE_NONE; ++i)
   {
-    pNode=CDirectoryNode::CreateNode(NodeType, Path[i], pParent);
-    NodeType= pNode ? pNode->GetChildType() : NODE_TYPE_NONE;
-    pParent=pNode;
+    pNode = CDirectoryNode::CreateNode(NodeType, Path[i], pParent);
+    NodeType = pNode ? pNode->GetChildType() : NODE_TYPE_NONE;
+    pParent = pNode;
   }
 
   // Add all the additional URL options to the last node
@@ -93,7 +89,7 @@ CDirectoryNode* CDirectoryNode::ParseURL(const std::string& strPath)
 //  returns the database ids of the path,
 void CDirectoryNode::GetDatabaseInfo(const std::string& strPath, CQueryParams& params)
 {
-  unique_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(strPath));
+  std::unique_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(strPath));
 
   if (!pNode.get())
     return;
@@ -140,13 +136,15 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const std::string& st
     return new CDirectoryNodeMusicVideosOverview(strName,pParent);
   case NODE_TYPE_RECENTLY_ADDED_MUSICVIDEOS:
     return new CDirectoryNodeRecentlyAddedMusicVideos(strName,pParent);
+  case NODE_TYPE_INPROGRESS_TVSHOWS:
+    return new CDirectoryNodeInProgressTvShows(strName,pParent);
   case NODE_TYPE_TITLE_MUSICVIDEOS:
     return new CDirectoryNodeTitleMusicVideos(strName,pParent);
   default:
     break;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //  Current node name
@@ -179,7 +177,7 @@ CDirectoryNode* CDirectoryNode::GetParent() const
 
 void CDirectoryNode::RemoveParent()
 {
-  m_pParent=NULL;
+  m_pParent = nullptr;
 }
 
 //  should be overloaded by a derived class
@@ -193,26 +191,26 @@ bool CDirectoryNode::GetContent(CFileItemList& items) const
 //  Creates a videodb url
 std::string CDirectoryNode::BuildPath() const
 {
-  vector<string> array;
+  std::vector<std::string> array;
 
   if (!m_strName.empty())
     array.insert(array.begin(), m_strName);
 
   CDirectoryNode* pParent=m_pParent;
-  while (pParent!=NULL)
+  while (pParent != nullptr)
   {
     const std::string& strNodeName=pParent->GetName();
     if (!strNodeName.empty())
       array.insert(array.begin(), strNodeName);
 
-    pParent=pParent->GetParent();
+    pParent = pParent->GetParent();
   }
 
   std::string strPath="videodb://";
-  for (int i=0; i<(int)array.size(); ++i)
-    strPath+=array[i]+"/";
+  for (int i = 0; i < static_cast<int>(array.size()); ++i)
+    strPath += array[i]+"/";
 
-  string options = m_options.GetOptionsString();
+  std::string options = m_options.GetOptionsString();
   if (!options.empty())
     strPath += "?" + options;
 
@@ -235,10 +233,10 @@ void CDirectoryNode::CollectQueryParams(CQueryParams& params) const
   params.SetQueryParam(m_Type, m_strName);
 
   CDirectoryNode* pParent=m_pParent;
-  while (pParent!=NULL)
+  while (pParent != nullptr)
   {
     params.SetQueryParam(pParent->GetType(), pParent->GetName());
-    pParent=pParent->GetParent();
+    pParent = pParent->GetParent();
   }
 }
 
@@ -255,16 +253,15 @@ bool CDirectoryNode::GetChilds(CFileItemList& items)
   if (CanCache() && items.Load())
     return true;
 
-  unique_ptr<CDirectoryNode> pNode(CDirectoryNode::CreateNode(GetChildType(), "", this));
+  std::unique_ptr<CDirectoryNode> pNode(CDirectoryNode::CreateNode(GetChildType(), "", this));
 
   bool bSuccess=false;
   if (pNode.get())
   {
     pNode->m_options = m_options;
-    bSuccess=pNode->GetContent(items);
+    bSuccess = pNode->GetContent(items);
     if (bSuccess)
     {
-      AddQueuingFolder(items);
       if (CanCache())
         items.SetCacheToDisc(CFileItemList::CACHE_ALWAYS);
     }
@@ -275,78 +272,6 @@ bool CDirectoryNode::GetChilds(CFileItemList& items)
   }
 
   return bSuccess;
-}
-
-//  Add an "* All ..." folder to the CFileItemList
-//  depending on the child node
-void CDirectoryNode::AddQueuingFolder(CFileItemList& items) const
-{
-  CFileItemPtr pItem;
-
-  // always show "all" items by default
-  if (!CSettings::Get().GetBool("videolibrary.showallitems"))
-    return;
-
-  // no need for "all" item when only one item
-  if (items.GetObjectCount() <= 1)
-    return;
-
-  CVideoDbUrl videoUrl;
-  if (!videoUrl.FromString(BuildPath()))
-    return;
-
-  // hack - as the season node might return episodes
-  unique_ptr<CDirectoryNode> pNode(ParseURL(items.GetPath()));
-
-  switch (pNode->GetChildType())
-  {
-    case NODE_TYPE_SEASONS:
-      {
-        std::string strLabel = g_localizeStrings.Get(20366);
-        pItem.reset(new CFileItem(strLabel));  // "All Seasons"
-        videoUrl.AppendPath("-1/");
-        pItem->SetPath(videoUrl.ToString());
-        // set the number of watched and unwatched items accordingly
-        int watched = 0;
-        int unwatched = 0;
-        for (int i = 0; i < items.Size(); i++)
-        {
-          CFileItemPtr item = items[i];
-          watched += (int)item->GetProperty("watchedepisodes").asInteger();
-          unwatched += (int)item->GetProperty("unwatchedepisodes").asInteger();
-        }
-        pItem->SetProperty("totalepisodes", watched + unwatched);
-        pItem->SetProperty("numepisodes", watched + unwatched); // will be changed later to reflect watchmode setting
-        pItem->SetProperty("watchedepisodes", watched);
-        pItem->SetProperty("unwatchedepisodes", unwatched);
-        if (items.Size() && items[0]->GetVideoInfoTag())
-        {
-          *pItem->GetVideoInfoTag() = *items[0]->GetVideoInfoTag();
-          pItem->GetVideoInfoTag()->m_iSeason = -1;
-        }
-        pItem->GetVideoInfoTag()->m_strTitle = strLabel;
-        pItem->GetVideoInfoTag()->m_iEpisode = watched + unwatched;
-        pItem->GetVideoInfoTag()->m_playCount = (unwatched == 0) ? 1 : 0;
-        CVideoDatabase db;
-        if (db.Open())
-        {
-          pItem->GetVideoInfoTag()->m_iDbId = db.GetSeasonId(pItem->GetVideoInfoTag()->m_iIdShow, -1);
-          db.Close();
-        }
-        pItem->GetVideoInfoTag()->m_type = MediaTypeSeason;
-      }
-      break;
-    default:
-      break;
-  }
-
-  if (pItem)
-  {
-    pItem->m_bIsFolder = true;
-    pItem->SetSpecialSort(g_advancedSettings.m_bVideoLibraryAllItemsOnBottom ? SortSpecialOnBottom : SortSpecialOnTop);
-    pItem->SetCanQueue(false);
-    items.Add(pItem);
-  }
 }
 
 bool CDirectoryNode::CanCache() const

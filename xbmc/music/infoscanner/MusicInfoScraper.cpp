@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 
 using namespace MUSIC_GRABBER;
 using namespace ADDON;
-using namespace std;
 
 CMusicInfoScraper::CMusicInfoScraper(const ADDON::ScraperPtr &scraper) : CThread("MusicInfoScraper")
 {
@@ -114,7 +113,8 @@ void CMusicInfoScraper::LoadAlbumInfo()
     return;
 
   CMusicAlbumInfo& album=m_vecAlbums[m_iAlbum];
-  album.GetAlbum().artist.clear();
+  // Clear album artist credits
+  album.GetAlbum().artistCredits.clear();
   if (album.Load(*m_http,m_scraper))
     m_bSucceeded=true;
 }
@@ -193,8 +193,8 @@ void CMusicInfoScraper::Process()
 bool CMusicInfoScraper::CheckValidOrFallback(const std::string &fallbackScraper)
 {
   return true;
-/*
- * TODO handle fallback mechanism
+//! @todo Handle fallback mechanism
+/* 
   if (m_scraper->Path() != fallbackScraper &&
       parser.Load("special://xbmc/system/scrapers/music/" + fallbackScraper))
   {

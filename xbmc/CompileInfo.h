@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@ class CCompileInfo
 public:
   static int GetMajor();
   static int GetMinor();
+  static const char* GetPackage();
+  static const char* GetClass();
   static const char* GetAppName();
   static const char *GetSuffix();  // Git "Tag", e.g. alpha1
   static const char* GetSCMID();   // Git Revision

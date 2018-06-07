@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 
 #include <string>
 
-#include "system.h"
 #ifdef TARGET_POSIX
 #include "PlatformDefs.h"
 #endif
@@ -31,7 +30,7 @@
 class LibraryLoader
 {
 public:
-  LibraryLoader(const std::string& libraryFile);
+  explicit LibraryLoader(const std::string& libraryFile);
   virtual ~LibraryLoader();
 
   virtual bool Load() = 0;

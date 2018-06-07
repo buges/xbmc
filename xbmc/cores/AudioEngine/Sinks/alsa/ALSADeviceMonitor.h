@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team Kodi
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,9 +18,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-#include "system.h"
-#if defined(HAS_ALSA) && defined(HAVE_LIBUDEV)
 
 #include <string>
 #include <vector>
@@ -44,6 +41,3 @@ private:
   struct udev *m_udev;
   struct udev_monitor* m_udevMonitor;
 };
-
-#endif
-

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@ namespace MUSIC_INFO
   {
   public:
     CMusicInfoTagLoaderCDDA(void);
-    virtual ~CMusicInfoTagLoaderCDDA();
+    ~CMusicInfoTagLoaderCDDA() override;
 
-    virtual bool Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art = NULL);
+    bool Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art = NULL) override;
   };
 }

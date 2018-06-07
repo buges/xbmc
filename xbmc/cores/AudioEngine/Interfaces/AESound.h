@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@
  */
 
 #include <string>
+#include "cores/AudioEngine/Utils/AEAudioFormat.h"
 
 class IAESound
 {
 protected:
   friend class IAE;
-  IAESound(const std::string &filename) {}
-  virtual ~IAESound() {}
+  explicit IAESound(const std::string &filename) {}
+  virtual ~IAESound() = default;
 
 public:
   /* play the sound this object represents */
@@ -37,6 +38,12 @@ public:
 
   /* return true if the sound is currently playing */
   virtual bool IsPlaying() = 0;
+
+  /* set the playback channel of this sound, AE_CH_NULL for all */
+  virtual void SetChannel(AEChannel channel) = 0;
+
+  /* get the current playback channel of this sound, AE_CH_NULL for all */
+  virtual AEChannel GetChannel() = 0;
 
   /* set the playback volume of this sound */
   virtual void SetVolume(float volume) = 0;

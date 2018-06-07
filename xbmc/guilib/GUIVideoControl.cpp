@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,16 +18,14 @@
  *
  */
 
-#include "system.h"
+#include "GUIComponent.h"
 #include "GUIVideoControl.h"
 #include "GUIWindowManager.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "input/Key.h"
+#include "utils/Color.h"
 #include "WindowIDs.h"
-#include "cores/VideoRenderers/RenderManager.h"
-#ifndef HAS_VIDEO_PLAYBACK
-#include "cores/DummyVideoPlayer.h"
-#endif
 
 CGUIVideoControl::CGUIVideoControl(int parentID, int controlID, float posX, float posY, float width, float height)
     : CGUIControl(parentID, controlID, posX, posY, width, height)
@@ -35,15 +33,12 @@ CGUIVideoControl::CGUIVideoControl(int parentID, int controlID, float posX, floa
   ControlType = GUICONTROL_VIDEO;
 }
 
-CGUIVideoControl::~CGUIVideoControl(void)
-{}
+CGUIVideoControl::~CGUIVideoControl(void) = default;
 
 void CGUIVideoControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
-  g_renderManager.FrameMove();
-
-  // TODO Proper processing which marks when its actually changed. Just mark always for now.
-  if (g_renderManager.IsGuiLayer())
+  //! @todo Proper processing which marks when its actually changed. Just mark always for now.
+  if (g_application.GetAppPlayer().IsRenderingGuiLayer())
     MarkDirtyRegion();
 
   CGUIControl::Process(currentTime, dirtyregions);
@@ -51,78 +46,48 @@ void CGUIVideoControl::Process(unsigned int currentTime, CDirtyRegionList &dirty
 
 void CGUIVideoControl::Render()
 {
-#ifdef HAS_VIDEO_PLAYBACK
-  // don't render if we aren't playing video, or if the renderer isn't started
-  // (otherwise the lock we have from CApplication::Render() may clash with the startup
-  // locks in the RenderManager.)
-  if (g_application.m_pPlayer->IsPlayingVideo() && g_renderManager.IsStarted())
+  if (g_application.GetAppPlayer().IsRenderingVideo())
   {
-#else
-  if (g_application.m_pPlayer->IsPlayingVideo())
-  {
-#endif
-    if (!g_application.m_pPlayer->IsPausedPlayback())
+    if (!g_application.GetAppPlayer().IsPausedPlayback())
       g_application.ResetScreenSaver();
 
-    g_graphicsContext.SetViewWindow(m_posX, m_posY, m_posX + m_width, m_posY + m_height);
+    CServiceBroker::GetWinSystem()->GetGfxContext().SetViewWindow(m_posX, m_posY, m_posX + m_width, m_posY + m_height);
     TransformMatrix mat;
-    g_graphicsContext.SetTransform(mat, 1.0, 1.0);
+    CServiceBroker::GetWinSystem()->GetGfxContext().SetTransform(mat, 1.0, 1.0);
 
-#ifdef HAS_VIDEO_PLAYBACK
-    color_t alpha = g_graphicsContext.MergeAlpha(0xFF000000) >> 24;
-    if (g_renderManager.IsVideoLayer())
+    UTILS::Color alpha = CServiceBroker::GetWinSystem()->GetGfxContext().MergeAlpha(0xFF000000) >> 24;
+    if (g_application.GetAppPlayer().IsRenderingVideoLayer())
     {
-      CRect old = g_graphicsContext.GetScissors();
+      CRect old = CServiceBroker::GetWinSystem()->GetGfxContext().GetScissors();
       CRect region = GetRenderRegion();
       region.Intersect(old);
-      g_graphicsContext.BeginPaint();
-      g_graphicsContext.SetScissors(region);
-#ifdef HAS_IMXVPU
-      g_graphicsContext.Clear((16 << 16)|(8 << 8)|16);
-#else
-      g_graphicsContext.Clear(0);
-#endif
-      g_graphicsContext.SetScissors(old);
-      g_graphicsContext.EndPaint();
+      CServiceBroker::GetWinSystem()->GetGfxContext().SetScissors(region);
+      CServiceBroker::GetWinSystem()->GetGfxContext().Clear(0);
+      CServiceBroker::GetWinSystem()->GetGfxContext().SetScissors(old);
     }
     else
-      g_renderManager.Render(false, 0, alpha);
-#else
-    ((CDummyVideoPlayer *)(g_application.m_pPlayer->GetInternal()).get())->Render();
-#endif
+      g_application.GetAppPlayer().Render(false, alpha);
 
-    g_graphicsContext.RemoveTransform();
+    CServiceBroker::GetWinSystem()->GetGfxContext().RemoveTransform();
   }
-  // TODO: remove this crap: HAS_VIDEO_PLAYBACK
-  // instantiating a video control having no playback is complete nonsense
   CGUIControl::Render();
 }
 
 void CGUIVideoControl::RenderEx()
 {
-#ifdef HAS_VIDEO_PLAYBACK
-  if (g_application.m_pPlayer->IsPlayingVideo() && g_renderManager.IsStarted())
-    g_renderManager.Render(false, 0, 255, false);
-  g_renderManager.FrameFinish();
-#endif
+  if (g_application.GetAppPlayer().IsRenderingVideo())
+    g_application.GetAppPlayer().Render(false, 255, false);
+
   CGUIControl::RenderEx();
 }
 
 EVENT_RESULT CGUIVideoControl::OnMouseEvent(const CPoint &point, const CMouseEvent &event)
 {
-  if (!g_application.m_pPlayer->IsPlayingVideo()) return EVENT_RESULT_UNHANDLED;
+  if (!g_application.GetAppPlayer().IsPlayingVideo()) return EVENT_RESULT_UNHANDLED;
   if (event.m_id == ACTION_MOUSE_LEFT_CLICK)
   { // switch to fullscreen
     CGUIMessage message(GUI_MSG_FULLSCREEN, GetID(), GetParentID());
-    g_windowManager.SendMessage(message);
-    return EVENT_RESULT_HANDLED;
-  }
-  else if (event.m_id == ACTION_MOUSE_RIGHT_CLICK)
-  { // toggle the playlist window
-    if (g_windowManager.GetActiveWindow() == WINDOW_VIDEO_PLAYLIST)
-      g_windowManager.PreviousWindow();
-    else
-      g_windowManager.ActivateWindow(WINDOW_VIDEO_PLAYLIST);
+    CServiceBroker::GetGUI()->GetWindowManager().SendMessage(message);
     return EVENT_RESULT_HANDLED;
   }
   return EVENT_RESULT_UNHANDLED;

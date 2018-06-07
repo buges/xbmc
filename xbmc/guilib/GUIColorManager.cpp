@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,18 +19,19 @@
  */
 
 #include "GUIColorManager.h"
-#include "filesystem/SpecialProtocol.h"
+
+#include <utility>
+
 #include "addons/Skin.h"
+#include "filesystem/SpecialProtocol.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/XBMCTinyXML.h"
-#include "utils/StringUtils.h"
 
 CGUIColorManager g_colorManager;
 
-CGUIColorManager::CGUIColorManager(void)
-{
-}
+CGUIColorManager::CGUIColorManager(void) = default;
 
 CGUIColorManager::~CGUIColorManager(void)
 {
@@ -53,8 +54,7 @@ void CGUIColorManager::Load(const std::string &colorFile)
     LoadXML(xmlDoc);
 
   // first load the default color map if it exists
-  std::string basePath = URIUtils::AddFileToFolder(g_SkinInfo->Path(), "colors");
-  std::string path = URIUtils::AddFileToFolder(basePath, "defaults.xml");
+  std::string path = URIUtils::AddFileToFolder(g_SkinInfo->Path(), "colors", "defaults.xml");
 
   if (xmlDoc.LoadFile(CSpecialProtocol::TranslatePathConvertCase(path)))
     LoadXML(xmlDoc);
@@ -63,7 +63,7 @@ void CGUIColorManager::Load(const std::string &colorFile)
   if (StringUtils::EqualsNoCase(colorFile, "SKINDEFAULT"))
     return; // nothing to do
 
-  path = URIUtils::AddFileToFolder(basePath, colorFile);
+  path = URIUtils::AddFileToFolder(g_SkinInfo->Path(), "colors", colorFile);
   if (!URIUtils::HasExtension(path))
     path += ".xml";
   CLog::Log(LOGINFO, "Loading colors from %s", path.c_str());
@@ -89,10 +89,10 @@ bool CGUIColorManager::LoadXML(CXBMCTinyXML &xmlDoc)
   {
     if (color->FirstChild() && color->Attribute("name"))
     {
-      color_t value = 0xffffffff;
+      UTILS::Color value = 0xffffffff;
       sscanf(color->FirstChild()->Value(), "%x", (unsigned int*) &value);
       std::string name = color->Attribute("name");
-      iColor it = m_colors.find(name);
+      const auto it = m_colors.find(name);
       if (it != m_colors.end())
         (*it).second = value;
       else
@@ -104,17 +104,17 @@ bool CGUIColorManager::LoadXML(CXBMCTinyXML &xmlDoc)
 }
 
 // lookup a color and return it's hex value
-color_t CGUIColorManager::GetColor(const std::string &color) const
+UTILS::Color CGUIColorManager::GetColor(const std::string &color) const
 {
   // look in our color map
   std::string trimmed(color);
   StringUtils::TrimLeft(trimmed, "= ");
-  icColor it = m_colors.find(trimmed);
+  const auto it = m_colors.find(trimmed);
   if (it != m_colors.end())
     return (*it).second;
 
   // try converting hex directly
-  color_t value = 0;
+  UTILS::Color value = 0;
   sscanf(trimmed.c_str(), "%x", &value);
   return value;
 }

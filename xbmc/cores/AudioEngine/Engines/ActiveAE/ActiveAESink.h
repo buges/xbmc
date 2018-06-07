@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 #include "cores/AudioEngine/Interfaces/AESink.h"
 #include "cores/AudioEngine/AESinkFactory.h"
 #include "cores/AudioEngine/Engines/ActiveAE/ActiveAEBuffer.h"
+
+class CAEBitstreamPacker;
 
 namespace ActiveAE
 {
@@ -61,6 +63,8 @@ public:
     VOLUME,
     FLUSH,
     TIMEOUT,
+    SETSILENCETIMEOUT,
+    SETNOISETYPE,
   };
   enum InSignal
   {
@@ -89,26 +93,26 @@ public:
 class CActiveAESink : private CThread
 {
 public:
-  CActiveAESink(CEvent *inMsgEvent);
+  explicit CActiveAESink(CEvent *inMsgEvent);
   void EnumerateSinkList(bool force);
   void EnumerateOutputDevices(AEDeviceList &devices, bool passthrough);
-  std::string GetDefaultDevice(bool passthrough);
   void Start();
   void Dispose();
   AEDeviceType GetDeviceType(const std::string &device);
   bool HasPassthroughDevice();
-  bool SupportsFormat(const std::string &device, AEDataFormat format, int samplerate);
+  bool SupportsFormat(const std::string &device, AEAudioFormat &format);
   CSinkControlProtocol m_controlPort;
   CSinkDataProtocol m_dataPort;
 
 protected:
-  void Process();
+  void Process() override;
   void StateMachine(int signal, Protocol *port, Message *msg);
   void PrintSinks();
   void GetDeviceFriendlyName(std::string &device);
   void OpenSink();
   void ReturnBuffers();
   void SetSilenceTimer();
+  bool NeedIECPacking();
 
   unsigned int OutputSamples(CSampleBuffer* samples);
   void SwapInit(CSampleBuffer* samples);
@@ -120,6 +124,7 @@ protected:
   int m_state;
   bool m_bStateMachineSelfTrigger;
   int m_extTimeout;
+  int m_silenceTimeOut;
   bool m_extError;
   unsigned int m_extSilenceTimeout;
   bool m_extAppFocused;
@@ -137,12 +142,15 @@ protected:
 
   std::string m_deviceFriendlyName;
   std::string m_device;
-  AESinkInfoList m_sinkInfoList;
+  std::vector<AE::AESinkInfo> m_sinkInfoList;
   IAESink *m_sink;
   AEAudioFormat m_sinkFormat, m_requestedFormat;
   CEngineStats *m_stats;
   float m_volume;
   int m_sinkLatency;
+  CAEBitstreamPacker *m_packer;
+  bool m_needIecPack;
+  bool m_streamNoise;
 };
 
 }

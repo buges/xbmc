@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,32 +40,32 @@ class CGUILabelControl :
 {
 public:
   CGUILabelControl(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, bool wrapMultiLine, bool bHasPath);
-  virtual ~CGUILabelControl(void);
-  virtual CGUILabelControl *Clone() const { return new CGUILabelControl(*this); };
+  ~CGUILabelControl(void) override;
+  CGUILabelControl *Clone() const override { return new CGUILabelControl(*this); };
 
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual void UpdateInfo(const CGUIListItem *item = NULL);
-  virtual bool CanFocus() const;
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual std::string GetDescription() const;
-  virtual float GetWidth() const;
-  virtual void SetWidth(float width);
-  virtual CRect CalcRenderRegion() const;
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  void UpdateInfo(const CGUIListItem *item = NULL) override;
+  bool CanFocus() const override;
+  bool OnMessage(CGUIMessage& message) override;
+  std::string GetDescription() const override;
+  float GetWidth() const override;
+  void SetWidth(float width) override;
+  CRect CalcRenderRegion() const override;
  
   const CLabelInfo& GetLabelInfo() const { return m_label.GetLabelInfo(); };
   void SetLabel(const std::string &strLabel);
   void ShowCursor(bool bShow = true);
   void SetCursorPos(int iPos);
   int GetCursorPos() const { return m_iCursorPos;};
-  void SetInfo(const CGUIInfoLabel&labelInfo);
+  void SetInfo(const KODI::GUILIB::GUIINFO::CGUIInfoLabel&labelInfo);
   void SetWidthControl(float minWidth, bool bScroll);
   void SetAlignment(uint32_t align);
   void SetHighlight(unsigned int start, unsigned int end);
   void SetSelection(unsigned int start, unsigned int end);
 
 protected:
-  bool UpdateColors();
+  bool UpdateColors() override;
   std::string ShortenPath(const std::string &path);
 
   /*! \brief Return the maximum width of this label control.
@@ -84,7 +84,7 @@ protected:
   float m_minWidth;
 
   // multi-info stuff
-  CGUIInfoLabel m_infoLabel;
+  KODI::GUILIB::GUIINFO::CGUIInfoLabel m_infoLabel;
 
   unsigned int m_startHighlight;
   unsigned int m_endHighlight;

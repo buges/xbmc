@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,11 +24,9 @@
 
 using namespace MUSIC_INFO;
 
-CMusicInfoTagLoaderSHN::CMusicInfoTagLoaderSHN(void)
-{}
+CMusicInfoTagLoaderSHN::CMusicInfoTagLoaderSHN(void) = default;
 
-CMusicInfoTagLoaderSHN::~CMusicInfoTagLoaderSHN()
-{}
+CMusicInfoTagLoaderSHN::~CMusicInfoTagLoaderSHN() = default;
 
 bool CMusicInfoTagLoaderSHN::Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
 {
@@ -36,7 +34,7 @@ bool CMusicInfoTagLoaderSHN::Load(const std::string& strFileName, CMusicInfoTag&
   {
 
     tag.SetURL(strFileName);
-    tag.SetDuration((long)0); //TODO: Use libavformat to calculate duration.
+    tag.SetDuration((long)0); //! @todo Use libavformat to calculate duration.
     tag.SetLoaded(false);
 
     return true;

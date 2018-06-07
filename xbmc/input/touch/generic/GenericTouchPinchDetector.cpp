@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 bool CGenericTouchPinchDetector::OnTouchDown(unsigned int index, const Pointer &pointer)
 {
-  if (index < 0 || index >= TOUCH_MAX_POINTERS)
+  if (index >= MAX_POINTERS)
     return false;
 
   if (m_done)
@@ -34,7 +34,7 @@ bool CGenericTouchPinchDetector::OnTouchDown(unsigned int index, const Pointer &
 
 bool CGenericTouchPinchDetector::OnTouchUp(unsigned int index, const Pointer &pointer)
 {
-  if (index < 0 || index >= TOUCH_MAX_POINTERS)
+  if (index >= MAX_POINTERS)
     return false;
 
   if (m_done)
@@ -58,7 +58,7 @@ bool CGenericTouchPinchDetector::OnTouchUp(unsigned int index, const Pointer &po
 
 bool CGenericTouchPinchDetector::OnTouchMove(unsigned int index, const Pointer &pointer)
 {
-  if (index < 0 || index >= TOUCH_MAX_POINTERS)
+  if (index >= MAX_POINTERS)
     return false;
 
   if (m_done)

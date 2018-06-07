@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <regex>
 
 using namespace std;
 
@@ -29,7 +30,7 @@ void print_version(ifstream &in, ofstream &out)
 {
   string line;
   if (getline(in, line))
-    out << line;
+    out << regex_replace(line, regex("(\\s+)?JSONRPC_VERSION\\s+|(\\s+)?#.*"), "");
 }
 
 void print_license(ifstream &in, ofstream &out)
@@ -64,6 +65,11 @@ void print_json(ifstream &in, ofstream &out)
     closing = false;
     for (string::iterator itr = line.begin(); itr != line.end(); itr++)
     {
+      // Skip \r characters
+      if (*itr == '\r') {
+        break;
+      }
+
       // Count opening { but ignore the first one
       if (*itr == '{')
       {

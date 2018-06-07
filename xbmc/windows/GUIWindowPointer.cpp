@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,25 +19,24 @@
  */
 
 #include "GUIWindowPointer.h"
-#include "input/MouseStat.h"
+#include "input/mouse/MouseStat.h"
 #include "input/InputManager.h"
-#include "windowing/WindowingFactory.h"
-#include <climits>
+#include "ServiceBroker.h"
+#include "windowing/WinSystem.h"
+
 #define ID_POINTER 10
 
 CGUIWindowPointer::CGUIWindowPointer(void)
-    : CGUIDialog(WINDOW_DIALOG_POINTER, "Pointer.xml")
+  : CGUIDialog(WINDOW_DIALOG_POINTER, "Pointer.xml", DialogModalityType::MODELESS)
 {
   m_pointer = 0;
   m_loadType = LOAD_ON_GUI_INIT;
   m_needsScaling = false;
   m_active = false;
-  m_renderOrder = INT_MAX - 1;
+  m_renderOrder = RENDER_ORDER_WINDOW_POINTER;
 }
 
-CGUIWindowPointer::~CGUIWindowPointer(void)
-{
-}
+CGUIWindowPointer::~CGUIWindowPointer(void) = default;
 
 void CGUIWindowPointer::SetPointer(int pointer)
 {
@@ -57,10 +56,10 @@ void CGUIWindowPointer::SetPointer(int pointer)
 
 void CGUIWindowPointer::UpdateVisibility()
 {
-  if(g_Windowing.HasCursor())
+  if(CServiceBroker::GetWinSystem()->HasCursor())
   {
-    if (CInputManager::Get().IsMouseActive())
-      Show();
+    if (CServiceBroker::GetInputManager().IsMouseActive())
+      Open();
     else
       Close();
   }
@@ -76,19 +75,19 @@ void CGUIWindowPointer::OnWindowLoaded()
   CGUIWindow::OnWindowLoaded();
   DynamicResourceAlloc(false);
   m_pointer = 0;
-  m_renderOrder = INT_MAX - 1;
+  m_renderOrder = RENDER_ORDER_WINDOW_POINTER;
 }
 
 void CGUIWindowPointer::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
-  bool active = CInputManager::Get().IsMouseActive();
+  bool active = CServiceBroker::GetInputManager().IsMouseActive();
   if (active != m_active)
   {
     MarkDirtyRegion();
     m_active = active;
   }
-  MousePosition pos = CInputManager::Get().GetMousePosition();
+  MousePosition pos = CServiceBroker::GetInputManager().GetMousePosition();
   SetPosition((float)pos.x, (float)pos.y);
-  SetPointer(CInputManager::Get().GetMouseState());
+  SetPointer(CServiceBroker::GetInputManager().GetMouseState());
   return CGUIWindow::Process(currentTime, dirtyregions);
 }

@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team XBMC
+ *      http://kodi.tv/
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,15 +20,12 @@
  *
  */
 
-//  CDetectDVDMedia   -  Thread running in the background to detect a CD change
-//       and the filesystem
+//  CDetectDVDMedia
+//  Thread running in the background to detect a CD change and the filesystem
 //
 // by Bobbin007 in 2003
-//
-//
-//
 
-#include "system.h"
+#include "PlatformDefs.h"
 
 #ifdef HAS_DVD_DRIVE
 
@@ -47,11 +44,11 @@ class CDetectDVDMedia : public CThread
 {
 public:
   CDetectDVDMedia();
-  virtual ~CDetectDVDMedia();
+  ~CDetectDVDMedia() override;
 
-  virtual void OnStartup();
-  virtual void OnExit();
-  virtual void Process();
+  void OnStartup() override;
+  void OnExit() override;
+  void Process() override;
 
   static void WaitMediaReady();
   static bool IsDiscInDrive();
@@ -83,7 +80,6 @@ private:
   bool m_bStartup;
   bool m_bAutorun;
   DWORD m_dwTrayState;
-  DWORD m_dwTrayCount;
   DWORD m_dwLastTrayState;
 
   static std::string m_diskLabel;

@@ -9,7 +9,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,8 @@
 #include <memory>
 #include <cassert>
 
-#include "TransformMatrix.h"
+#include "utils/Color.h"
+#include "utils/TransformMatrix.h"
 
 #define FONT_CACHE_TIME_LIMIT (1000)
 #define FONT_CACHE_DIST_LIMIT (0.01f)
@@ -51,7 +52,7 @@ template<class Position>
 struct CGUIFontCacheKey
 {
   Position m_pos;
-  vecColors &m_colors;
+  std::vector<UTILS::Color> &m_colors;
   vecText &m_text;
   uint32_t m_alignment;
   float m_maxPixelWidth;
@@ -61,7 +62,7 @@ struct CGUIFontCacheKey
   float m_scaleY;
 
   CGUIFontCacheKey(Position pos,
-                   vecColors &colors, vecText &text,
+                   std::vector<UTILS::Color> &colors, vecText &text,
                    uint32_t alignment, float maxPixelWidth,
                    bool scrolling, const TransformMatrix &matrix,
                    float scaleX, float scaleY) :
@@ -79,17 +80,13 @@ struct CGUIFontCacheEntry
   const CGUIFontCache<Position, Value> &m_cache;
   CGUIFontCacheKey<Position> m_key;
   TransformMatrix m_matrix;
-
-  /* These need to be declared as mutable to get round the fact that only
-   * const iterators are available. These fields do not affect comparison or
-   * hash functors, so from the container's point of view, they are mutable. */
-  mutable unsigned int m_lastUsedMillis;
-  mutable Value m_value;
+  unsigned int m_lastUsedMillis;
+  Value m_value;
 
   CGUIFontCacheEntry(const CGUIFontCache<Position, Value> &cache, const CGUIFontCacheKey<Position> &key, unsigned int nowMillis) :
     m_cache(cache),
     m_key(key.m_pos,
-          *new vecColors, *new vecText,
+          *new std::vector<UTILS::Color>, *new vecText,
           key.m_alignment, key.m_maxPixelWidth,
           key.m_scrolling, m_matrix,
           key.m_scaleX, key.m_scaleY),
@@ -100,31 +97,9 @@ struct CGUIFontCacheEntry
     m_matrix = key.m_matrix;
   }
 
-  CGUIFontCacheEntry(const CGUIFontCacheEntry &other) :
-    m_cache(other.m_cache),
-    m_key(other.m_key.m_pos,
-          *new vecColors, *new vecText,
-          other.m_key.m_alignment, other.m_key.m_maxPixelWidth,
-          other.m_key.m_scrolling, m_matrix,
-          other.m_key.m_scaleX, other.m_key.m_scaleY),
-    m_lastUsedMillis(other.m_lastUsedMillis),
-    m_value(other.m_value)
-  {
-    m_key.m_colors.assign(other.m_key.m_colors.begin(), other.m_key.m_colors.end());
-    m_key.m_text.assign(other.m_key.m_text.begin(), other.m_key.m_text.end());
-    m_matrix = other.m_key.m_matrix;
-  }
-
-  struct Reassign
-  {
-    Reassign(const CGUIFontCacheKey<Position> &key, unsigned int nowMillis) : m_key(key), m_nowMillis(nowMillis) {}
-    void operator()(CGUIFontCacheEntry &entry);
-  private:
-    const CGUIFontCacheKey<Position> &m_key;
-    unsigned int m_nowMillis;
-  };
-
   ~CGUIFontCacheEntry();
+
+  void Assign(const CGUIFontCacheKey<Position> &key, unsigned int nowMillis);
 };
 
 template<class Position>
@@ -138,7 +113,7 @@ struct CGUIFontCacheHash
       hash += key.m_text[i];
     if (key.m_colors.size())
       hash += key.m_colors[0];
-    hash += MatrixHashContribution(key);
+    hash += static_cast<size_t>(MatrixHashContribution(key)); // horrible
     return hash;
   }
 };
@@ -160,21 +135,23 @@ struct CGUIFontCacheKeysMatch
 };
 
 
-
 template<class Position, class Value>
 class CGUIFontCache
 {
   CGUIFontCacheImpl<Position, Value>* m_impl;
 
+  CGUIFontCache(const CGUIFontCache<Position,Value>&) = delete;
+  const CGUIFontCache<Position,Value>& operator=(const CGUIFontCache<Position,Value>&) = delete;
+
 public:
   const CGUIFontTTFBase &m_font;
 
-  CGUIFontCache(CGUIFontTTFBase &font);
+  explicit CGUIFontCache(CGUIFontTTFBase &font);
 
   ~CGUIFontCache();
  
   Value &Lookup(Position &pos,
-                const vecColors &colors, const vecText &text,
+                const std::vector<UTILS::Color> &colors, const vecText &text,
                 uint32_t alignment, float maxPixelWidth,
                 bool scrolling,
                 unsigned int nowMillis, bool &dirtyCache);
@@ -216,7 +193,7 @@ struct CGUIFontCacheDynamicPosition
   float m_x;
   float m_y;
   float m_z;
-  CGUIFontCacheDynamicPosition() {}
+  CGUIFontCacheDynamicPosition() = default;
   CGUIFontCacheDynamicPosition(float x, float y, float z) : m_x(x), m_y(y), m_z(z) {}
   void UpdateWithOffsets(const CGUIFontCacheDynamicPosition &cached, bool scrolling)
   {
@@ -231,10 +208,17 @@ struct CGUIFontCacheDynamicPosition
 
 struct CVertexBuffer
 {
-  void *bufferHandle;
+#if defined(HAS_GL) || defined(HAS_GLES)
+  typedef unsigned int BufferHandleType;
+#define  BUFFER_HANDLE_INIT 0
+#elif defined(HAS_DX)
+  typedef void* BufferHandleType;
+#define BUFFER_HANDLE_INIT nullptr
+#endif
+  BufferHandleType bufferHandle; // this is really a GLuint
   size_t size;
-  CVertexBuffer() : bufferHandle(NULL), size(0), m_font(NULL) {}
-  CVertexBuffer(void *bufferHandle, size_t size, const CGUIFontTTFBase *font) : bufferHandle(bufferHandle), size(size), m_font(font) {}
+  CVertexBuffer() : bufferHandle(BUFFER_HANDLE_INIT), size(0), m_font(NULL) {}
+  CVertexBuffer(BufferHandleType bufferHandle, size_t size, const CGUIFontTTFBase *font) : bufferHandle(bufferHandle), size(size), m_font(font) {}
   CVertexBuffer(const CVertexBuffer &other) : bufferHandle(other.bufferHandle), size(other.size), m_font(other.m_font)
   {
     /* In practice, the copy constructor is only called before a vertex buffer

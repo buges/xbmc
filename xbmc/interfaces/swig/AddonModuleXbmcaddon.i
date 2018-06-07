@@ -21,12 +21,16 @@
 %module xbmcaddon
 
 %{
+#if defined(TARGET_WINDOWS)
+#  include <windows.h>
+#endif
+
 #include "interfaces/legacy/Addon.h"
 
 using namespace XBMCAddon;
 using namespace xbmcaddon;
 
-#if defined(__GNUG__) && (__GNUC__>4) || (__GNUC__==4 && __GNUC_MINOR__>=2)
+#if defined(__GNUG__)
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 

@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,6 @@ class CGUIDialogSubMenu :
 {
 public:
   CGUIDialogSubMenu(int id = WINDOW_DIALOG_SUB_MENU, const std::string &xmlFile = "DialogSubMenu.xml");
-  virtual ~CGUIDialogSubMenu(void);
-  virtual bool OnMessage(CGUIMessage &message);
+  ~CGUIDialogSubMenu(void) override;
+  bool OnMessage(CGUIMessage &message) override;
 };

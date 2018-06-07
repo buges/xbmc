@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,6 @@
  *
  */
 
-#include "system.h"
-
-#if defined(TARGET_RASPBERRY_PI)
-
 #include "cores/AudioEngine/Interfaces/AESink.h"
 #include "cores/AudioEngine/Utils/AEDeviceInfo.h"
 
@@ -35,6 +31,9 @@ public:
 
   CAESinkPi();
   virtual ~CAESinkPi();
+
+  static void Register();
+  static IAESink* Create(std::string &device, AEAudioFormat &desiredFormat);
 
   virtual bool Initialize(AEAudioFormat &format, std::string &device);
   virtual void Deinitialize();
@@ -62,9 +61,7 @@ private:
   COMXCoreComponent    m_omx_render;
   COMXCoreComponent    m_omx_render_slave;
   bool                 m_passthrough;
-  COMXCoreTunel        m_omx_tunnel_splitter;
-  COMXCoreTunel        m_omx_tunnel_splitter_slave;
+  COMXCoreTunnel       m_omx_tunnel_splitter;
+  COMXCoreTunnel       m_omx_tunnel_splitter_slave;
   enum { AESINKPI_UNKNOWN, AESINKPI_HDMI, AESINKPI_ANALOGUE, AESINKPI_BOTH } m_output;
 };
-
-#endif

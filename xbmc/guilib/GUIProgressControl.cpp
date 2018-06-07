@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include "GUIProgressControl.h"
 #include "GUIInfoManager.h"
 #include "GUIListItem.h"
+#include "GUIMessage.h"
 #include "utils/StringUtils.h"
 
 CGUIProgressControl::CGUIProgressControl(int parentID, int controlID,
@@ -45,9 +46,7 @@ CGUIProgressControl::CGUIProgressControl(int parentID, int controlID,
   m_bChanged = false;
 }
 
-CGUIProgressControl::~CGUIProgressControl(void)
-{
-}
+CGUIProgressControl::~CGUIProgressControl(void) = default;
 
 void CGUIProgressControl::SetPosition(float posX, float posY)
 {
@@ -84,10 +83,10 @@ void CGUIProgressControl::Render()
     {
       if (m_bReveal && !m_guiMidClipRect.IsEmpty())
       {
-        bool restore = g_graphicsContext.SetClipRegion(m_guiMidClipRect.x1, m_guiMidClipRect.y1, m_guiMidClipRect.Width(), m_guiMidClipRect.Height());
+        bool restore = CServiceBroker::GetWinSystem()->GetGfxContext().SetClipRegion(m_guiMidClipRect.x1, m_guiMidClipRect.y1, m_guiMidClipRect.Width(), m_guiMidClipRect.Height());
         m_guiMid.Render();
         if (restore)
-          g_graphicsContext.RestoreClipRegion();
+          CServiceBroker::GetWinSystem()->GetGfxContext().RestoreClipRegion();
       }
       else if (!m_bReveal && m_guiMid.GetWidth() > 0)
         m_guiMid.Render();
@@ -98,10 +97,10 @@ void CGUIProgressControl::Render()
 
       if (m_bReveal && !m_guiMidClipRect.IsEmpty())
       {
-        bool restore = g_graphicsContext.SetClipRegion(m_guiMidClipRect.x1, m_guiMidClipRect.y1, m_guiMidClipRect.Width(), m_guiMidClipRect.Height());
+        bool restore = CServiceBroker::GetWinSystem()->GetGfxContext().SetClipRegion(m_guiMidClipRect.x1, m_guiMidClipRect.y1, m_guiMidClipRect.Width(), m_guiMidClipRect.Height());
         m_guiMid.Render();
         if (restore)
-          g_graphicsContext.RestoreClipRegion();
+          CServiceBroker::GetWinSystem()->GetGfxContext().RestoreClipRegion();
       }
       else if (!m_bReveal && m_guiMid.GetWidth() > 0)
         m_guiMid.Render();
@@ -209,7 +208,7 @@ bool CGUIProgressControl::UpdateColors()
 
 std::string CGUIProgressControl::GetDescription() const
 {
-  return StringUtils::Format("%2.f", m_fPercent);
+  return StringUtils::Format("{:2.0f}", m_fPercent);
 }
 
 bool CGUIProgressControl::UpdateLayout(void)
@@ -324,7 +323,7 @@ void CGUIProgressControl::UpdateInfo(const CGUIListItem *item)
     if (m_iInfoCode)
     {
       int value;
-      if (g_infoManager.GetInt(value, m_iInfoCode, m_parentID, item))
+      if (CServiceBroker::GetGUI()->GetInfoManager().GetInt(value, m_iInfoCode, m_parentID, item))
         m_fPercent = (float)value;
 
       if (m_fPercent < 0.0f) m_fPercent = 0.0f;

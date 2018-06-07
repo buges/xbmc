@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@
  */
 
 #include "HTTPWebinterfaceHandler.h"
+#include "ServiceBroker.h"
 #include "addons/AddonManager.h"
+#include "addons/AddonSystemSettings.h"
 #include "addons/Webinterface.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
@@ -39,7 +41,7 @@ CHTTPWebinterfaceHandler::CHTTPWebinterfaceHandler(const HTTPRequest &request)
   SetFile(file, responseStatus);
 }
 
-bool CHTTPWebinterfaceHandler::CanHandleRequest(const HTTPRequest &request)
+bool CHTTPWebinterfaceHandler::CanHandleRequest(const HTTPRequest &request) const
 {
   return true;
 }
@@ -95,7 +97,7 @@ bool CHTTPWebinterfaceHandler::ResolveAddon(const std::string &url, ADDON::Addon
     if (components.size() <= 1)
       return false;
 
-    if (!ADDON::CAddonMgr::Get().GetAddon(components.at(1), addon) || addon == NULL)
+    if (!CServiceBroker::GetAddonMgr().GetAddon(components.at(1), addon) || addon == NULL)
       return false;
 
     addonPath = addon->Path();
@@ -108,7 +110,7 @@ bool CHTTPWebinterfaceHandler::ResolveAddon(const std::string &url, ADDON::Addon
     // determine the path within the addon
     path = StringUtils::Join(components, WEBSERVER_DIRECTORY_SEPARATOR);
   }
-  else if (!ADDON::CAddonMgr::Get().GetDefault(ADDON::ADDON_WEB_INTERFACE, addon) || addon == NULL)
+  else if (!ADDON::CAddonSystemSettings::GetInstance().GetActive(ADDON::ADDON_WEB_INTERFACE, addon) || addon == NULL)
     return false;
 
   // get the path of the addon
@@ -120,6 +122,13 @@ bool CHTTPWebinterfaceHandler::ResolveAddon(const std::string &url, ADDON::Addon
 
   // append the path within the addon to the path of the addon
   addonPath = URIUtils::AddFileToFolder(addonPath, path);
+
+  // ensure that we don't have a directory traversal hack here
+  // by checking if the resolved absolute path is inside the addon path
+  std::string realPath = URIUtils::GetRealPath(addonPath);
+  std::string realAddonPath = URIUtils::GetRealPath(addon->Path());
+  if (!URIUtils::PathHasParent(realPath, realAddonPath, true))
+    return false;
 
   return true;
 }

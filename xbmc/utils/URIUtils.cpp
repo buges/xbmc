@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,14 +13,13 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "network/Network.h"
 #include "URIUtils.h"
-#include "Application.h"
 #include "FileItem.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "filesystem/SpecialProtocol.h"
@@ -28,22 +27,21 @@
 #include "network/DNSNameCache.h"
 #include "settings/AdvancedSettings.h"
 #include "URL.h"
+#include "utils/FileExtensionProvider.h"
+#include "ServiceBroker.h"
 #include "StringUtils.h"
+#include "utils/log.h"
 
+#if defined(TARGET_WINDOWS)
+#include "platform/win32/CharsetConverter.h"
+#endif
+
+#include <algorithm>
 #include <cassert>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-using namespace std;
 using namespace XFILE;
-
-bool URIUtils::IsInPath(const std::string &uri, const std::string &baseURI)
-{
-  std::string uriPath = CSpecialProtocol::TranslatePath(uri);
-  std::string basePath = CSpecialProtocol::TranslatePath(baseURI);
-
-  return !basePath.empty() && StringUtils::StartsWith(uriPath, basePath);
-}
 
 /* returns filename extension including period of filename */
 std::string URIUtils::GetExtension(const CURL& url)
@@ -60,7 +58,7 @@ std::string URIUtils::GetExtension(const std::string& strFileName)
   }
 
   size_t period = strFileName.find_last_of("./\\");
-  if (period == string::npos || strFileName[period] != '.')
+  if (period == std::string::npos || strFileName[period] != '.')
     return std::string();
 
   return strFileName.substr(period);
@@ -75,7 +73,7 @@ bool URIUtils::HasExtension(const std::string& strFileName)
   }
 
   size_t iPeriod = strFileName.find_last_of("./\\");
-  return iPeriod != string::npos && strFileName[iPeriod] == '.';
+  return iPeriod != std::string::npos && strFileName[iPeriod] == '.';
 }
 
 bool URIUtils::HasExtension(const CURL& url, const std::string& strExtensions)
@@ -129,21 +127,21 @@ void URIUtils::RemoveExtension(std::string& strFileName)
   }
 
   size_t period = strFileName.find_last_of("./\\");
-  if (period != string::npos && strFileName[period] == '.')
+  if (period != std::string::npos && strFileName[period] == '.')
   {
     std::string strExtension = strFileName.substr(period);
     StringUtils::ToLower(strExtension);
     strExtension += "|";
 
     std::string strFileMask;
-    strFileMask = g_advancedSettings.m_pictureExtensions;
-    strFileMask += "|" + g_advancedSettings.GetMusicExtensions();
-    strFileMask += "|" + g_advancedSettings.m_videoExtensions;
-    strFileMask += "|" + g_advancedSettings.m_subtitlesExtensions;
+    strFileMask = CServiceBroker::GetFileExtensionProvider().GetPictureExtensions();
+    strFileMask += "|" + CServiceBroker::GetFileExtensionProvider().GetMusicExtensions();
+    strFileMask += "|" + CServiceBroker::GetFileExtensionProvider().GetVideoExtensions();
+    strFileMask += "|" + CServiceBroker::GetFileExtensionProvider().GetSubtitleExtensions();
 #if defined(TARGET_DARWIN)
-    strFileMask += "|.py|.xml|.milk|.xpr|.xbt|.cdg|.app|.applescript|.workflow";
+    strFileMask += "|.py|.xml|.milk|.xbt|.cdg|.app|.applescript|.workflow";
 #else
-    strFileMask += "|.py|.xml|.milk|.xpr|.xbt|.cdg";
+    strFileMask += "|.py|.xml|.milk|.xbt|.cdg";
 #endif
     strFileMask += "|";
 
@@ -220,6 +218,20 @@ void URIUtils::Split(const std::string& strFileNameAndPath,
   strPath = strFileNameAndPath.substr(0, i+1);
   // everything to the right of the directory separator
   strFileName = strFileNameAndPath.substr(i+1);
+
+  // if actual uri, ignore options
+  if (IsURL(strFileNameAndPath))
+  {
+    i = strFileName.size() - 1;
+    while (i > 0)
+    {
+      char ch = strFileName[i];
+      if (ch == '?') break;
+      else i--;
+    }
+    if (i > 0)
+      strFileName = strFileName.substr(0, i);
+  }
 }
 
 std::vector<std::string> URIUtils::SplitPath(const std::string& strPath)
@@ -230,7 +242,7 @@ std::vector<std::string> URIUtils::SplitPath(const std::string& strPath)
   std::string sep(1, url.GetDirectorySeparator());
 
   // split the filename portion of the URL up into separate dirs
-  vector<string> dirs = StringUtils::Split(url.GetFileName(), sep);
+  std::vector<std::string> dirs = StringUtils::Split(url.GetFileName(), sep);
   
   // we start with the root path
   std::string dir = url.GetWithoutFilename();
@@ -249,7 +261,7 @@ void URIUtils::GetCommonPath(std::string& strParent, const std::string& strPath)
 {
   // find the common path of parent and path
   unsigned int j = 1;
-  while (j <= min(strParent.size(), strPath.size()) && strnicmp(strParent.c_str(), strPath.c_str(), j) == 0)
+  while (j <= std::min(strParent.size(), strPath.size()) && strnicmp(strParent.c_str(), strPath.c_str(), j) == 0)
     j++;
   strParent.erase(j - 1);
   // they should at least share a / at the end, though for things such as path/cd1 and path/cd2 there won't be
@@ -264,9 +276,11 @@ bool URIUtils::HasParentInHostname(const CURL& url)
 {
   return url.IsProtocol("zip")
       || url.IsProtocol("rar")
+      || url.IsProtocol("archive")
       || url.IsProtocol("apk")
       || url.IsProtocol("bluray")
-      || url.IsProtocol("udf");
+      || url.IsProtocol("udf")
+      || url.IsProtocol("xbt");
 }
 
 bool URIUtils::HasEncodedHostname(const CURL& url)
@@ -360,9 +374,9 @@ bool URIUtils::GetParentPath(const std::string& strPath, std::string& strParent)
     if(strFile.rfind('/') == std::string::npos)
       return false;
   }
-  else if (strFile.size() == 0)
+  else if (strFile.empty())
   {
-    if (url.GetHostName().size() > 0)
+    if (!url.GetHostName().empty())
     {
       // we have an share with only server or workgroup name
       // set hostname to "" and return true to get back to root
@@ -425,8 +439,8 @@ std::string URIUtils::GetBasePath(const std::string& strPath)
 
 std::string URLEncodePath(const std::string& strPath)
 {
-  vector<string> segments = StringUtils::Split(strPath, "/");
-  for (vector<string>::iterator i = segments.begin(); i != segments.end(); ++i)
+  std::vector<std::string> segments = StringUtils::Split(strPath, "/");
+  for (std::vector<std::string>::iterator i = segments.begin(); i != segments.end(); ++i)
     *i = CURL::Encode(*i);
 
   return StringUtils::Join(segments, "/");
@@ -434,8 +448,8 @@ std::string URLEncodePath(const std::string& strPath)
 
 std::string URLDecodePath(const std::string& strPath)
 {
-  vector<string> segments = StringUtils::Split(strPath, "/");
-  for (vector<string>::iterator i = segments.begin(); i != segments.end(); ++i)
+  std::vector<std::string> segments = StringUtils::Split(strPath, "/");
+  for (std::vector<std::string>::iterator i = segments.begin(); i != segments.end(); ++i)
     *i = CURL::Decode(*i);
 
   return StringUtils::Join(segments, "/");
@@ -517,22 +531,41 @@ bool URIUtils::IsProtocol(const std::string& url, const std::string &type)
   return StringUtils::StartsWithNoCase(url, type + "://");
 }
 
-bool URIUtils::PathStarts(const std::string& url, const char *start)
+bool URIUtils::PathHasParent(std::string path, std::string parent, bool translate /* = false */)
 {
-  return StringUtils::StartsWith(url, start);
+  if (translate)
+  {
+    path = CSpecialProtocol::TranslatePath(path);
+    parent = CSpecialProtocol::TranslatePath(parent);
+  }
+
+  if (parent.empty())
+    return false;
+
+  if (path == parent)
+    return true;
+
+  // Make sure parent has a trailing slash
+  AddSlashAtEnd(parent);
+
+  return StringUtils::StartsWith(path, parent);
 }
 
-bool URIUtils::PathEquals(const std::string& url, const std::string &start, bool ignoreTrailingSlash /* = false */)
+bool URIUtils::PathEquals(std::string path1, std::string path2, bool ignoreTrailingSlash /* = false */, bool ignoreURLOptions /* = false */)
 {
-  std::string path1 = url;
-  std::string path2 = start;
+  if (ignoreURLOptions)
+  {
+    path1 = CURL(path1).GetWithoutOptions();
+    path2 = CURL(path2).GetWithoutOptions();
+  }
+
   if (ignoreTrailingSlash)
   {
     RemoveSlashAtEnd(path1);
     RemoveSlashAtEnd(path2);
   }
 
-  return path1 == path2;
+  return (path1 == path2);
 }
 
 bool URIUtils::IsRemote(const std::string& strFile)
@@ -548,7 +581,7 @@ bool URIUtils::IsRemote(const std::string& strFile)
 
   if(IsMultiPath(strFile))
   { // virtual paths need to be checked separately
-    vector<std::string> paths;
+    std::vector<std::string> paths;
     if (CMultiPathDirectory::GetPaths(strFile, paths))
     {
       for (unsigned int i = 0; i < paths.size(); i++)
@@ -569,11 +602,6 @@ bool URIUtils::IsRemote(const std::string& strFile)
 
 bool URIUtils::IsOnDVD(const std::string& strFile)
 {
-#ifdef TARGET_WINDOWS
-  if (strFile.size() >= 2 && strFile.substr(1,1) == ":")
-    return (GetDriveType(strFile.substr(0, 3).c_str()) == DRIVE_CDROM);
-#endif
-
   if (IsProtocol(strFile, "dvd"))
     return true;
 
@@ -586,6 +614,13 @@ bool URIUtils::IsOnDVD(const std::string& strFile)
   if (IsProtocol(strFile, "cdda"))
     return true;
 
+#if defined(TARGET_WINDOWS_STORE)
+  CLog::Log(LOGDEBUG, "%s is not implemented", __FUNCTION__);
+#elif defined(TARGET_WINDOWS_DESKTOP)
+  using KODI::PLATFORM::WINDOWS::ToW;
+  if (strFile.size() >= 2 && strFile.substr(1, 1) == ":")
+    return (GetDriveType(ToW(strFile.substr(0, 3)).c_str()) == DRIVE_CDROM);
+#endif
   return false;
 }
 
@@ -632,7 +667,7 @@ bool URIUtils::IsHostOnLAN(const std::string& host, bool offLineCheck)
 
   // assume a hostname without dot's
   // is local (smb netbios hostnames)
-  if(host.find('.') == string::npos)
+  if(host.find('.') == std::string::npos)
     return true;
 
   uint32_t address = ntohl(inet_addr(host.c_str()));
@@ -655,10 +690,10 @@ bool URIUtils::IsHostOnLAN(const std::string& host, bool offLineCheck)
         return true;
     }
     // check if we are on the local subnet
-    if (!g_application.getNetwork().GetFirstConnectedInterface())
+    if (!CServiceBroker::GetNetwork().GetFirstConnectedInterface())
       return false;
 
-    if (g_application.getNetwork().HasInterfaceForIP(address))
+    if (CServiceBroker::GetNetwork().HasInterfaceForIP(address))
       return true;
   }
 
@@ -683,7 +718,7 @@ bool URIUtils::IsHD(const std::string& strFileName)
   if (HasParentInHostname(url))
     return IsHD(url.GetHostName());
 
-  return url.GetProtocol().empty() || url.IsProtocol("file");
+  return url.GetProtocol().empty() || url.IsProtocol("file") || url.IsProtocol("win-lib");
 }
 
 bool URIUtils::IsDVD(const std::string& strFile)
@@ -700,8 +735,10 @@ bool URIUtils::IsDVD(const std::string& strFile)
   if(strFile.size() < 2 || (strFile.substr(1) != ":\\" && strFile.substr(1) != ":"))
     return false;
 
-  if(GetDriveType(strFile.c_str()) == DRIVE_CDROM)
+#ifndef TARGET_WINDOWS_STORE
+  if(GetDriveType(KODI::PLATFORM::WINDOWS::ToW(strFile).c_str()) == DRIVE_CDROM)
     return true;
+#endif
 #else
   if (strFileLow == "iso9660://" || strFileLow == "udf://" || strFileLow == "dvd://1" )
     return true;
@@ -733,7 +770,10 @@ bool URIUtils::IsRAR(const std::string& strFile)
 
 bool URIUtils::IsInArchive(const std::string &strFile)
 {
-  return IsInZIP(strFile) || IsInRAR(strFile) || IsInAPK(strFile);
+  CURL url(strFile);
+
+  bool archiveProto = url.IsProtocol("archive") && !url.GetFileName().empty();
+  return archiveProto || IsInZIP(strFile) || IsInRAR(strFile) || IsInAPK(strFile);
 }
 
 bool URIUtils::IsInAPK(const std::string& strFile)
@@ -747,14 +787,26 @@ bool URIUtils::IsInZIP(const std::string& strFile)
 {
   CURL url(strFile);
 
-  return url.IsProtocol("zip") && !url.GetFileName().empty();
+  if (url.GetFileName().empty())
+    return false;
+
+  if (url.IsProtocol("archive"))
+    return IsZIP(url.GetHostName());
+
+  return url.IsProtocol("zip");
 }
 
 bool URIUtils::IsInRAR(const std::string& strFile)
 {
   CURL url(strFile);
 
-  return url.IsProtocol("rar") && !url.GetFileName().empty();
+  if (url.GetFileName().empty())
+    return false;
+
+  if (url.IsProtocol("archive"))
+    return IsRAR(url.GetHostName());
+
+  return url.IsProtocol("rar");
 }
 
 bool URIUtils::IsAPK(const std::string& strFile)
@@ -774,12 +826,10 @@ bool URIUtils::IsArchive(const std::string& strFile)
 
 bool URIUtils::IsSpecial(const std::string& strFile)
 {
-  std::string strFile2(strFile);
-
   if (IsStack(strFile))
-    strFile2 = CStackDirectory::GetFirstStackedFile(strFile);
+    return IsSpecial(CStackDirectory::GetFirstStackedFile(strFile));
 
-  return IsProtocol(strFile2, "special");
+  return IsProtocol(strFile, "special");
 }
 
 bool URIUtils::IsPlugin(const std::string& strFile)
@@ -870,32 +920,34 @@ bool URIUtils::IsHTTP(const std::string& strFile)
 
 bool URIUtils::IsUDP(const std::string& strFile)
 {
-  std::string strFile2(strFile);
-
   if (IsStack(strFile))
-    strFile2 = CStackDirectory::GetFirstStackedFile(strFile);
+    return IsUDP(CStackDirectory::GetFirstStackedFile(strFile));
 
-  return IsProtocol(strFile2, "udp");
+  return IsProtocol(strFile, "udp");
 }
 
 bool URIUtils::IsTCP(const std::string& strFile)
 {
-  std::string strFile2(strFile);
-
   if (IsStack(strFile))
-    strFile2 = CStackDirectory::GetFirstStackedFile(strFile);
+    return IsTCP(CStackDirectory::GetFirstStackedFile(strFile));
 
-  return IsProtocol(strFile2, "tcp");
+  return IsProtocol(strFile, "tcp");
 }
 
 bool URIUtils::IsPVRChannel(const std::string& strFile)
 {
-  std::string strFile2(strFile);
-
   if (IsStack(strFile))
-    strFile2 = CStackDirectory::GetFirstStackedFile(strFile);
+    return IsPVRChannel(CStackDirectory::GetFirstStackedFile(strFile));
 
-  return StringUtils::StartsWithNoCase(strFile2, "pvr://channels");
+  return StringUtils::StartsWithNoCase(strFile, "pvr://channels");
+}
+
+bool URIUtils::IsPVRGuideItem(const std::string& strFile)
+{
+  if (IsStack(strFile))
+    return IsPVRGuideItem(CStackDirectory::GetFirstStackedFile(strFile));
+
+  return StringUtils::StartsWithNoCase(strFile, "pvr://guide");
 }
 
 bool URIUtils::IsDAV(const std::string& strFile)
@@ -954,25 +1006,12 @@ bool URIUtils::IsUPnP(const std::string& strFile)
   return IsProtocol(strFile, "upnp");
 }
 
-bool URIUtils::IsHDHomeRun(const std::string& strFile)
-{
-  return IsProtocol(strFile, "hdhomerun");
-}
-
-bool URIUtils::IsSlingbox(const std::string& strFile)
-{
-  return IsProtocol(strFile, "sling");
-}
-
 bool URIUtils::IsLiveTV(const std::string& strFile)
 {
   std::string strFileWithoutSlash(strFile);
   RemoveSlashAtEnd(strFileWithoutSlash);
 
-  if (IsHDHomeRun(strFile)
-  || IsSlingbox(strFile)
-  || IsProtocol(strFile, "sap")
-  ||(StringUtils::EndsWithNoCase(strFileWithoutSlash, ".pvr") && !PathStarts(strFileWithoutSlash, "pvr://recordings")))
+  if (StringUtils::EndsWithNoCase(strFileWithoutSlash, ".pvr") && !StringUtils::StartsWith(strFileWithoutSlash, "pvr://recordings"))
     return true;
 
   return false;
@@ -984,7 +1023,7 @@ bool URIUtils::IsPVRRecording(const std::string& strFile)
   RemoveSlashAtEnd(strFileWithoutSlash);
 
   return StringUtils::EndsWithNoCase(strFileWithoutSlash, ".pvr") &&
-         PathStarts(strFile, "pvr://recordings");
+         StringUtils::StartsWith(strFile, "pvr://recordings");
 }
 
 bool URIUtils::IsMusicDb(const std::string& strFile)
@@ -1048,6 +1087,12 @@ bool URIUtils::IsDOSPath(const std::string &path)
   return false;
 }
 
+std::string URIUtils::AppendSlash(std::string strFolder)
+{
+  AddSlashAtEnd(strFolder);
+  return strFolder;
+}
+
 void URIUtils::AddSlashAtEnd(std::string& strFolder)
 {
   if (IsURL(strFolder))
@@ -1091,6 +1136,10 @@ bool URIUtils::HasSlashAtEnd(const std::string& strFile, bool checkURL /* = fals
 
 void URIUtils::RemoveSlashAtEnd(std::string& strFolder)
 {
+  // performance optimization. pvr guide items are mass objects, uri never has a slash at end, and this method is quite expensive...
+  if (IsPVRGuideItem(strFolder))
+    return;
+
   if (IsURL(strFolder))
   {
     CURL url(strFolder);
@@ -1157,10 +1206,10 @@ std::string URIUtils::CanonicalizePath(const std::string& path, const char slash
     return path;
 
   const std::string slashStr(1, slashCharacter);
-  vector<std::string> pathVec, resultVec;
+  std::vector<std::string> pathVec, resultVec;
   StringUtils::Tokenize(path, pathVec, slashStr);
 
-  for (vector<std::string>::const_iterator it = pathVec.begin(); it != pathVec.end(); ++it)
+  for (std::vector<std::string>::const_iterator it = pathVec.begin(); it != pathVec.end(); ++it)
   {
     if (*it == ".")
     { /* skip - do nothing */ }
@@ -1220,11 +1269,11 @@ std::string URIUtils::GetDirectory(const std::string &strFilePath)
   // Keeps the final slash at end and possible |option=foo options.
 
   size_t iPosSlash = strFilePath.find_last_of("/\\");
-  if (iPosSlash == string::npos)
+  if (iPosSlash == std::string::npos)
     return ""; // No slash, so no path (ignore any options)
 
   size_t iPosBar = strFilePath.rfind('|');
-  if (iPosBar == string::npos)
+  if (iPosBar == std::string::npos)
     return strFilePath.substr(0, iPosSlash + 1); // Only path
 
   return strFilePath.substr(0, iPosSlash + 1) + strFilePath.substr(iPosBar); // Path + options
@@ -1243,7 +1292,7 @@ CURL URIUtils::CreateArchivePath(const std::string& type,
 
   /* NOTE: on posix systems, the replacement of \ with / is incorrect.
      Ideally this would not be done. We need to check that the ZipManager
-     and RarManager code (and elsewhere) doesn't pass in non-posix paths.
+     code (and elsewhere) doesn't pass in non-posix paths.
    */
   std::string strBuffer(pathInArchive);
   StringUtils::Replace(strBuffer, '\\', '/');
@@ -1253,7 +1302,7 @@ CURL URIUtils::CreateArchivePath(const std::string& type,
   return url;
 }
 
-string URIUtils::GetRealPath(const string &path)
+std::string URIUtils::GetRealPath(const std::string &path)
 {
   if (path.empty())
     return path;
@@ -1272,11 +1321,11 @@ std::string URIUtils::resolvePath(const std::string &path)
 
   size_t posSlash = path.find('/');
   size_t posBackslash = path.find('\\');
-  string delim = posSlash < posBackslash ? "/" : "\\";
-  vector<string> parts = StringUtils::Split(path, delim);
-  vector<string> realParts;
+  std::string delim = posSlash < posBackslash ? "/" : "\\";
+  std::vector<std::string> parts = StringUtils::Split(path, delim);
+  std::vector<std::string> realParts;
 
-  for (vector<string>::const_iterator part = parts.begin(); part != parts.end(); ++part)
+  for (std::vector<std::string>::const_iterator part = parts.begin(); part != parts.end(); ++part)
   {
     if (part->empty() || part->compare(".") == 0)
       continue;
@@ -1319,11 +1368,11 @@ bool URIUtils::UpdateUrlEncoding(std::string &strFilename)
   // if this is a stack:// URL we need to work with its filename
   if (URIUtils::IsStack(strFilename))
   {
-    vector<string> files;
+    std::vector<std::string> files;
     if (!CStackDirectory::GetPaths(strFilename, files))
       return false;
 
-    for (vector<string>::iterator file = files.begin(); file != files.end(); ++file)
+    for (std::vector<std::string>::iterator file = files.begin(); file != files.end(); ++file)
       UpdateUrlEncoding(*file);
 
     std::string stackPath;

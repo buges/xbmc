@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,22 +19,22 @@
  *
  */
 
-#if   defined(TARGET_WINDOWS)
+#if   defined(TARGET_WINDOWS_DESKTOP)
 #define HAVE_PERIPHERAL_BUS_USB 1
-#include "win32/PeripheralBusUSB.h"
+#include "platform/win32/peripherals/PeripheralBusUSB.h"
+#elif defined(TARGET_WINDOWS_STORE)
+#define HAVE_PERIPHERAL_BUS_USB 1
+#include "platform/win10/peripherals/PeripheralBusUSB.h"
 #elif defined(TARGET_LINUX) && defined(HAVE_LIBUDEV)
 #define HAVE_PERIPHERAL_BUS_USB 1
-#include "linux/PeripheralBusUSBLibUdev.h"
+#include "platform/linux/peripherals/PeripheralBusUSBLibUdev.h"
 #elif defined(TARGET_LINUX) && defined(HAVE_LIBUSB)
 #define HAVE_PERIPHERAL_BUS_USB 1
-#include "linux/PeripheralBusUSBLibUSB.h"
+#include "platform/linux/peripherals/PeripheralBusUSBLibUSB.h"
 #elif defined(TARGET_FREEBSD) && defined(HAVE_LIBUSB)
 #define HAVE_PERIPHERAL_BUS_USB 1
-#include "linux/PeripheralBusUSBLibUSB.h"
+#include "platform/linux/peripherals/PeripheralBusUSBLibUSB.h"
 #elif defined(TARGET_DARWIN)
 #define HAVE_PERIPHERAL_BUS_USB 1
-#include "osx/PeripheralBusUSB.h"
-#elif defined(TARGET_ANDROID)
-#define HAVE_PERIPHERAL_BUS_USB 1
-#include "linux/PeripheralBusUSBLibUSB.h"
+#include "platform/darwin/osx/peripherals/PeripheralBusUSB.h"
 #endif

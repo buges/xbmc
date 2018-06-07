@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2015 Team XBMC
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,67 +19,15 @@
  *
  */
 
-#include "Variant.h"
+#include <string>
 
-#include <yajl/yajl_parse.h>
-
-class IParseCallback
-{
-public:
-  virtual ~IParseCallback() { }
-
-  virtual void onParsed(CVariant *variant) = 0;
-};
-
-class CSimpleParseCallback : public IParseCallback
-{
-public:
-  virtual void onParsed(CVariant *variant) { m_parsed = *variant; }
-  CVariant &GetOutput() { return m_parsed; }
-
-private:
-  CVariant m_parsed;
-};
+#include "utils/Variant.h"
 
 class CJSONVariantParser
 {
 public:
-  CJSONVariantParser(IParseCallback *callback);
-  ~CJSONVariantParser();
+  CJSONVariantParser() = delete;
 
-  void push_buffer(const unsigned char *buffer, unsigned int length);
-
-  static CVariant Parse(const unsigned char *json, unsigned int length);
-
-private:
-  static int ParseNull(void * ctx);
-  static int ParseBoolean(void * ctx, int boolean);
-  static int ParseInteger(void * ctx, long long integerVal);
-  static int ParseDouble(void * ctx, double doubleVal);
-  static int ParseString(void * ctx, const unsigned char * stringVal, size_t stringLen);
-  static int ParseMapStart(void * ctx);
-  static int ParseMapKey(void * ctx, const unsigned char * stringVal, size_t stringLen);
-  static int ParseMapEnd(void * ctx);
-  static int ParseArrayStart(void * ctx);
-  static int ParseArrayEnd(void * ctx);
-
-  void PushObject(CVariant variant);
-  void PopObject();
-
-  static yajl_callbacks callbacks;
-
-  IParseCallback *m_callback;
-  yajl_handle m_handler;
-
-  CVariant m_parsedObject;
-  std::vector<CVariant *> m_parse;
-  std::string m_key;
-
-  enum PARSE_STATUS
-  {
-    ParseArray = 1,
-    ParseObject = 2,
-    ParseVariable = 0
-  };
-  PARSE_STATUS m_status;
+  static bool Parse(const char* json, CVariant& data);
+  static bool Parse(const std::string& json, CVariant& data);
 };

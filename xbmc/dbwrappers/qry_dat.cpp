@@ -31,7 +31,7 @@
  **********************************************************************/
 
 #include "qry_dat.h"
-#include "system.h" // for PRId64
+#include "PlatformDefs.h" // for PRId64
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,8 +40,6 @@
 #pragma warning (disable:4800)
 #pragma warning (disable:4715)
 #endif
-
-using namespace std;
 
 namespace dbiplus {
 
@@ -163,14 +161,12 @@ field_value::field_value (const field_value & fv) {
 
 
 //empty destructor
-field_value::~field_value(){
-
-  }
+field_value::~field_value() = default;
 
   
 //Conversations functions
-string field_value::get_asString() const {
-    string tmp;
+std::string field_value::get_asString() const {
+    std::string tmp;
     switch (field_type) {
     case ft_String: {
       tmp = str_value;
@@ -655,7 +651,7 @@ void field_value::set_asString(const char *s) {
   str_value = s;
   field_type = ft_String;}
 
-void field_value::set_asString(const string & s) {
+void field_value::set_asString(const std::string & s) {
   str_value = s;
   field_type = ft_String;}
   
@@ -702,8 +698,8 @@ fType field_value::get_field_type() {
   return field_type;}
 
   
-string field_value::gft() {
-    string tmp;
+std::string field_value::gft() {
+    std::string tmp;
     switch (field_type) {
     case ft_String: {
       tmp.assign("string");

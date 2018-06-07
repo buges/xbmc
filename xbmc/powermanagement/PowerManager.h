@@ -1,6 +1,8 @@
+#pragma once
+
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,19 +15,19 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
 
-#ifndef _POWER_MANAGER_H_
-#define _POWER_MANAGER_H_
-
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "IPowerSyscall.h"
 
+class CFileItem;
 class CSetting;
 
 enum PowerState
@@ -40,33 +42,13 @@ enum PowerState
   POWERSTATE_ASK
 };
 
-// For systems without PowerSyscalls we have a NullObject
-class CNullPowerSyscall : public CAbstractPowerSyscall
-{
-public:
-  virtual bool Powerdown()    { return false; }
-  virtual bool Suspend()      { return false; }
-  virtual bool Hibernate()    { return false; }
-  virtual bool Reboot()       { return false; }
-
-  virtual bool CanPowerdown() { return true; }
-  virtual bool CanSuspend()   { return true; }
-  virtual bool CanHibernate() { return true; }
-  virtual bool CanReboot()    { return true; }
-
-  virtual int  BatteryLevel() { return 0; }
-
-
-  virtual bool PumpPowerEvents(IPowerEventsCallback *callback) { return false; }
-};
-
 // This class will wrap and handle PowerSyscalls.
 // It will handle and decide if syscalls are needed.
 class CPowerManager : public IPowerEventsCallback
 {
 public:
   CPowerManager();
-  ~CPowerManager();
+  ~CPowerManager() override;
 
   void Initialize();
   void SetDefaults();
@@ -80,21 +62,21 @@ public:
   bool CanSuspend();
   bool CanHibernate();
   bool CanReboot();
-  
+
   int  BatteryLevel();
 
   void ProcessEvents();
 
-  static void SettingOptionsShutdownStatesFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsShutdownStatesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
 
 private:
-  void OnSleep();
-  void OnWake();
+  void OnSleep() override;
+  void OnWake() override;
+  void OnLowBattery() override;
+  void RestorePlayerState();
+  void StorePlayerState();
 
-  void OnLowBattery();
-
-  IPowerSyscall *m_instance;
+  std::unique_ptr<IPowerSyscall> m_instance;
+  std::unique_ptr<CFileItem> m_lastPlayedFileItem;
+  std::string m_lastUsedPlayer;
 };
-
-extern CPowerManager g_powerManager;
-#endif

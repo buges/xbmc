@@ -3,7 +3,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,14 +23,16 @@
 
 #include <vector>
 #include <string>
-#include <stdio.h>
+#include <cstdio>
 
-class CXBTF;
+#include "guilib/XBTF.h"
 
-class CXBTFWriter
+class CXBTFWriter : public CXBTFBase
 {
 public:
-  CXBTFWriter(CXBTF& xbtf, const std::string& outputFile);
+  CXBTFWriter(const std::string& outputFile);
+  ~CXBTFWriter() override;
+
   bool Create();
   bool Close();
   bool AppendContent(unsigned char const* data, size_t length);
@@ -39,7 +41,6 @@ public:
 private:
   void Cleanup();
 
-  CXBTF& m_xbtf;
   std::string m_outputFile;
   FILE* m_file;
   unsigned char *m_data;

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -71,8 +71,7 @@ CLocale::CLocale(const std::string& language, const std::string& territory, cons
   Initialize();
 }
 
-CLocale::~CLocale()
-{ }
+CLocale::~CLocale() = default;
 
 CLocale CLocale::FromString(const std::string& locale)
 {

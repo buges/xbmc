@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 
 #pragma once
 
-#ifdef HAS_DX
 #include "Texture.h"
 #include "D3DResource.h"
 
@@ -38,12 +37,17 @@ public:
   virtual void LoadToGPU();
   void BindToUnit(unsigned int unit);
 
-  LPDIRECT3DTEXTURE9 GetTextureObject()
+  ID3D11Texture2D* GetTextureObject()
   {
     return m_texture.Get();
   };
+
+  ID3D11ShaderResourceView* GetShaderResource()
+  {
+    return m_texture.GetShaderResource();
+  };
+
 private:
   CD3DTexture m_texture;
+  DXGI_FORMAT GetFormat();
 };
-
-#endif

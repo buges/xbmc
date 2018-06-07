@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,9 @@
  *
  */
 
+#include <string>
+#include <vector>
+
 #include "interfaces/generic/ILanguageInvoker.h"
 #include "threads/Thread.h"
 
@@ -28,18 +31,18 @@ class CLanguageInvokerThread : public ILanguageInvoker, protected CThread
 {
 public:
   CLanguageInvokerThread(LanguageInvokerPtr invoker, CScriptInvocationManager *invocationManager);
-  ~CLanguageInvokerThread();
+  ~CLanguageInvokerThread() override;
 
   virtual InvokerState GetState();
 
 protected:
-  virtual bool execute(const std::string &script, const std::vector<std::string> &arguments);
-  virtual bool stop(bool wait);
+  bool execute(const std::string &script, const std::vector<std::string> &arguments) override;
+  bool stop(bool wait) override;
 
-  virtual void OnStartup();
-  virtual void Process();
-  virtual void OnExit();
-  virtual void OnException();
+  void OnStartup() override;
+  void Process() override;
+  void OnExit() override;
+  void OnException() override;
 
 private:
   LanguageInvokerPtr m_invoker;

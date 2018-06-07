@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,53 +19,70 @@
  *
  */
 
-#include "dbwrappers/Database.h"
-#include "addons/Addon.h"
-#include "FileItem.h"
 #include <string>
+#include <vector>
+
+#include "addons/Addon.h"
+#include "dbwrappers/Database.h"
+#include "FileItem.h"
+#include "AddonBuilder.h"
 
 class CAddonDatabase : public CDatabase
 {
 public:
   CAddonDatabase();
-  virtual ~CAddonDatabase();
-  virtual bool Open();
+  ~CAddonDatabase() override;
+  bool Open() override;
 
-  int GetAddonId(const ADDON::AddonPtr& item);
-  int AddAddon(const ADDON::AddonPtr& item, int idRepo);
+  /*! @deprecated: use CAddonMgr::FindInstallableById */
   bool GetAddon(const std::string& addonID, ADDON::AddonPtr& addon);
-  bool GetAddons(ADDON::VECADDONS& addons, const ADDON::TYPE &type = ADDON::ADDON_UNKNOWN);
+
+  /*! \brief Get an addon with a specific version and repository. */
+  bool GetAddon(const std::string& addonID, const ADDON::AddonVersion& version, const std::string& repoId, ADDON::AddonPtr& addon);
 
   /*! Get the addon IDs that has been set to disabled */
-  bool GetDisabled(std::vector<std::string>& addons);
+  bool GetDisabled(std::set<std::string>& addons);
 
-  /*! \brief grab the (largest) add-on version for an add-on */
-  ADDON::AddonVersion GetAddonVersion(const std::string &id);
+  /*! @deprecated: use FindByAddonId */
+  bool GetAvailableVersions(const std::string& addonId,
+      std::vector<std::pair<ADDON::AddonVersion, std::string>>& versionsInfo);
 
-  /*! \brief Grab the repository from which a given addon came
-   \param addonID - the id of the addon in question
-   \param repo [out] - the id of the repository
-   \return true if a repo was found, false otherwise.
-   */
-  bool GetRepoForAddon(const std::string& addonID, std::string& repo);
-  int AddRepository(const std::string& id, const ADDON::VECADDONS& addons, const std::string& checksum, const ADDON::AddonVersion& version);
-  void DeleteRepository(const std::string& id);
-  void DeleteRepository(int id);
+  /*! @deprecated use CAddonMgr::FindInstallableById */
+  std::pair<ADDON::AddonVersion, std::string> GetAddonVersion(const std::string &id);
+
+  /*! Returns all addons in the repositories with id `addonId`. */
+  bool FindByAddonId(const std::string& addonId, ADDON::VECADDONS& addons);
+
+  bool UpdateRepositoryContent(const std::string& repositoryId, const ADDON::AddonVersion& version,
+      const std::string& checksum, const std::vector<ADDON::AddonPtr>& addons);
+
   int GetRepoChecksum(const std::string& id, std::string& checksum);
-  bool GetRepository(const std::string& id, ADDON::VECADDONS& addons);
-  bool GetRepository(int id, ADDON::VECADDONS& addons);
-  bool SetRepoTimestamp(const std::string& id, const std::string& timestamp, const ADDON::AddonVersion& version);
 
-  /*! \brief Retrieve the time a repository was last checked
+  /*!
+   \brief Get addons in repository `id`
+   \param id id of the repository
+   \returns true on success, false on error or if repository have never been synced.
+   */
+  bool GetRepositoryContent(const std::string& id, ADDON::VECADDONS& addons);
+
+  /*! Get addons across all repositories */
+  bool GetRepositoryContent(ADDON::VECADDONS& addons);
+
+  /*!
+   \brief Set repo last checked date, and create the repo if needed
+   \param id id of the repository
+   \returns id of the repository, or -1 on error.
+   */
+  int SetLastChecked(const std::string& id, const ADDON::AddonVersion& version, const std::string& timestamp);
+
+  /*!
+   \brief Retrieve the time a repository was last checked and the version it was for
    \param id id of the repo
-   \return last time the repo was checked, current time if not available
-   \sa SetRepoTimestamp */
-  CDateTime GetRepoTimestamp(const std::string& id);
-
-  ADDON::AddonVersion GetRepoVersion(const std::string& id);
+   \return last time the repo was checked, or invalid CDateTime if never checked
+   */
+  std::pair<CDateTime, ADDON::AddonVersion> LastChecked(const std::string& id);
 
   bool Search(const std::string& search, ADDON::VECADDONS& items);
-  static void SetPropertiesFromAddon(const ADDON::AddonPtr& addon, CFileItemPtr& item); 
 
   /*! \brief Disable an addon.
    Sets a flag that this addon has been disabled.  If disabled, it is usually still available on disk.
@@ -74,26 +91,6 @@ public:
    \return true on success, false on failure
    \sa IsAddonDisabled, HasDisabledAddons */
   bool DisableAddon(const std::string &addonID, bool disable = true);
-
-  /*! \brief Checks if an addon is in the database.
-   \param addonID id of the addon to be checked
-   \return true if addon is in database, false if addon is not in database yet */
-  bool HasAddon(const std::string &addonID);
-  
-  /*! \brief Check whether an addon has been disabled via DisableAddon.
-   \param addonID id of the addon to check
-   \return true if the addon is disabled, false otherwise
-   \sa DisableAddon, HasDisabledAddons */
-  bool IsAddonDisabled(const std::string &addonID);
-
-  /*! \brief Check whether we have disabled addons.
-   \return true if we have disabled addons, false otherwise
-   \sa DisableAddon, IsAddonDisabled */
-  bool HasDisabledAddons();
-
-  /*! @deprecated only here to allow clean upgrades from earlier pvr versions
-   */
-  bool IsSystemPVRAddonEnabled(const std::string &addonID);
 
   /*! \brief Mark an addon as broken
    Sets a flag that this addon has been marked as broken in the repository.
@@ -105,14 +102,12 @@ public:
 
   /*! \brief Check whether an addon has been marked as broken via BreakAddon.
    \param addonID id of the addon to check
-   \return reason if the addon is broken, blank otherwise
    \sa BreakAddon */
-  std::string IsAddonBroken(const std::string &addonID);
+  bool IsAddonBroken(const std::string &addonID);
 
-  bool BlacklistAddon(const std::string& addonID, const std::string& version);
-  bool IsAddonBlacklisted(const std::string& addonID, const std::string& version);
-  bool RemoveAddonFromBlacklist(const std::string& addonID,
-                                const std::string& version);
+  bool BlacklistAddon(const std::string& addonID);
+  bool RemoveAddonFromBlacklist(const std::string& addonID);
+  bool GetBlacklisted(std::set<std::string>& addons);
 
   /*! \brief Store an addon's package filename and that file's hash for future verification
       \param  addonID         id of the addon we're adding a package for
@@ -141,50 +136,29 @@ public:
   */
   bool RemovePackage(const std::string& packageFileName);
 
-  /*! \brief allow adding a system addon like PVR or AUDIODECODER
-      \param addonID id of the addon
-  */
-  bool AddSystemAddon(const std::string &addonID);
+  /*! Clear internal fields that shouldn't be kept around indefinitely */
+  void OnPostUnInstall(const std::string& addonId);
 
-  /*! \brief check if system addon is registered
-      \param addonID id of the addon
-  */
-  bool IsSystemAddonRegistered(const std::string &addonID);
+  void SyncInstalled(const std::set<std::string>& ids,
+                     const std::set<std::string>& system,
+                     const std::set<std::string>& optional);
+
+  void GetInstalled(std::vector<ADDON::CAddonBuilder>& addons);
+
+  bool SetLastUpdated(const std::string& addonId, const CDateTime& dateTime);
+  bool SetOrigin(const std::string& addonId, const std::string& origin);
+  bool SetLastUsed(const std::string& addonId, const CDateTime& dateTime);
+
 
 protected:
-  virtual void CreateTables();
-  virtual void CreateAnalytics();
-  virtual void UpdateTables(int version);
-  virtual int GetMinSchemaVersion() const { return 15; }
-  virtual int GetSchemaVersion() const { return 19; }
-  const char *GetBaseDBName() const { return "Addons"; }
+  void CreateTables() override;
+  void CreateAnalytics() override;
+  void UpdateTables(int version) override;
+  int GetMinSchemaVersion() const override;
+  int GetSchemaVersion() const override;
+  const char *GetBaseDBName() const override { return "Addons"; }
 
   bool GetAddon(int id, ADDON::AddonPtr& addon);
-
-  /* keep in sync with the select in GetAddon */
-  enum AddonFields
-  {
-    addon_id=0,
-    addon_type,
-    addon_name,
-    addon_summary,
-    addon_description,
-    addon_stars,
-    addon_path,
-    addon_addonID,
-    addon_icon,
-    addon_version,
-    addon_changelog,
-    addon_fanart,
-    addon_author,
-    addon_disclaimer,
-    addon_minversion,
-    broken_reason,
-    addonextra_key,
-    addonextra_value,
-    dependencies_addon,
-    dependencies_version,
-    dependencies_optional
-  };
+  void DeleteRepository(const std::string& id);
 };
 

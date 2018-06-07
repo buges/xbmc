@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,11 +26,11 @@
 class CSmartPlaylistFileItemListModifier : public IFileItemListModifier
 {
 public:
-  CSmartPlaylistFileItemListModifier() { }
-  virtual ~CSmartPlaylistFileItemListModifier() { }
+  CSmartPlaylistFileItemListModifier() = default;
+  ~CSmartPlaylistFileItemListModifier() override = default;
 
-  virtual bool CanModify(const CFileItemList &items) const;
-  virtual bool Modify(CFileItemList &items) const;
+  bool CanModify(const CFileItemList &items) const override;
+  bool Modify(CFileItemList &items) const override;
 
 private:
   static std::string GetUrlOption(const std::string &path, const std::string &option);

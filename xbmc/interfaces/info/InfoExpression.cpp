@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,30 +22,29 @@
 #include <stack>
 #include "utils/log.h"
 #include "GUIInfoManager.h"
+#include "guilib/GUIComponent.h"
+#include "ServiceBroker.h"
 #include <list>
 #include <memory>
 
-using namespace std;
 using namespace INFO;
 
-InfoSingle::InfoSingle(const std::string &expression, int context)
-: InfoBool(expression, context)
+void InfoSingle::Initialize()
 {
-  m_condition = g_infoManager.TranslateSingleString(expression, m_listItemDependent);
+  m_condition = CServiceBroker::GetGUI()->GetInfoManager().TranslateSingleString(m_expression, m_listItemDependent);
 }
 
 void InfoSingle::Update(const CGUIListItem *item)
 {
-  m_value = g_infoManager.GetBool(m_condition, m_context, item);
+  m_value = CServiceBroker::GetGUI()->GetInfoManager().GetBool(m_condition, m_context, item);
 }
 
-InfoExpression::InfoExpression(const std::string &expression, int context)
-: InfoBool(expression, context)
+void InfoExpression::Initialize()
 {
-  if (!Parse(expression))
+  if (!Parse(m_expression))
   {
-    CLog::Log(LOGERROR, "Error parsing boolean expression %s", expression.c_str());
-    m_expression_tree = std::make_shared<InfoLeaf>(g_infoManager.Register("false", 0), false);
+    CLog::Log(LOGERROR, "Error parsing boolean expression %s", m_expression.c_str());
+    m_expression_tree = std::make_shared<InfoLeaf>(CServiceBroker::GetGUI()->GetInfoManager().Register("false", 0), false);
   }
 }
 
@@ -219,9 +218,13 @@ bool InfoExpression::Parse(const std::string &expression)
   bool after_binaryoperator = true;
   int bracket_count = 0;
 
+  CGUIInfoManager& infoMgr = CServiceBroker::GetGUI()->GetInfoManager();
+
   char c;
   // Skip leading whitespace - don't want it to count as an operand if that's all there is
-  while (isspace((unsigned char)(c=*s))) s++;
+  while (isspace((unsigned char)(c=*s)))
+    s++;
+
   while ((c = *s++) != '\0')
   {
     operator_t op;
@@ -243,7 +246,7 @@ bool InfoExpression::Parse(const std::string &expression)
       }
       if (!operand.empty())
       {
-        InfoPtr info = g_infoManager.Register(operand, m_context);
+        InfoPtr info = infoMgr.Register(operand, m_context);
         if (!info)
         {
           CLog::Log(LOGERROR, "Bad operand '%s'", operand.c_str());
@@ -294,7 +297,7 @@ bool InfoExpression::Parse(const std::string &expression)
   }
   if (!operand.empty())
   {
-    InfoPtr info = g_infoManager.Register(operand, m_context);
+    InfoPtr info = infoMgr.Register(operand, m_context);
     if (!info)
     {
       CLog::Log(LOGERROR, "Bad operand '%s'", operand.c_str());

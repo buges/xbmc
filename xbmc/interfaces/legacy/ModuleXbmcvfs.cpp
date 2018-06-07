@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "filesystem/Directory.h"
 #include "utils/FileUtils.h"
 #include "utils/URIUtils.h"
+#include "URL.h"
 #include "Util.h"
 
 namespace XBMCAddon
@@ -31,10 +32,10 @@ namespace XBMCAddon
 
   namespace xbmcvfs
   {
-    bool copy(const String& strSource, const String& strDestnation)
+    bool copy(const String& strSource, const String& strDestination)
     {
       DelayedCallGuard dg;
-      return XFILE::CFile::Copy(strSource, strDestnation);
+      return XFILE::CFile::Copy(strSource, strDestination);
     }
 
     // delete a file
@@ -51,12 +52,12 @@ namespace XBMCAddon
       return XFILE::CFile::Rename(file,newFile);
     }  
 
-    // check for a file or folder existance, mimics Pythons os.path.exists()
+    // check for a file or folder existence, mimics Pythons os.path.exists()
     bool exists(const String& path)
     {
       DelayedCallGuard dg;
       if (URIUtils::HasSlashAtEnd(path, true))
-        return XFILE::CDirectory::Exists(path);
+        return XFILE::CDirectory::Exists(path, false);
       return XFILE::CFile::Exists(path, false);
     }      
 
@@ -77,7 +78,11 @@ namespace XBMCAddon
     bool rmdir(const String& path, bool force)
     {
       DelayedCallGuard dg;
-      return (force ? CFileUtils::DeleteItem(path,force) : XFILE::CDirectory::Remove(path));
+
+      if (force)
+        return CFileUtils::DeleteItem(path);
+      else
+        return XFILE::CDirectory::Remove(path);
     }      
 
     Tuple<std::vector<String>, std::vector<String> > listdir(const String& path)
@@ -100,6 +105,11 @@ namespace XBMCAddon
         {
           URIUtils::RemoveSlashAtEnd(itemPath);
           std::string strFileName = URIUtils::GetFileName(itemPath);
+          if (strFileName.empty())
+          {
+            CURL url(itemPath);
+            strFileName = url.GetHostName();
+          }
           ret.first().push_back(strFileName);
         }
         else // file

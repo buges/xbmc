@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,9 +20,10 @@
 
 #include "ModuleXbmcgui.h"
 #include "LanguageHook.h"
-#include "guilib/GraphicContext.h"
+#include "ServiceBroker.h"
+#include "guilib/GUIComponent.h"
+#include "windowing/GraphicContext.h"
 #include "guilib/GUIWindowManager.h"
-#include "utils/log.h"
 
 #define NOTIFICATION_INFO     "info"
 #define NOTIFICATION_WARNING  "warning"
@@ -32,30 +33,32 @@ namespace XBMCAddon
 {
   namespace xbmcgui
   {
-    void lock()
-    {
-      CLog::Log(LOGWARNING,"'xbmcgui.lock()' is depreciated and serves no purpose anymore, it will be removed in future releases");
-    }
-
-    void unlock()
-    {
-      CLog::Log(LOGWARNING,"'xbmcgui.unlock()' is depreciated and serves no purpose anymore, it will be removed in future releases");
-    }
-
     long getCurrentWindowId()
     {
       DelayedCallGuard dg;
-      CSingleLock gl(g_graphicsContext);
-      return g_windowManager.GetActiveWindow();
+      CSingleLock gl(CServiceBroker::GetWinSystem()->GetGfxContext());
+      return CServiceBroker::GetGUI()->GetWindowManager().GetActiveWindow();
     }
 
     long getCurrentWindowDialogId()
     {
       DelayedCallGuard dg;
-      CSingleLock gl(g_graphicsContext);
-      return g_windowManager.GetTopMostModalDialogID();
+      CSingleLock gl(CServiceBroker::GetWinSystem()->GetGfxContext());
+      return CServiceBroker::GetGUI()->GetWindowManager().GetTopmostModalDialog();
     }
-    
+
+    long getScreenHeight()
+    {
+      XBMC_TRACE;
+      return CServiceBroker::GetWinSystem()->GetGfxContext().GetHeight();
+    }
+
+    long getScreenWidth()
+    {
+      XBMC_TRACE;
+      return CServiceBroker::GetWinSystem()->GetGfxContext().GetWidth();
+    }
+
     const char* getNOTIFICATION_INFO()    { return NOTIFICATION_INFO; }
     const char* getNOTIFICATION_WARNING() { return NOTIFICATION_WARNING; }
     const char* getNOTIFICATION_ERROR()   { return NOTIFICATION_ERROR; }

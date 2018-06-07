@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,8 +41,6 @@
 #define CONTROL_FRAME 0x08
 
 #define LENGTH_MIN    0x2
-
-using namespace std;
 
 CWebSocketFrame::CWebSocketFrame(const char* data, uint64_t length)
 {
@@ -160,7 +158,7 @@ CWebSocketFrame::CWebSocketFrame(WebSocketFrameOpcode opcode, const char* data /
   m_final = final;
   m_extension = extension;
 
-  string buffer;
+  std::string buffer;
   char dataByte = 0;
 
   // Set the FIN flag
@@ -244,7 +242,7 @@ CWebSocketFrame::~CWebSocketFrame()
 
   if (m_free && m_data != NULL)
   {
-    delete m_data;
+    delete[] m_data;
     m_data = NULL;
   }
 }

@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include <time.h>
 
 class CDateTime;
-class CTimeSmoother;
 
 int64_t CurrentHostCounter(void);
 int64_t CurrentHostFrequency(void);
@@ -32,12 +31,11 @@ int64_t CurrentHostFrequency(void);
 class CTimeUtils
 {
 public:
-  static void UpdateFrameTime(bool flip, bool vsync); ///< update the frame time.  Not threadsafe
+  static void UpdateFrameTime(bool flip); ///< update the frame time.  Not threadsafe
   static unsigned int GetFrameTime(); ///< returns the frame time in MS.  Not threadsafe
   static CDateTime GetLocalTime(time_t time);
 
 private:
   static unsigned int frameTime;
-  static CTimeSmoother frameTimer;
 };
 

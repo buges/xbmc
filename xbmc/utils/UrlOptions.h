@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,10 @@
  *
  */
 
+#include "utils/Variant.h"
+
 #include <map>
 #include <string>
-
-#include "utils/Variant.h"
 
 class CUrlOptions
 {
@@ -33,10 +33,10 @@ public:
   CUrlOptions(const std::string &options, const char *strLead = "");
   virtual ~CUrlOptions();
 
-  virtual void Clear() { m_options.clear(); m_strLead = ""; }
+  void Clear() { m_options.clear(); m_strLead.clear(); }
 
-  virtual const UrlOptions& GetOptions() const { return m_options; }
-  virtual std::string GetOptionsString(bool withLeadingSeperator = false) const;
+  const UrlOptions& GetOptions() const { return m_options; }
+  std::string GetOptionsString(bool withLeadingSeparator = false) const;
 
   virtual void AddOption(const std::string &key, const char *value);
   virtual void AddOption(const std::string &key, const std::string &value);
@@ -48,8 +48,8 @@ public:
   virtual void AddOptions(const CUrlOptions &options);
   virtual void RemoveOption(const std::string &key);
 
-  virtual bool HasOption(const std::string &key) const;
-  virtual bool GetOption(const std::string &key, CVariant &value) const;
+  bool HasOption(const std::string &key) const;
+  bool GetOption(const std::string &key, CVariant &value) const;
 
 protected:
   UrlOptions m_options;

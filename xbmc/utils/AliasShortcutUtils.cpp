@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2009-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,23 +20,24 @@
 
 #if defined(TARGET_DARWIN_OSX)
 #include "utils/URIUtils.h"
-#include "osx/DarwinUtils.h"
+#include "platform/darwin/DarwinUtils.h"
 #elif defined(TARGET_POSIX)
 #else
 #endif
 
 #include "AliasShortcutUtils.h"
+#include "utils/log.h"
 
-bool IsAliasShortcut(const std::string& path)
+bool IsAliasShortcut(const std::string& path, bool isdirectory)
 {
   bool  rtn = false;
 
 #if defined(TARGET_DARWIN_OSX)
   // Note: regular files that have an .alias extension can be
   //   reported as an alias when clearly, they are not. Trap them out.
-  if (!URIUtils::HasExtension(path, ".alias"))// TODO - check if this is still needed with the new API
+  if (!URIUtils::HasExtension(path, ".alias"))//! @todo - check if this is still needed with the new API
   {
-    rtn = CDarwinUtils::IsAliasShortcut(path);
+    rtn = CDarwinUtils::IsAliasShortcut(path, isdirectory);
   }
 #elif defined(TARGET_POSIX)
   // Linux does not use alias or shortcut methods
@@ -57,7 +58,9 @@ void TranslateAliasShortcut(std::string& path)
   CDarwinUtils::TranslateAliasShortcut(path);
 #elif defined(TARGET_POSIX)
   // Linux does not use alias or shortcut methods
-
+#elif defined(TARGET_WINDOWS_STORE)
+  // Win10 does not use alias or shortcut methods
+  CLog::Log(LOGDEBUG, "%s is not implemented", __FUNCTION__);
 #elif defined(TARGET_WINDOWS)
 /* Needs testing under Windows platform so ignore shortcuts for now
   CComPtr<IShellLink> ipShellLink;

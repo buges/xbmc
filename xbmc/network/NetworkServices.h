@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,17 +19,15 @@
  *
  */
 
-#include "system.h"
 #include "settings/lib/ISettingCallback.h"
 
+class CSettings;
 #ifdef HAS_WEB_SERVER
 class CWebServer;
 class CHTTPImageHandler;
 class CHTTPImageTransformationHandler;
 class CHTTPVfsHandler;
-#ifdef HAS_JSONRPC
 class CHTTPJsonRpcHandler;
-#endif // HAS_JSONRPC
 #ifdef HAS_WEB_INTERFACE
 #ifdef HAS_PYTHON
 class CHTTPPythonHandler;
@@ -42,11 +40,12 @@ class CHTTPWebinterfaceAddonsHandler;
 class CNetworkServices : public ISettingCallback
 {
 public:
-  static CNetworkServices& Get();
+  CNetworkServices(CSettings &settings);
+  ~CNetworkServices() override;
   
-  virtual bool OnSettingChanging(const CSetting *setting);
-  virtual void OnSettingChanged(const CSetting *setting);
-  virtual bool OnSettingUpdate(CSetting* &setting, const char *oldSettingId, const TiXmlNode *oldSettingNode);
+  bool OnSettingChanging(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  bool OnSettingUpdate(std::shared_ptr<CSetting> setting, const char *oldSettingId, const TiXmlNode *oldSettingNode) override;
 
   void Start();
   void Stop(bool bWait);
@@ -95,21 +94,22 @@ public:
   bool StopZeroconf();
 
 private:
-  CNetworkServices();
   CNetworkServices(const CNetworkServices&);
   CNetworkServices const& operator=(CNetworkServices const&);
-  virtual ~CNetworkServices();
 
   bool ValidatePort(int port);
 
+  // Construction parameters
+  CSettings &m_settings;
+
+  // Network services
 #ifdef HAS_WEB_SERVER
   CWebServer& m_webserver;
+  // Handlers
   CHTTPImageHandler& m_httpImageHandler;
   CHTTPImageTransformationHandler& m_httpImageTransformationHandler;
   CHTTPVfsHandler& m_httpVfsHandler;
-#ifdef HAS_JSONRPC
   CHTTPJsonRpcHandler& m_httpJsonRpcHandler;
-#endif
 #ifdef HAS_WEB_INTERFACE
 #ifdef HAS_PYTHON
   CHTTPPythonHandler& m_httpPythonHandler;

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include "threads/Thread.h"
 #include "IAddon.h"
-#include "include/xbmc_addon_types.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_addon_types.h"
 #include "threads/CriticalSection.h"
 #include <string>
 
@@ -29,21 +29,21 @@ namespace ADDON
 {
   /**
   * Class - CAddonStatusHandler
-  * Used to informate the user about occurred errors and
+  * Used to inform the user about occurred errors and
   * changes inside Add-on's, and ask him what to do.
   * It can executed in the same thread as the calling
-  * function or in a seperate thread.
+  * function or in a separate thread.
   */
   class CAddonStatusHandler : private CThread
   {
     public:
       CAddonStatusHandler(const std::string &addonID, ADDON_STATUS status, std::string message, bool sameThread = true);
-      ~CAddonStatusHandler();
+      ~CAddonStatusHandler() override;
 
       /* Thread handling */
-      virtual void Process();
-      virtual void OnStartup();
-      virtual void OnExit();
+      void Process() override;
+      void OnStartup() override;
+      void OnExit() override;
 
     private:
       static CCriticalSection   m_critSection;

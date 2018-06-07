@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <list>
 #include "AEPackIEC61937.h"
+#include "AEChannelInfo.h"
 
 class CAEStreamInfo;
 
@@ -31,16 +32,20 @@ public:
   CAEBitstreamPacker();
   ~CAEBitstreamPacker();
 
-  void         Pack(CAEStreamInfo &info, uint8_t* data, int size);
-  uint8_t*     GetBuffer();
-  unsigned int GetSize  ();
+  void Pack(CAEStreamInfo &info, uint8_t* data, int size);
+  bool PackPause(CAEStreamInfo &info, unsigned int millis, bool iecBursts);
+  void Reset();
+  uint8_t* GetBuffer();
+  unsigned int GetSize();
+  static unsigned int GetOutputRate(CAEStreamInfo &info);
+  static CAEChannelInfo GetOutputChannelMap(CAEStreamInfo &info);
 
 private:
   void PackTrueHD(CAEStreamInfo &info, uint8_t* data, int size);
-  void PackDTSHD (CAEStreamInfo &info, uint8_t* data, int size);
-  void PackEAC3  (CAEStreamInfo &info, uint8_t* data, int size);
+  void PackDTSHD(CAEStreamInfo &info, uint8_t* data, int size);
+  void PackEAC3(CAEStreamInfo &info, uint8_t* data, int size);
 
-  /* we keep the trueHD and dtsHD buffers seperate so that we can handle a fast stream switch */
+  /* we keep the trueHD and dtsHD buffers separate so that we can handle a fast stream switch */
   uint8_t      *m_trueHD;
   unsigned int  m_trueHDPos;
 
@@ -54,5 +59,6 @@ private:
 
   unsigned int  m_dataSize;
   uint8_t       m_packedBuffer[MAX_IEC61937_PACKET];
+  unsigned int m_pauseDuration;
 };
 

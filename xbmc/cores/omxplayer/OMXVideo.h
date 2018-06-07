@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
  *
  */
 
-#if defined(HAVE_OMXLIB)
-
 #include "OMXCore.h"
 #include "DVDStreamInfo.h"
 
@@ -28,11 +26,13 @@
 
 #include "OMXClock.h"
 
-#include "guilib/Geometry.h"
+#include "utils/Geometry.h"
 #include "DVDDemuxers/DVDDemux.h"
-#include "xbmc/settings/VideoSettings.h"
+#include "xbmc/cores/VideoSettings.h"
 #include "threads/CriticalSection.h"
 #include "xbmc/rendering/RenderSystem.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
+#include "cores/VideoPlayer/Process/ProcessInfo.h"
 #include <string>
 
 #define VIDEO_BUFFERS 60
@@ -41,25 +41,33 @@
 
 typedef void (*ResolutionUpdateCallBackFn)(void *ctx, uint32_t width, uint32_t height, float framerate, float display_aspect);
 
+struct ResolutionUpdateInfo {
+  uint32_t width;
+  uint32_t height;
+  float framerate;
+  float display_aspect;
+  bool changed;
+};
+
 class COMXVideo
 {
 public:
-  COMXVideo();
+  COMXVideo(CRenderManager& renderManager, CProcessInfo &processInfo);
   ~COMXVideo();
 
   // Required overrides
   bool SendDecoderConfig();
-  bool Open(CDVDStreamInfo &hints, OMXClock *clock, EDEINTERLACEMODE deinterlace = VS_DEINTERLACEMODE_OFF, bool hdmi_clock_sync = false);
-  bool PortSettingsChanged();
+  bool Open(CDVDStreamInfo &hints, OMXClock *clock, bool hdmi_clock_sync = false);
+  bool PortSettingsChanged(ResolutionUpdateInfo &resinfo);
   void RegisterResolutionUpdateCallBack(void *ctx, ResolutionUpdateCallBackFn callback) { m_res_ctx = ctx; m_res_callback = callback; }
   void Close(void);
   unsigned int GetFreeSpace();
   unsigned int GetSize();
-  int  Decode(uint8_t *pData, int iSize, double dts, double pts);
+  int  Decode(uint8_t *pData, int iSize, double dts, double pts, bool &settings_changed);
   void Reset(void);
   void SetDropState(bool bDrop);
   std::string GetDecoderName() { return m_video_codec_name; };
-  void SetVideoRect(const CRect& SrcRect, const CRect& DestRect, RENDER_STEREO_MODE video_mode, RENDER_STEREO_MODE display_mode);
+  void SetVideoRect(const CRect& SrcRect, const CRect& DestRect, RENDER_STEREO_MODE video_mode, RENDER_STEREO_MODE display_mode, bool stereo_invert);
   int GetInputBufferSize();
   bool GetPlayerInfo(double &match, double &phase, double &pll);
   void SubmitEOS();
@@ -81,10 +89,10 @@ protected:
   COMXCoreComponent *m_omx_clock;
   OMXClock           *m_av_clock;
 
-  COMXCoreTunel     m_omx_tunnel_decoder;
-  COMXCoreTunel     m_omx_tunnel_clock;
-  COMXCoreTunel     m_omx_tunnel_sched;
-  COMXCoreTunel     m_omx_tunnel_image_fx;
+  COMXCoreTunnel    m_omx_tunnel_decoder;
+  COMXCoreTunnel    m_omx_tunnel_clock;
+  COMXCoreTunnel    m_omx_tunnel_sched;
+  COMXCoreTunnel    m_omx_tunnel_image_fx;
   bool              m_is_open;
   bool              m_setStartTime;
 
@@ -94,7 +102,6 @@ protected:
   std::string       m_video_codec_name;
 
   bool              m_deinterlace;
-  EDEINTERLACEMODE  m_deinterlace_request;
   bool              m_hdmi_clock_sync;
   ResolutionUpdateCallBackFn m_res_callback;
   void              *m_res_ctx;
@@ -102,8 +109,9 @@ protected:
   bool              m_failed_eos;
   OMX_DISPLAYTRANSFORMTYPE m_transform;
   bool              m_settings_changed;
+  bool              m_isPi1;
+  CRenderManager&   m_renderManager;
+  CProcessInfo&     m_processInfo;
   static bool NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata, int in_extrasize);
   CCriticalSection m_critSection;
 };
-
-#endif

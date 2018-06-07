@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <memory>
 
 #include "addons/Addon.h"
+#include "utils/URIUtils.h"
 
 namespace ADDON
 {
@@ -29,22 +30,22 @@ namespace ADDON
 class CResource : public CAddon
 {
 public:
-  virtual ~CResource() { }
-
-  virtual AddonPtr Clone() const = 0;
+  ~CResource() override = default;
 
   virtual bool IsAllowed(const std::string &file) const = 0;
 
+  virtual std::string GetFullPath(const std::string &filePath) const
+  {
+    return URIUtils::AddFileToFolder(GetResourcePath(), filePath);
+  }
+
 protected:
-  CResource(const AddonProps &props)
-    : CAddon(props)
-  { }
-  CResource(const cp_extension_t *ext)
-    : CAddon(ext)
-  { }
-  CResource(const CResource &rhs)
-    : CAddon(rhs)
-  { }
+  explicit CResource(CAddonInfo addonInfo) : CAddon(std::move(addonInfo)) {}
+
+  std::string GetResourcePath() const
+  {
+    return URIUtils::AddFileToFolder(Path(), "resources");
+  }
 };
 
 }

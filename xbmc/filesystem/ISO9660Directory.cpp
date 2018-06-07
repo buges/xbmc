@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,14 +25,18 @@
 #include "utils/StringUtils.h"
 #include "URL.h"
 #include "FileItem.h"
+#ifdef TARGET_POSIX
+#include "platform/linux/XTimeUtils.h"
+#endif
+#ifdef TARGET_WINDOWS
+#include "platform/win32/CharsetConverter.h"
+#endif
 
 using namespace XFILE;
 
-CISO9660Directory::CISO9660Directory(void)
-{}
+CISO9660Directory::CISO9660Directory(void) = default;
 
-CISO9660Directory::~CISO9660Directory(void)
-{}
+CISO9660Directory::~CISO9660Directory(void) = default;
 
 bool CISO9660Directory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -63,7 +67,7 @@ bool CISO9660Directory::GetDirectory(const CURL& url, CFileItemList &items)
     if (strSearchMask[i] == '/') strSearchMask[i] = '\\';
   }
 
-  hFind = m_isoReader.FindFirstFile((char*)strSearchMask.c_str(), &wfd);
+  hFind = m_isoReader.FindFirstFile9660((char*)strSearchMask.c_str(), &wfd);
   if (hFind == NULL)
     return false;
 
@@ -73,11 +77,15 @@ bool CISO9660Directory::GetDirectory(const CURL& url, CFileItemList &items)
     {
       if ( (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
       {
+#ifdef TARGET_WINDOWS
+        auto strDir = KODI::PLATFORM::WINDOWS::FromW(wfd.cFileName);
+#else
         std::string strDir = wfd.cFileName;
+#endif
         if (strDir != "." && strDir != "..")
         {
-          CFileItemPtr pItem(new CFileItem(wfd.cFileName));
-          std::string path = strRoot + wfd.cFileName;
+          CFileItemPtr pItem(new CFileItem(strDir));
+          std::string path = strRoot + strDir;
           URIUtils::AddSlashAtEnd(path);
           pItem->SetPath(path);
           pItem->m_bIsFolder = true;
@@ -89,8 +97,13 @@ bool CISO9660Directory::GetDirectory(const CURL& url, CFileItemList &items)
       }
       else
       {
-        CFileItemPtr pItem(new CFileItem(wfd.cFileName));
-        pItem->SetPath(strRoot + wfd.cFileName);
+#ifdef TARGET_WINDOWS
+        auto strDir = KODI::PLATFORM::WINDOWS::FromW(wfd.cFileName);
+#else
+        std::string strDir = wfd.cFileName;
+#endif
+        CFileItemPtr pItem(new CFileItem(strDir));
+        pItem->SetPath(strRoot + strDir);
         pItem->m_bIsFolder = false;
         pItem->m_dwSize = CUtil::ToInt64(wfd.nFileSizeHigh, wfd.nFileSizeLow);
         FILETIME localTime;

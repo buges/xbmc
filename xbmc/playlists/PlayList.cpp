@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,20 +20,25 @@
 
 #include "PlayList.h"
 #include "PlayListFactory.h"
-#include <sstream>
 #include "video/VideoInfoTag.h"
 #include "music/tags/MusicInfoTag.h"
 #include "filesystem/File.h"
 #include "utils/log.h"
+#include "utils/Random.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
 #include "utils/StringUtils.h"
 #include "interfaces/AnnouncementManager.h"
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <utility>
+#include <vector>
 
-//using namespace std;
+
 using namespace MUSIC_INFO;
 using namespace XFILE;
 using namespace PLAYLIST;
@@ -55,7 +60,7 @@ void CPlayList::AnnounceRemove(int pos)
   CVariant data;
   data["playlistid"] = m_id;
   data["position"] = pos;
-  ANNOUNCEMENT::CAnnouncementManager::Get().Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnRemove", data);
+  ANNOUNCEMENT::CAnnouncementManager::GetInstance().Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnRemove", data);
 }
 
 void CPlayList::AnnounceClear()
@@ -65,7 +70,7 @@ void CPlayList::AnnounceClear()
 
   CVariant data;
   data["playlistid"] = m_id;
-  ANNOUNCEMENT::CAnnouncementManager::Get().Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnClear", data);
+  ANNOUNCEMENT::CAnnouncementManager::GetInstance().Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnClear", data);
 }
 
 void CPlayList::AnnounceAdd(const CFileItemPtr& item, int pos)
@@ -76,7 +81,7 @@ void CPlayList::AnnounceAdd(const CFileItemPtr& item, int pos)
   CVariant data;
   data["playlistid"] = m_id;
   data["position"] = pos;
-  ANNOUNCEMENT::CAnnouncementManager::Get().Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnAdd", item, data);
+  ANNOUNCEMENT::CAnnouncementManager::GetInstance().Announce(ANNOUNCEMENT::Playlist, "xbmc", "OnAdd", item, data);
 }
 
 void CPlayList::Add(const CFileItemPtr &item, int iPosition, int iOrder)
@@ -88,10 +93,6 @@ void CPlayList::Add(const CFileItemPtr &item, int iPosition, int iOrder)
     item->m_iprogramCount = iOldSize;
   else
     item->m_iprogramCount = iOrder;
-
-  // videodb files are not supported by the filesystem as yet
-  if (item->IsVideoDb())
-    item->SetPath(item->GetVideoInfoTag()->m_strFileNameAndPath);
 
   // increment the playable counter
   item->ClearProperty("unplayable");
@@ -122,19 +123,19 @@ void CPlayList::Add(const CFileItemPtr &item)
   Add(item, -1, -1);
 }
 
-void CPlayList::Add(CPlayList& playlist)
+void CPlayList::Add(const CPlayList& playlist)
 {
   for (int i = 0; i < (int)playlist.size(); i++)
     Add(playlist[i], -1, -1);
 }
 
-void CPlayList::Add(CFileItemList& items)
+void CPlayList::Add(const CFileItemList& items)
 {
   for (int i = 0; i < (int)items.Size(); i++)
     Add(items[i]);
 }
 
-void CPlayList::Insert(CPlayList& playlist, int iPosition /* = -1 */)
+void CPlayList::Insert(const CPlayList& playlist, int iPosition /* = -1 */)
 {
   // out of bounds so just add to the end
   int iSize = size();
@@ -150,7 +151,7 @@ void CPlayList::Insert(CPlayList& playlist, int iPosition /* = -1 */)
   }
 }
 
-void CPlayList::Insert(CFileItemList& items, int iPosition /* = -1 */)
+void CPlayList::Insert(const CFileItemList& items, int iPosition /* = -1 */)
 {
   // out of bounds so just add to the end
   int iSize = size();
@@ -275,7 +276,7 @@ void CPlayList::Shuffle(int iPosition)
     CLog::Log(LOGDEBUG,"%s shuffling at pos:%i", __FUNCTION__, iPosition);
 
     ivecItems it = m_vecItems.begin() + iPosition;
-    random_shuffle(it, m_vecItems.end());
+    KODI::UTILS::RandomShuffle(it, m_vecItems.end());
 
     // the list is now shuffled!
     m_bShuffled = true;
@@ -286,13 +287,13 @@ struct SSortPlayListItem
 {
   static bool PlaylistSort(const CFileItemPtr &left, const CFileItemPtr &right)
   {
-    return (left->m_iprogramCount <= right->m_iprogramCount);
+    return (left->m_iprogramCount < right->m_iprogramCount);
   }
 };
 
 void CPlayList::UnShuffle()
 {
-  sort(m_vecItems.begin(), m_vecItems.end(), SSortPlayListItem::PlaylistSort);
+  std::sort(m_vecItems.begin(), m_vecItems.end(), SSortPlayListItem::PlaylistSort);
   // the list is now unshuffled!
   m_bShuffled = false;
 }
@@ -462,23 +463,33 @@ bool CPlayList::Expand(int position)
 {
   CFileItemPtr item = m_vecItems[position];
   std::unique_ptr<CPlayList> playlist (CPlayListFactory::Create(*item.get()));
-  if ( NULL == playlist.get())
+  if (playlist.get() == nullptr)
     return false;
 
-  if(!playlist->Load(item->GetPath()))
+  std::string path = item->GetDynPath();
+
+  if (!playlist->Load(path))
     return false;
 
   // remove any item that points back to itself
-  for(int i = 0;i<playlist->size();i++)
+  for (int i = 0;i<playlist->size();i++)
   {
-    if(StringUtils::EqualsNoCase((*playlist)[i]->GetPath(), item->GetPath()))
+    if (StringUtils::EqualsNoCase((*playlist)[i]->GetPath(), path))
     {
       playlist->Remove(i);
       i--;
     }
   }
 
-  if(playlist->size() <= 0)
+  // @todo
+  // never change original path (id) of a file item
+  for (int i = 0;i<playlist->size();i++)
+  {
+    (*playlist)[i]->SetDynPath((*playlist)[i]->GetPath());
+    (*playlist)[i]->SetPath(item->GetPath());
+  }
+
+  if (playlist->size() <= 0)
     return false;
 
   Remove(position);

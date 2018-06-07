@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,17 +38,15 @@ Pipe::Pipe(const std::string &name, int nMaxSize)
   m_strPipeName = name;
   m_bOpen = true;
   m_bEof = false;
-  m_nOpenThreashold = PIPE_DEFAULT_MAX_SIZE / 2;
-  m_bReadyForRead = true; // open threashold disabled atm
+  m_nOpenThreshold = PIPE_DEFAULT_MAX_SIZE / 2;
+  m_bReadyForRead = true; // open threshold disabled atm
 }
 
-Pipe::~Pipe()
-{
-}
+Pipe::~Pipe() = default;
 
-void Pipe::SetOpenThreashold(int threashold)
+void Pipe::SetOpenThreshold(int threshold)
 {
-  m_nOpenThreashold = threashold;
+  m_nOpenThreshold = threshold;
 }
 
 const std::string &Pipe::GetName()
@@ -223,7 +221,7 @@ void Pipe::CheckStatus()
     m_readEvent.Reset();
   else
   {
-    if (!m_bReadyForRead  && (int)m_buffer.getMaxReadSize() >= m_nOpenThreashold)
+    if (!m_bReadyForRead  && (int)m_buffer.getMaxReadSize() >= m_nOpenThreshold)
       m_bReadyForRead = true;
     m_readEvent.Set();  
   }
@@ -271,9 +269,7 @@ PipesManager::PipesManager() : m_nGenIdHelper(1)
 {
 }
 
-PipesManager::~PipesManager()
-{
-}
+PipesManager::~PipesManager() = default;
 
 PipesManager &PipesManager::GetInstance()
 {

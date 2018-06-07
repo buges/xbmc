@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  *
  */
 
-#include "threads/Thread.h"
+#include "threads/IRunnable.h"
 #include "IProgressCallback.h"
 #include "threads/CriticalSection.h"
 
@@ -29,11 +29,12 @@
 
 class CFileItem; typedef std::shared_ptr<CFileItem> CFileItemPtr;
 class CFileItemList;
+class CThread;
 
 class IBackgroundLoaderObserver
 {
 public:
-  virtual ~IBackgroundLoaderObserver() {}
+  virtual ~IBackgroundLoaderObserver() = default;
   virtual void OnItemLoaded(CFileItem* pItem) = 0;
 };
 
@@ -41,11 +42,11 @@ class CBackgroundInfoLoader : public IRunnable
 {
 public:
   CBackgroundInfoLoader();
-  virtual ~CBackgroundInfoLoader();
+  ~CBackgroundInfoLoader() override;
 
   void Load(CFileItemList& items);
   bool IsLoading();
-  virtual void Run();
+  void Run() override;
   void SetObserver(IBackgroundLoaderObserver* pObserver);
   void SetProgressCallback(IProgressCallback* pCallback);
   virtual bool LoadItem(CFileItem* pItem) { return false; };

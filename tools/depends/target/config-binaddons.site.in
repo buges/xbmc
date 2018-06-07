@@ -5,9 +5,9 @@ host_alias=@use_host@
 fi
 
 LD="@LD@"
-CC="@CC@"
-CXX="@CXX@"
-CPP="@CPP@"
+CC="@CCACHE@ @CC@"
+CXX="@CCACHE@ @CXX@"
+CPP="@CCACHE@ @CPP@"
 AR="@AR@"
 AS="@AS@"
 NM="@NM@"
@@ -34,9 +34,6 @@ LD_LIBRARY_PATH=@prefix@/@tool_dir@/lib:$LD_LIBRARY_PATH
 
 NATIVE_ROOT=@prefix@/@tool_dir@
 
-#libomxil-bellagio
-ac_cv_func_malloc_0_nonnull=yes
-
 #curl
 ac_cv_file__dev_urandom=yes
 ac_cv_lib_ssl_SSL_connect=yes
@@ -57,14 +54,6 @@ fi
 #python
 ac_cv_func_gethostbyname_r=no
 ac_cv_header_sys_un_h=yes
-
-#rsxs/projectm
-jm_cv_func_gettimeofday_clobber=no
-mac_cv_pkg_ldflags=-lz
-if test "@platform_os@" = "osx"; then
-  ac_cv_func_strnlen_working=no
-  ac_cv_header_stdbool_h=yes
-fi
 
 #gnutls
 gl_cv_func_gettimeofday_clobber=no
@@ -98,8 +87,6 @@ if test "${PACKAGE_NAME}" = "Samba" -a "@platform_os@" = "osx"; then
   # various configure overrides
   ac_cv_header_libunwind_h=no
   ac_cv_header_execinfo_h=no
-  # fixes crash on 10.6 if xbmc is built using 10.7 SDK with 10.6 min
-  ac_cv_func_vdprintf=no
 fi
 
 if test "@platform_os@" = "android"; then
@@ -129,33 +116,27 @@ if test "@platform_os@" = "android"; then
 
 fi
 
+if test "@platform_os@" = "osx" ; then
+  # Xcode 8 + 10.11, clock_gettime getentropy is present
+  # in 10.12 but will get wrongly detected if building on 10.11
+  ac_cv_search_clock_gettime=no
+  ac_cv_func_clock_gettime=no
+  ac_cv_func_getentropy=no
+fi
+
+
 if test "@platform_os@" = "ios"; then
-  # tweaks for libffi (ios must use llvm-gcc-4.2)
-  if test "${PACKAGE_NAME}" = "libffi" ; then
-      case "@use_xcode@" in
-        3.*.* | 4.* | 4.*.*)
-          export CC="@use_toolchain@/usr/bin/llvm-gcc-4.2"
-          export CPP="@use_toolchain@/usr/bin/llvm-gcc-4.2 -E"
-          ;;
-        *)
-          export CC="@use_toolchain@/usr/bin/clang"
-          export CPP="@use_toolchain@/usr/bin/clang -E"
-          ;;
-        esac
-    unset AS
-    unset CCAS
-  fi
+  # Xcode 8 + 10.11, clock_gettime getentropy is present
+  # in 10.12 but will get wrongly detected if building on 10.11
+  ac_cv_search_clock_gettime=no
+  ac_cv_func_clock_gettime=no
+  ac_cv_func_getentropy=no
 
   # tweaks for flac
   if test "${ac_unique_file}" = "src/flac/main.c" ; then
     # compiler barfs if we use -O3/O2 for flac
     export CFLAGS=`echo ${CFLAGS} | sed 's/-O3/-Os/'`
     export CPPFLAGS=`echo ${CPPFLAGS} | sed 's/-O3/-Os/'`
-  fi
-
-  # tweaks for libmpeg2
-  if test "${PACKAGE_NAME}" = "libmpeg2" ; then
-    export LDFLAGS="${LDFLAGS} -Wl,-read_only_relocs,suppress"
   fi
 fi
 
@@ -169,7 +150,6 @@ fi
 if test "${ac_unique_file}" = "src/flac/main.c" || \
    test "${ac_unique_file}" = "src/framing.c" || \
    test "${ac_unique_file}" = "src/libdvdcss.c" || \
-   test "${PACKAGE_NAME}" = "libmpeg2" || \
    test "${PACKAGE_NAME}" = "libssh2" ; then
      CFLAGS="$CFLAGS -fvisibility=default"
 fi

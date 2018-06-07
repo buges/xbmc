@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 class CAEPackIEC61937
 {
 public:
+  CAEPackIEC61937() = default;
   typedef int (*PackFunc)(uint8_t *data, unsigned int size, uint8_t *dest);
 
   static int PackAC3     (uint8_t *data, unsigned int size, uint8_t *dest);
@@ -48,6 +49,7 @@ public:
   static int PackDTS_2048(uint8_t *data, unsigned int size, uint8_t *dest, bool littleEndian);
   static int PackTrueHD  (uint8_t *data, unsigned int size, uint8_t *dest);
   static int PackDTSHD   (uint8_t *data, unsigned int size, uint8_t *dest, unsigned int period);
+  static int PackPause(uint8_t *dest, unsigned int millis, unsigned int framesize, unsigned int samplerate, unsigned int rep_period, unsigned int encodedRate);
 private:
 
   static int PackDTS(uint8_t *data, unsigned int size, uint8_t *dest, bool littleEndian,

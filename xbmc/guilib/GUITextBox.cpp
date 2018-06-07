@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,16 +20,20 @@
 
 #include "GUITextBox.h"
 #include "GUIInfoManager.h"
+#include "GUIMessage.h"
+#include "guilib/GUIComponent.h"
 #include "utils/XBMCTinyXML.h"
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 
 #include <algorithm>
 
-using namespace std;
+using namespace KODI::GUILIB;
 
 CGUITextBox::CGUITextBox(int parentID, int controlID, float posX, float posY, float width, float height,
-                         const CLabelInfo& labelInfo, int scrollTime)
+                         const CLabelInfo& labelInfo, int scrollTime,
+                         const CLabelInfo* labelInfoMono)
     : CGUIControl(parentID, controlID, posX, posY, width, height)
     , CGUITextLayout(labelInfo.font, true)
     , m_label(labelInfo)
@@ -49,6 +53,8 @@ CGUITextBox::CGUITextBox(int parentID, int controlID, float posX, float posY, fl
   m_autoScrollRepeatAnim = NULL;
   m_minHeight = 0;
   m_renderHeight = height;
+  if (labelInfoMono)
+    SetMonoFont(labelInfoMono->font);
 }
 
 CGUITextBox::CGUITextBox(const CGUITextBox &from)
@@ -171,7 +177,7 @@ void CGUITextBox::Process(unsigned int currentTime, CDirtyRegionList &dirtyregio
     m_autoScrollRepeatAnim->Animate(currentTime, true);
     TransformMatrix matrix;
     m_autoScrollRepeatAnim->RenderAnimation(matrix);
-    m_cachedTextMatrix = g_graphicsContext.AddTransform(matrix);
+    m_cachedTextMatrix = CServiceBroker::GetWinSystem()->GetGfxContext().AddTransform(matrix);
   }
 
   // update our scroll position as necessary
@@ -197,16 +203,16 @@ void CGUITextBox::Process(unsigned int currentTime, CDirtyRegionList &dirtyregio
   CGUIControl::Process(currentTime, dirtyregions);
 
   if (m_autoScrollRepeatAnim)
-    g_graphicsContext.RemoveTransform();
+    CServiceBroker::GetWinSystem()->GetGfxContext().RemoveTransform();
 }
 
 void CGUITextBox::Render()
 {
   // render the repeat anim as appropriate
   if (m_autoScrollRepeatAnim)
-    g_graphicsContext.SetTransform(m_cachedTextMatrix);
+    CServiceBroker::GetWinSystem()->GetGfxContext().SetTransform(m_cachedTextMatrix);
 
-  if (g_graphicsContext.SetClipRegion(m_posX, m_posY, m_width, m_renderHeight))
+  if (CServiceBroker::GetWinSystem()->GetGfxContext().SetClipRegion(m_posX, m_posY, m_width, m_renderHeight))
   {
     // we offset our draw position to take into account scrolling and whether or not our focused
     // item is offscreen "above" the list.
@@ -239,6 +245,11 @@ void CGUITextBox::Render()
     {
       m_font->Begin();
       int current = offset;
+
+      // set the main text color
+      if (m_colors.size())
+        m_colors[0] = m_label.textColor;
+
       while (posY < m_posY + m_renderHeight && current < (int)m_lines.size())
       {
         uint32_t align = alignment;
@@ -251,10 +262,10 @@ void CGUITextBox::Render()
       m_font->End();
     }
 
-    g_graphicsContext.RestoreClipRegion();
+    CServiceBroker::GetWinSystem()->GetGfxContext().RestoreClipRegion();
   }
   if (m_autoScrollRepeatAnim)
-    g_graphicsContext.RemoveTransform();
+    CServiceBroker::GetWinSystem()->GetGfxContext().RemoveTransform();
   CGUIControl::Render();
 }
 
@@ -277,11 +288,8 @@ bool CGUITextBox::OnMessage(CGUIMessage& message)
       m_scrollOffset = 0;
       ResetAutoScrolling();
       CGUITextLayout::Reset();
-      if (m_pageControl)
-      {
-        CGUIMessage msg(GUI_MSG_LABEL_RESET, GetID(), m_pageControl, m_itemsPerPage, m_lines.size());
-        SendWindowMessage(msg);
-      }
+      UpdatePageControl();
+      SetInvalid();
     }
 
     if (message.GetMessage() == GUI_MSG_PAGE_CHANGE)
@@ -291,6 +299,12 @@ bool CGUITextBox::OnMessage(CGUIMessage& message)
         Scroll(message.GetParam1());
         return true;
       }
+    }
+
+    if (message.GetMessage() == GUI_MSG_SET_TYPE)
+    {
+      UseMonoFont(message.GetParam1() == 1 ? true : false);
+      return true;
     }
   }
 
@@ -329,7 +343,7 @@ void CGUITextBox::SetPageControl(int pageControl)
   m_pageControl = pageControl;
 }
 
-void CGUITextBox::SetInfo(const CGUIInfoLabel &infoLabel)
+void CGUITextBox::SetInfo(const GUIINFO::CGUIInfoLabel &infoLabel)
 {
   m_info = infoLabel;
 }
@@ -361,7 +375,7 @@ void CGUITextBox::SetAutoScrolling(const TiXmlNode *node)
     scroll->Attribute("delay", &m_autoScrollDelay);
     scroll->Attribute("time", &m_autoScrollTime);
     if (scroll->FirstChild())
-      m_autoScrollCondition = g_infoManager.Register(scroll->FirstChild()->ValueStr(), GetParentID());
+      m_autoScrollCondition = CServiceBroker::GetGUI()->GetInfoManager().Register(scroll->FirstChild()->ValueStr(), GetParentID());
     int repeatTime;
     if (scroll->Attribute("repeat", &repeatTime))
       m_autoScrollRepeatAnim = new CAnimation(CAnimation::CreateFader(100, 0, repeatTime, 1000));
@@ -373,7 +387,7 @@ void CGUITextBox::SetAutoScrolling(int delay, int time, int repeatTime, const st
   m_autoScrollDelay = delay;
   m_autoScrollTime = time;
   if (!condition.empty())
-    m_autoScrollCondition = g_infoManager.Register(condition, GetParentID());
+    m_autoScrollCondition = CServiceBroker::GetGUI()->GetInfoManager().Register(condition, GetParentID());
   m_autoScrollRepeatAnim = new CAnimation(CAnimation::CreateFader(100, 0, repeatTime, 1000));
 }
 
@@ -389,10 +403,15 @@ unsigned int CGUITextBox::GetRows() const
   return m_lines.size();
 }
 
+int CGUITextBox::GetNumPages() const
+{
+  return (GetRows() + m_itemsPerPage - 1) / m_itemsPerPage;
+}
+
 int CGUITextBox::GetCurrentPage() const
 {
   if (m_offset + m_itemsPerPage >= GetRows())  // last page
-    return (GetRows() + m_itemsPerPage - 1) / m_itemsPerPage;
+    return GetNumPages();
   return m_offset / m_itemsPerPage + 1;
 }
 
@@ -402,7 +421,7 @@ std::string CGUITextBox::GetLabel(int info) const
   switch (info)
   {
   case CONTAINER_NUM_PAGES:
-    label = StringUtils::Format("%u", (GetRows() + m_itemsPerPage - 1) / m_itemsPerPage);
+    label = StringUtils::Format("%u", GetNumPages());
     break;
   case CONTAINER_CURRENT_PAGE:
     label = StringUtils::Format("%u", GetCurrentPage());
@@ -411,6 +430,19 @@ std::string CGUITextBox::GetLabel(int info) const
     break;
   }
   return label;
+}
+
+bool CGUITextBox::GetCondition(int condition, int data) const
+{
+  switch (condition)
+  {
+  case CONTAINER_HAS_NEXT:
+      return (GetCurrentPage() < GetNumPages());
+  case CONTAINER_HAS_PREVIOUS:
+    return (GetCurrentPage() > 1);
+  default:
+    return false;
+  }
 }
 
 std::string CGUITextBox::GetDescription() const

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,12 +32,12 @@ class CGenericTouchSwipeDetector : public IGenericTouchGestureDetector
 {
 public:
   CGenericTouchSwipeDetector(ITouchActionHandler *handler, float dpi);
-  virtual ~CGenericTouchSwipeDetector() { }
+  ~CGenericTouchSwipeDetector() override = default;
 
-  virtual bool OnTouchDown(unsigned int index, const Pointer &pointer);
-  virtual bool OnTouchUp(unsigned int index, const Pointer &pointer);
-  virtual bool OnTouchMove(unsigned int index, const Pointer &pointer);
-  virtual bool OnTouchUpdate(unsigned int index, const Pointer &pointer);
+  bool OnTouchDown(unsigned int index, const Pointer &pointer) override;
+  bool OnTouchUp(unsigned int index, const Pointer &pointer) override;
+  bool OnTouchMove(unsigned int index, const Pointer &pointer) override;
+  bool OnTouchUpdate(unsigned int index, const Pointer &pointer) override;
 
 private:
   /*!
@@ -54,7 +54,7 @@ private:
    */
   bool m_swipeDetected;
   /*!
-   * \brief Number of active pointeres
+   * \brief Number of active pointers
    */
   unsigned int m_size;
 };

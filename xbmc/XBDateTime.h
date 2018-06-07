@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  */
 
 #include "utils/IArchivable.h"
-#include "system.h"
+#include "PlatformDefs.h"
 #include <string>
 
 /*! \brief TIME_FORMAT enum/bitmask used for formatting time strings
@@ -42,7 +42,11 @@ enum TIME_FORMAT { TIME_FORMAT_GUESS       =  0,
                    TIME_FORMAT_HH_MM_SS_XX = 15,
                    TIME_FORMAT_H           = 16,
                    TIME_FORMAT_H_MM_SS     = 19,
-                   TIME_FORMAT_H_MM_SS_XX  = 27};
+                   TIME_FORMAT_H_MM_SS_XX  = 27,
+                   TIME_FORMAT_SECS        = 32,
+                   TIME_FORMAT_MINS        = 64,
+                   TIME_FORMAT_HOURS       = 128,
+                   TIME_FORMAT_M           = 256 };
 
 class CDateTime;
 
@@ -92,18 +96,26 @@ class CDateTime : public IArchivable
 public:
   CDateTime();
   CDateTime(const CDateTime& time);
-  CDateTime(const SYSTEMTIME& time);
-  CDateTime(const FILETIME& time);
-  CDateTime(const time_t& time);
-  CDateTime(const tm& time);
+  explicit CDateTime(const SYSTEMTIME& time);
+  explicit CDateTime(const FILETIME& time);
+  explicit CDateTime(const time_t& time);
+  explicit CDateTime(const tm& time);
   CDateTime(int year, int month, int day, int hour, int minute, int second);
-  virtual ~CDateTime() {}
-
-  bool SetFromDateString(const std::string &date);
+  ~CDateTime() override = default;
 
   static CDateTime GetCurrentDateTime();
   static CDateTime GetUTCDateTime();
   static int MonthStringToMonthNum(const std::string& month);
+
+  static CDateTime FromDBDateTime(const std::string &dateTime);
+  static CDateTime FromDateString(const std::string &date);
+  static CDateTime FromDBDate(const std::string &date);
+  static CDateTime FromDBTime(const std::string &time);
+  static CDateTime FromW3CDate(const std::string &date);
+  static CDateTime FromW3CDateTime(const std::string &date, bool ignoreTimezone = false);
+  static CDateTime FromUTCDateTime(const CDateTime &dateTime);
+  static CDateTime FromUTCDateTime(const time_t &dateTime);
+  static CDateTime FromRFC1123DateTime(const std::string &dateTime);
 
   const CDateTime& operator =(const SYSTEMTIME& right);
   const CDateTime& operator =(const FILETIME& right);
@@ -155,7 +167,7 @@ public:
 
   operator FILETIME() const;
 
-  virtual void Archive(CArchive& ar);
+  void Archive(CArchive& ar) override;
 
   void Reset();
 
@@ -171,6 +183,8 @@ public:
   bool SetDateTime(int year, int month, int day, int hour, int minute, int second);
   bool SetDate(int year, int month, int day);
   bool SetTime(int hour, int minute, int second);
+
+  bool SetFromDateString(const std::string &date);
   bool SetFromDBDate(const std::string &date);
   bool SetFromDBTime(const std::string &time);
   bool SetFromW3CDate(const std::string &date);
@@ -193,10 +207,12 @@ public:
   std::string GetAsSaveString() const;
   std::string GetAsDBDateTime() const;
   std::string GetAsDBDate() const;
-  std::string GetAsLocalizedDate(bool longDate=false, bool withShortNames=true) const;
-  std::string GetAsLocalizedDate(const std::string &strFormat, bool withShortNames=true) const;
+  std::string GetAsDBTime() const;
+  std::string GetAsLocalizedDate(bool longDate=false) const;
+  std::string GetAsLocalizedDate(const std::string &strFormat) const;
   std::string GetAsLocalizedTime(const std::string &format, bool withSeconds=true) const;
   std::string GetAsLocalizedDateTime(bool longDate=false, bool withSeconds=true) const;
+  std::string GetAsLocalizedTime(TIME_FORMAT format, bool withSeconds = false) const;
   std::string GetAsRFC1123DateTime() const;
   std::string GetAsW3CDate() const;
   std::string GetAsW3CDateTime(bool asUtc = false) const;

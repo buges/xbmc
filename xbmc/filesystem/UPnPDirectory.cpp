@@ -5,7 +5,7 @@
  *      http://www.plutinosoft.com/blog/category/platinum/
  *
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,6 +33,8 @@
 #include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
+#include "ServiceBroker.h"
+#include "settings/Settings.h"
 
 using namespace MUSIC_INFO;
 using namespace XFILE;
@@ -142,6 +144,9 @@ CUPnPDirectory::GetFriendlyName(const CURL& url)
 +---------------------------------------------------------------------*/
 bool CUPnPDirectory::GetResource(const CURL& path, CFileItem &item)
 {
+    if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_UPNP))
+      return false;
+  
     if(!path.IsProtocol("upnp"))
       return false;
 
@@ -185,6 +190,9 @@ bool CUPnPDirectory::GetResource(const CURL& path, CFileItem &item)
 bool
 CUPnPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
+    if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_UPNP))
+      return false;
+  
     CUPnP* upnp = CUPnP::GetInstance();
 
     /* upnp should never be cached, it has internal cache */

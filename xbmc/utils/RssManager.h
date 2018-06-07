@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,12 +42,12 @@ typedef std::map<int, RssSet> RssUrls;
 class CRssManager : public ISettingCallback, public ISettingsHandler
 {
 public:
-  static CRssManager& Get();
+  static CRssManager& GetInstance();
 
-  virtual void OnSettingsLoaded();
-  virtual void OnSettingsUnloaded();
+  void OnSettingsLoaded() override;
+  void OnSettingsUnloaded() override;
 
-  virtual void OnSettingAction(const CSetting *setting);
+  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
 
   void Start();
   void Stop();
@@ -61,11 +61,11 @@ public:
 
 protected:
   CRssManager();
-  ~CRssManager();
+  ~CRssManager() override;
 
 private:
-  CRssManager(const CRssManager&);
-  CRssManager& operator=(const CRssManager&);
+  CRssManager(const CRssManager&) = delete;
+  CRssManager& operator=(const CRssManager&) = delete;
   struct READERCONTROL
   {
     int controlID;

@@ -19,11 +19,10 @@
  */
 
 #include "CompileInfo.h"
-#include <cstddef>
 
-#if defined(TARGET_WINDOWS) && !defined(_DEBUG)
-#include "../git_revision.h" // generated file
-#endif
+#include <cstddef>
+#include <string>
+#include <algorithm>
 
 
 int CCompileInfo::GetMajor()
@@ -34,6 +33,23 @@ int CCompileInfo::GetMajor()
 int CCompileInfo::GetMinor()
 {
   return @APP_VERSION_MINOR@;
+}
+
+const char* CCompileInfo::GetPackage()
+{
+  return "@APP_PACKAGE@";
+}
+
+const char* CCompileInfo::GetClass()
+{
+  static std::string s_classname;
+  
+  if (s_classname.empty())
+  {
+    s_classname = CCompileInfo::GetPackage();
+    std::replace(s_classname.begin(), s_classname.end(), '.', '/');
+  }
+  return s_classname.c_str();
 }
 
 const char* CCompileInfo::GetAppName()
@@ -48,12 +64,5 @@ const char* CCompileInfo::GetSuffix()
 
 const char* CCompileInfo::GetSCMID()
 {
-#if defined(TARGET_WINDOWS)
-#ifdef GIT_REV
-  return GIT_REV;
-#else
-  return "Unknown";
-#endif
-#endif
   return "@APP_SCMID@";
 }

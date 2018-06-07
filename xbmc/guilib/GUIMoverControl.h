@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,10 +41,6 @@
 #define DIRECTION_LEFT 3
 #define DIRECTION_RIGHT 4
 
-// normal alignment is TOP LEFT 0 = topleft, 1 = topright
-#define ALIGN_RIGHT   1
-#define ALIGN_BOTTOM  2
-
 /*!
  \ingroup controls
  \brief
@@ -56,30 +52,30 @@ public:
                    float posX, float posY, float width, float height,
                    const CTextureInfo& textureFocus, const CTextureInfo& textureNoFocus);
 
-  virtual ~CGUIMoverControl(void);
-  virtual CGUIMoverControl *Clone() const { return new CGUIMoverControl(*this); };
+  ~CGUIMoverControl(void) override;
+  CGUIMoverControl *Clone() const override { return new CGUIMoverControl(*this); };
 
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual bool OnAction(const CAction &action);
-  virtual void OnUp();
-  virtual void OnDown();
-  virtual void OnLeft();
-  virtual void OnRight();
-  virtual void AllocResources();
-  virtual void FreeResources(bool immediately = false);
-  virtual void DynamicResourceAlloc(bool bOnOff);
-  virtual void SetInvalid();
-  virtual void SetPosition(float posX, float posY);
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  bool OnAction(const CAction &action) override;
+  void OnUp() override;
+  void OnDown() override;
+  void OnLeft() override;
+  void OnRight() override;
+  void AllocResources() override;
+  void FreeResources(bool immediately = false) override;
+  void DynamicResourceAlloc(bool bOnOff) override;
+  void SetInvalid() override;
+  void SetPosition(float posX, float posY) override;
   void SetLimits(int iX1, int iY1, int iX2, int iY2);
   void SetLocation(int iLocX, int iLocY, bool bSetPosition = true);
   int GetXLocation() const { return m_iLocationX;};
   int GetYLocation() const { return m_iLocationY;};
-  virtual bool CanFocus() const { return true; };
+  bool CanFocus() const override { return true; };
 
 protected:
-  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
-  virtual bool UpdateColors();
+  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
+  bool UpdateColors() override;
   bool SetAlpha(unsigned char alpha);
   void UpdateSpeed(int nDirection);
   void Move(int iX, int iY);

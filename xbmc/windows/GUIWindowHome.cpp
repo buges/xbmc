@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,8 +27,10 @@
 #include "utils/log.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/Variant.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "utils/StringUtils.h"
 
 using namespace ANNOUNCEMENT;
@@ -40,12 +42,12 @@ CGUIWindowHome::CGUIWindowHome(void) : CGUIWindow(WINDOW_HOME, "Home.xml"),
   m_updateRA = (Audio | Video | Totals);
   m_loadType = KEEP_IN_MEMORY;
   
-  CAnnouncementManager::Get().AddAnnouncer(this);
+  CAnnouncementManager::GetInstance().AddAnnouncer(this);
 }
 
 CGUIWindowHome::~CGUIWindowHome(void)
 {
-  CAnnouncementManager::Get().RemoveAnnouncer(this);
+  CAnnouncementManager::GetInstance().RemoveAnnouncer(this);
 }
 
 bool CGUIWindowHome::OnAction(const CAction &action)
@@ -53,7 +55,7 @@ bool CGUIWindowHome::OnAction(const CAction &action)
   static unsigned int min_hold_time = 1000;
   if (action.GetID() == ACTION_NAV_BACK &&
       action.GetHoldTime() < min_hold_time &&
-      g_application.m_pPlayer->IsPlaying())
+      g_application.GetAppPlayer().IsPlaying())
   {
     g_application.SwitchToFullScreen();
     return true;
@@ -105,7 +107,7 @@ void CGUIWindowHome::Announce(AnnouncementFlag flag, const char *sender, const c
   }
 
   CGUIMessage reload(GUI_MSG_NOTIFY_ALL, GetID(), 0, GUI_MSG_REFRESH_THUMBS, ra_flag);
-  g_windowManager.SendThreadMessage(reload, GetID());
+  CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(reload, GetID());
 }
 
 void CGUIWindowHome::AddRecentlyAddedJobs(int flag)

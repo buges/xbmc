@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,9 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#include <string>
+#include <vector>
 
 #include "music/Song.h"
 
@@ -52,11 +55,11 @@ public:
   bool ParseFile(const std::string &strFilePath);
   bool ParseTag(const std::string &strContent);
   void GetSongs(VECSONGS &songs);
-  bool GetSong(int aTrackNumber, CSong& aSong);
   std::string GetMediaPath();
   std::string GetMediaTitle();
   void GetMediaFiles(std::vector<std::string>& mediaFiles);
   void UpdateMediaFile(const std::string& oldMediaFile, const std::string& mediaFile);
+  bool IsOneFilePerTrack() const;
   bool IsLoaded() const;
 private:
   void Clear();
@@ -70,6 +73,8 @@ private:
   int m_iTrack;   // current track
   int m_iDiscNumber;  // Disc number
   ReplayGain::Info m_albumReplayGain;
+
+  bool m_bOneFilePerTrack;
 
   // cuetrack array
   typedef std::vector<CCueTrack> Tracks;

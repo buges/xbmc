@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,12 +23,16 @@
 #include "Timer.h"
 #include "SystemClock.h"
 
-CTimer::CTimer(ITimerCallback *callback)
+CTimer::CTimer(std::function<void()> const& callback)
   : CThread("Timer"),
     m_callback(callback),
     m_timeout(0),
     m_interval(false),
     m_endTime(0)
+{ }
+
+CTimer::CTimer(ITimerCallback *callback)
+  : CTimer(std::bind(&ITimerCallback::OnTimeout, callback))
 { }
 
 CTimer::~CTimer()
@@ -60,6 +64,13 @@ bool CTimer::Stop(bool wait /* = false */)
   return true;
 }
 
+void CTimer::RestartAsync(uint32_t timeout)
+{
+  m_timeout = timeout;
+  m_endTime = XbmcThreads::SystemClockMillis() + timeout;
+  m_eventTimeout.Set();
+}
+
 bool CTimer::Restart()
 {
   if (!IsRunning())
@@ -84,11 +95,11 @@ float CTimer::GetElapsedMilliseconds() const
 
 void CTimer::Process()
 {
-  uint32_t currentTime = XbmcThreads::SystemClockMillis();
-  m_endTime = currentTime + m_timeout;
-
   while (!m_bStop)
   {
+    uint32_t currentTime = XbmcThreads::SystemClockMillis();
+    m_endTime = currentTime + m_timeout;
+
     // wait the necessary time
     if (!m_eventTimeout.WaitMSec(m_endTime - currentTime))
     {
@@ -96,13 +107,11 @@ void CTimer::Process()
       if (m_endTime <= currentTime)
       {
         // execute OnTimeout() callback
-        m_callback->OnTimeout();
+        m_callback();
 
-        // stop if this is not an interval timer
-        if (!m_interval)
+        // continue if this is an interval timer, or if it was restarted during callback
+        if (!m_interval && m_endTime <= currentTime)
           break;
-
-        m_endTime = currentTime + m_timeout;
       }
     }
   }

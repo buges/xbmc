@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+
+#include "pictures/PictureScalingAlgorithm.h"
 #include "utils/Job.h"
 
 class CBaseTexture;
@@ -64,11 +66,11 @@ class CTextureCacheJob : public CJob
 {
 public:
   CTextureCacheJob(const std::string &url, const std::string &oldHash = "");
-  virtual ~CTextureCacheJob();
+  ~CTextureCacheJob() override;
 
-  virtual const char* GetType() const { return kJobTypeCacheImage; };
-  virtual bool operator==(const CJob *job) const;
-  virtual bool DoWork();
+  const char* GetType() const override { return kJobTypeCacheImage; };
+  bool operator==(const CJob *job) const override;
+  bool DoWork() override;
 
   /*! \brief retrieve a hash for the given image
    Combines the size, ctime and mtime of the image file into a "unique" hash
@@ -95,7 +97,7 @@ private:
    a image URL is much more likely to be static and the actual image at the URL is unlikely
    to change, so no point checking all the time.
    \param url the url to check
-   \return true if the image given by the URL should be checked for updates, false otehrwise
+   \return true if the image given by the URL should be checked for updates, false otherwise
    */
   bool UpdateableURL(const std::string &url) const;
 
@@ -103,10 +105,11 @@ private:
    \param url wrapped URL of the image
    \param width width derived from URL
    \param height height derived from URL
+   \param scalingAlgorithm scaling algorithm derived from URL
    \param additional_info additional information, such as "flipped" to flip horizontally
    \return URL of the underlying image file.
    */
-  static std::string DecodeImageURL(const std::string &url, unsigned int &width, unsigned int &height, std::string &additional_info);
+  static std::string DecodeImageURL(const std::string &url, unsigned int &width, unsigned int &height, CPictureScalingAlgorithm::Algorithm& scalingAlgorithm, std::string &additional_info);
 
   /*! \brief Load an image at a given target size and orientation.
 
@@ -124,30 +127,16 @@ private:
   std::string    m_cachePath;
 };
 
-/* \brief Job class for creating .dds versions of textures
- */
-class CTextureDDSJob : public CJob
-{
-public:
-  CTextureDDSJob(const std::string &original);
-
-  virtual const char* GetType() const { return kJobTypeDDSCompress; };
-  virtual bool operator==(const CJob *job) const;
-  virtual bool DoWork();
-
-  std::string m_original;
-};
-
 /* \brief Job class for storing the use count of textures
  */
 class CTextureUseCountJob : public CJob
 {
 public:
-  CTextureUseCountJob(const std::vector<CTextureDetails> &textures);
+  explicit CTextureUseCountJob(const std::vector<CTextureDetails> &textures);
 
-  virtual const char* GetType() const { return "usecount"; };
-  virtual bool operator==(const CJob *job) const;
-  virtual bool DoWork();
+  const char* GetType() const override { return "usecount"; };
+  bool operator==(const CJob *job) const override;
+  bool DoWork() override;
 
 private:
   std::vector<CTextureDetails> m_textures;

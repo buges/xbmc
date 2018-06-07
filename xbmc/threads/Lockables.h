@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ namespace XbmcThreads
    *   try_lock();
    *   unlock();
    *
-   * "Exitable" specifially means that, no matter how deep the recursion
+   * "Exitable" specifically means that, no matter how deep the recursion
    * on the mutex/critical section, we can exit from it and then restore
    * the state.
    *
@@ -46,9 +46,12 @@ namespace XbmcThreads
    *
    * All xbmc code expects Lockables to be recursive.
    */
-  template<class L> class CountingLockable : public NonCopyable
+  template<class L> class CountingLockable
   {
     friend class ConditionVariable;
+
+    CountingLockable(const CountingLockable&) = delete;
+    CountingLockable& operator=(const CountingLockable&) = delete;
   protected:
     L mutex;
     unsigned int count;
@@ -72,7 +75,7 @@ namespace XbmcThreads
      */
     inline unsigned int exit(unsigned int leave = 0) 
     { 
-      // it's possibe we don't actually own the lock
+      // it's possible we don't actually own the lock
       // so we will try it.
       unsigned int ret = 0;
       if (try_lock())
@@ -119,12 +122,14 @@ namespace XbmcThreads
    * This template can be used to define the base implementation for any UniqueLock
    * (such as CSingleLock) that uses a Lockable as its mutex/critical section.
    */
-  template<typename L> class UniqueLock : public NonCopyable
+  template<typename L> class UniqueLock
   {
+    UniqueLock(const UniqueLock&) = delete;
+    UniqueLock& operator=(const UniqueLock&) = delete;
   protected:
     L& mutex;
     bool owns;
-    inline UniqueLock(L& lockable) : mutex(lockable), owns(true) { mutex.lock(); }
+    inline explicit UniqueLock(L& lockable) : mutex(lockable), owns(true) { mutex.lock(); }
     inline UniqueLock(L& lockable, bool try_to_lock_discrim ) : mutex(lockable) { owns = mutex.try_lock(); }
     inline ~UniqueLock() { if (owns) mutex.unlock(); }
 
@@ -154,12 +159,14 @@ namespace XbmcThreads
    * bool try_lock_shared();
    * void unlock_shared();
    */
-  template<typename L> class SharedLock : public NonCopyable
+  template<typename L> class SharedLock
   {
+    SharedLock(const SharedLock&) = delete;
+    SharedLock& operator=(const SharedLock&) = delete;
   protected:
     L& mutex;
     bool owns;
-    inline SharedLock(L& lockable) : mutex(lockable), owns(true) { mutex.lock_shared(); }
+    inline explicit SharedLock(L& lockable) : mutex(lockable), owns(true) { mutex.lock_shared(); }
     inline ~SharedLock() { if (owns) mutex.unlock_shared(); }
 
     inline bool owns_lock() const { return owns; }

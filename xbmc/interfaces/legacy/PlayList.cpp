@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,21 +30,21 @@ namespace XBMCAddon
 {
   namespace xbmc
   {
-    // TODO: need a means to check for a valid construction
-    //  either by throwing an exception or by an "isValid" check
+    //! @todo need a means to check for a valid construction
+    //!  either by throwing an exception or by an "isValid" check
     PlayList::PlayList(int playList) : 
-      refs(1), iPlayList(playList), pPlayList(NULL)
+      iPlayList(playList), pPlayList(NULL)
     {
       // we do not create our own playlist, just using the ones from playlistplayer
       if (iPlayList != PLAYLIST_MUSIC &&
           iPlayList != PLAYLIST_VIDEO)
         throw PlayListException("PlayList does not exist");
 
-      pPlayList = &g_playlistPlayer.GetPlaylist(playList);
+      pPlayList = &CServiceBroker::GetPlaylistPlayer().GetPlaylist(playList);
       iPlayList = playList;
     }
 
-    PlayList::~PlayList()  { }
+    PlayList::~PlayList() = default;
 
     void PlayList::add(const String& url, XBMCAddon::xbmcgui::ListItem* listitem, int index)
     {
@@ -89,7 +89,7 @@ namespace XBMCAddon
             return false;
 
           // clear current playlist
-          g_playlistPlayer.ClearPlaylist(this->iPlayList);
+          CServiceBroker::GetPlaylistPlayer().ClearPlaylist(this->iPlayList);
 
           // add each item of the playlist to the playlistplayer
           for (int i=0; i < (int)pPlayList->size(); ++i)
@@ -136,7 +136,7 @@ namespace XBMCAddon
 
     int PlayList::getposition()
     {
-      return g_playlistPlayer.GetCurrentSong();
+      return CServiceBroker::GetPlaylistPlayer().GetCurrentSong();
     }
 
     XBMCAddon::xbmcgui::ListItem* PlayList::operator [](long i)

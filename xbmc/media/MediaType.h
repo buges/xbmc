@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include <set>
 #include <string>
 
-typedef std::string MediaType;
+using MediaType = std::string;
 
 #define MediaTypeNone             ""
 #define MediaTypeMusic            "music"
@@ -38,7 +38,7 @@ typedef std::string MediaType;
 #define MediaTypeSeason           "season"
 #define MediaTypeEpisode          "episode"
 
-class MediaTypes
+class CMediaTypes
 {
 public:
   static bool IsValidMediaType(const MediaType &mediaType);

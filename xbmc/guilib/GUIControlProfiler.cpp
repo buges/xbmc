@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -92,15 +92,11 @@ void CGUIControlProfilerItem::SaveToXML(TiXmlElement *parent)
   {
   case CGUIControl::GUICONTROL_BUTTON:
     lpszType = "button"; break;
-  case CGUIControl::GUICONTROL_CHECKMARK:
-    lpszType = "checkmark"; break;
   case CGUIControl::GUICONTROL_FADELABEL:
     lpszType = "fadelabel"; break;
   case CGUIControl::GUICONTROL_IMAGE:
   case CGUIControl::GUICONTROL_BORDEREDIMAGE:
     lpszType = "image"; break;
-  case CGUIControl::GUICONTROL_LARGE_IMAGE:
-    lpszType = "largeimage"; break;
   case CGUIControl::GUICONTROL_LABEL:
     lpszType = "label"; break;
   case CGUIControl::GUICONTROL_LISTGROUP:
@@ -111,8 +107,6 @@ void CGUIControlProfilerItem::SaveToXML(TiXmlElement *parent)
     lpszType = "radiobutton"; break;
   case CGUIControl::GUICONTROL_RSS:
     lpszType = "rss"; break;
-  case CGUIControl::GUICONTROL_SELECTBUTTON:
-    lpszType = "selectbutton"; break;
   case CGUIControl::GUICONTROL_SLIDER:
     lpszType = "slider"; break;
   case CGUIControl::GUICONTROL_SETTINGS_SLIDER:
@@ -145,8 +139,6 @@ void CGUIControlProfilerItem::SaveToXML(TiXmlElement *parent)
     lpszType = "scrollbar"; break;
   case CGUIControl::GUICONTROL_LISTLABEL:
     lpszType = "label"; break;
-  case CGUIControl::GUICONTROL_MULTISELECT:
-    lpszType = "multiselect"; break;
   case CGUIControl::GUICONTAINER_LIST:
     lpszType = "list"; break;
   case CGUIControl::GUICONTAINER_WRAPLIST:

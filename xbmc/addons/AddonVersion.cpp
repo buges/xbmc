@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,16 @@
 #include <ctype.h>
 
 #include "AddonVersion.h"
+#include "utils/log.h"
 #include "utils/StringUtils.h"
+
+namespace {
+// Add-on versions are used e.g. in file names and should
+// not have too much freedom in their accepted characters
+// Things that should be allowed: e.g. 0.1.0~beta3+git010cab3
+// Note that all of these characters are url-safe
+const std::string VALID_ADDON_VERSION_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.+_@~";
+}
 
 namespace ADDON
 {
@@ -42,7 +51,18 @@ namespace ADDON
     if (pos != std::string::npos)
     {
       mRevision = mUpstream.substr(pos+1);
+      if (mRevision.find_first_not_of(VALID_ADDON_VERSION_CHARACTERS) != std::string::npos)
+      {
+        CLog::Log(LOGERROR, "AddonVersion: {} is not a valid revision number", mRevision);
+        mRevision = "";
+      }
       mUpstream.erase(pos);
+    }
+
+    if (mUpstream.find_first_not_of(VALID_ADDON_VERSION_CHARACTERS) != std::string::npos)
+    {
+      CLog::Log(LOGERROR, "AddonVersion: {} is not a valid version", mUpstream);
+      mUpstream = "0.0.0";
     }
   }
 
@@ -100,11 +120,31 @@ namespace ADDON
     return (CompareComponent(mRevision.c_str(), other.mRevision.c_str()) < 0);
   }
 
+  bool AddonVersion::operator>(const AddonVersion & other) const
+  {
+    return !(*this <= other);
+  }
+
   bool AddonVersion::operator==(const AddonVersion& other) const
   {
     return mEpoch == other.mEpoch
       && CompareComponent(mUpstream.c_str(), other.mUpstream.c_str()) == 0
       && CompareComponent(mRevision.c_str(), other.mRevision.c_str()) == 0;
+  }
+
+  bool AddonVersion::operator!=(const AddonVersion & other) const
+  {
+    return !(*this == other);
+  }
+
+  bool AddonVersion::operator<=(const AddonVersion& other) const
+  {
+    return *this < other || *this == other;
+  }
+
+  bool AddonVersion::operator>=(const AddonVersion & other) const
+  {
+    return !(*this < other);
   }
 
   bool AddonVersion::empty() const

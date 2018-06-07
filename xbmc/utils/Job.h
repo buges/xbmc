@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ public:
    
    \sa CJobManager and CJob
    */
-  virtual ~IJobCallback() {};
+  virtual ~IJobCallback() = default;
 
   /*!
    \brief The callback used when a job completes.
@@ -81,7 +81,7 @@ class CJobManager;
 
 /*!
  \ingroup jobs
- \brief Base class for jobs that are executed asyncronously.
+ \brief Base class for jobs that are executed asynchronously.
  
  Clients of the CJobManager should subclass CJob and provide the DoWork() function. Data should be
  passed to the job on creation, and any data sharing between the job and the client should be kept to within
@@ -109,7 +109,8 @@ public:
     PRIORITY_LOW_PAUSABLE = 0,
     PRIORITY_LOW,
     PRIORITY_NORMAL,
-    PRIORITY_HIGH
+    PRIORITY_HIGH,
+    PRIORITY_DEDICATED, // will create a new worker if no worker is available at queue time
   };
   CJob() { m_callback = NULL; };
 
@@ -122,7 +123,7 @@ public:
    
    \sa CJobManager
    */
-  virtual ~CJob() {};
+  virtual ~CJob() = default;
 
   /*!
    \brief Main workhorse function of CJob instances

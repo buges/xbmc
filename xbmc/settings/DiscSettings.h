@@ -1,7 +1,7 @@
 #pragma once
 /*
 *      Copyright (C) 2005-2014 Team XBMC
-*      http://xbmc.org
+*      http://kodi.tv
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -27,4 +27,24 @@ enum BDPlaybackMode
   BD_PLAYBACK_SIMPLE_MENU = 0,
   BD_PLAYBACK_DISC_MENU,
   BD_PLAYBACK_MAIN_TITLE,
+};
+
+#include "settings/lib/ISettingCallback.h"
+
+class DllLibbluray;
+
+class CDiscSettings : public ISettingCallback
+{
+public:
+  /* ISettingCallback*/
+
+  static CDiscSettings& GetInstance();
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+ 
+protected:
+  CDiscSettings();
+  ~CDiscSettings() override;
+
+  DllLibbluray*       m_dll;
+
 };

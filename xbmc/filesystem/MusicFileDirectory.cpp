@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,13 +28,9 @@
 using namespace MUSIC_INFO;
 using namespace XFILE;
 
-CMusicFileDirectory::CMusicFileDirectory(void)
-{
-}
+CMusicFileDirectory::CMusicFileDirectory(void) = default;
 
-CMusicFileDirectory::~CMusicFileDirectory(void)
-{
-}
+CMusicFileDirectory::~CMusicFileDirectory(void) = default;
 
 bool CMusicFileDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -50,7 +46,7 @@ bool CMusicFileDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 
   for (int i=0; i<iStreams; ++i)
   {
-    std::string strLabel = StringUtils::Format("%s - %s %02.2i", strFileName.c_str(), g_localizeStrings.Get(554).c_str(), i+1);
+    std::string strLabel = StringUtils::Format("%s - %s %2.2i", strFileName.c_str(), g_localizeStrings.Get(554).c_str(), i+1);
     CFileItemPtr pItem(new CFileItem(strLabel));
     strLabel = StringUtils::Format("%s%s-%i.%s", strPath.c_str(), strFileName.c_str(), i+1, m_strExt.c_str());
     pItem->SetPath(strLabel);

@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,11 +25,10 @@
 class CGUIViewStateAddonBrowser : public CGUIViewState
 {
 public:
-  CGUIViewStateAddonBrowser(const CFileItemList& items);
+  explicit CGUIViewStateAddonBrowser(const CFileItemList& items);
 
 protected:
-  virtual void SaveViewState();
-  virtual std::string GetExtensions();
-  virtual VECSOURCES& GetSources();
+  void SaveViewState() override;
+  std::string GetExtensions() override;
 };
 

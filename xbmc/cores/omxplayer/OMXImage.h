@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-#if defined(HAVE_OMXLIB)
 
 #include "OMXCore.h"
 
@@ -59,7 +57,6 @@ public:
     GLuint texture;
     EGLImageKHR egl_image;
     void *parent;
-    const char *filename;
   };
   COMXImage();
   virtual ~COMXImage();
@@ -128,7 +125,7 @@ protected:
   // Components
   COMXCoreComponent             m_omx_decoder;
   COMXCoreComponent             m_omx_resize;
-  COMXCoreTunel                 m_omx_tunnel_decode;
+  COMXCoreTunnel                m_omx_tunnel_decode;
   OMX_BUFFERHEADERTYPE          *m_decoded_buffer;
   OMX_PARAM_PORTDEFINITIONTYPE  m_decoded_format;
   CCriticalSection              m_OMXSection;
@@ -169,8 +166,8 @@ protected:
   COMXCoreComponent             m_omx_decoder;
   COMXCoreComponent             m_omx_resize;
   COMXCoreComponent             m_omx_encoder;
-  COMXCoreTunel                 m_omx_tunnel_decode;
-  COMXCoreTunel                 m_omx_tunnel_resize;
+  COMXCoreTunnel                m_omx_tunnel_decode;
+  COMXCoreTunnel                m_omx_tunnel_resize;
   OMX_BUFFERHEADERTYPE          *m_encoded_buffer;
   CCriticalSection              m_OMXSection;
   void                          *m_pDestBuffer;
@@ -195,8 +192,8 @@ protected:
   COMXCoreComponent m_omx_resize;
   COMXCoreComponent m_omx_egl_render;
 
-  COMXCoreTunel     m_omx_tunnel_decode;
-  COMXCoreTunel     m_omx_tunnel_egl;
+  COMXCoreTunnel    m_omx_tunnel_decode;
+  COMXCoreTunnel    m_omx_tunnel_egl;
 
   OMX_BUFFERHEADERTYPE *m_egl_buffer;
   CCriticalSection              m_OMXSection;
@@ -204,4 +201,3 @@ protected:
 };
 
 extern COMXImage g_OMXImage;
-#endif

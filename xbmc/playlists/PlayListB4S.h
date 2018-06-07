@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@ class CPlayListB4S :
 {
 public:
   CPlayListB4S(void);
-  virtual ~CPlayListB4S(void);
-  virtual bool LoadData(std::istream& stream);
-  virtual void Save(const std::string& strFileName) const;
+  ~CPlayListB4S(void) override;
+  bool LoadData(std::istream& stream) override;
+  void Save(const std::string& strFileName) const override;
 };
 }

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-#include "system.h"
 
 #if defined(TARGET_DARWIN_OSX)
 #include <list>
@@ -53,13 +51,13 @@ const AudioChannelLabel g_LabelMap[] =
   kAudioChannelLabel_Right,                 // PCM_FRONT_RIGHT,
   kAudioChannelLabel_Center,                // PCM_FRONT_CENTER,
   kAudioChannelLabel_LFEScreen,             // PCM_LOW_FREQUENCY,
-  kAudioChannelLabel_LeftSurroundDirect,    // PCM_BACK_LEFT, *** This is incorrect, but has been changed to match dvdplayer
-  kAudioChannelLabel_RightSurroundDirect,   // PCM_BACK_RIGHT, *** This is incorrect, but has been changed to match dvdplayer
+  kAudioChannelLabel_LeftSurroundDirect,    // PCM_BACK_LEFT, *** This is incorrect, but has been changed to match VideoPlayer
+  kAudioChannelLabel_RightSurroundDirect,   // PCM_BACK_RIGHT, *** This is incorrect, but has been changed to match VideoPlayer
   kAudioChannelLabel_LeftCenter,            // PCM_FRONT_LEFT_OF_CENTER,
   kAudioChannelLabel_RightCenter,           // PCM_FRONT_RIGHT_OF_CENTER,
   kAudioChannelLabel_CenterSurround,        // PCM_BACK_CENTER,
-  kAudioChannelLabel_LeftSurround,          // PCM_SIDE_LEFT, *** This is incorrect, but has been changed to match dvdplayer
-  kAudioChannelLabel_RightSurround,         // PCM_SIDE_RIGHT, *** This is incorrect, but has been changed to match dvdplayer
+  kAudioChannelLabel_LeftSurround,          // PCM_SIDE_LEFT, *** This is incorrect, but has been changed to match VideoPlayer
+  kAudioChannelLabel_RightSurround,         // PCM_SIDE_RIGHT, *** This is incorrect, but has been changed to match VideoPlayer
   kAudioChannelLabel_VerticalHeightLeft,    // PCM_TOP_FRONT_LEFT,
   kAudioChannelLabel_VerticalHeightRight,   // PCM_TOP_FRONT_RIGHT,
   kAudioChannelLabel_VerticalHeightCenter,  // PCM_TOP_FRONT_CENTER,

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ namespace XFILE
     class CDir
     {
     public:
-      CDir(DIR_CACHE_TYPE cacheType);
+      explicit CDir(DIR_CACHE_TYPE cacheType);
       virtual ~CDir();
 
       void SetLastAccess(unsigned int &accessCounter);
@@ -44,6 +44,8 @@ namespace XFILE
       CFileItemList* m_Items;
       DIR_CACHE_TYPE m_cacheType;
     private:
+      CDir(const CDir&) = delete;
+      CDir& operator=(const CDir&) = delete;
       unsigned int m_lastAccess;
     };
   public:

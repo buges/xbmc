@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 bool CSettingRequirementCondition::Check() const
 {
-  if (m_settingsManager == NULL)
+  if (m_settingsManager == nullptr)
     return false;
 
   bool found = m_settingsManager->GetConditions().Check("IsDefined", m_value);
@@ -41,7 +41,7 @@ bool CSettingRequirementConditionCombination::Check() const
   return CSettingConditionCombination::Check();
 }
 
-CSettingRequirement::CSettingRequirement(CSettingsManager *settingsManager /* = NULL */)
+CSettingRequirement::CSettingRequirement(CSettingsManager *settingsManager /* = nullptr */)
   : CSettingCondition(settingsManager)
 {
   m_operation = CBooleanLogicOperationPtr(new CSettingRequirementConditionCombination(m_settingsManager));

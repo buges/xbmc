@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,14 +13,13 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "network/Network.h"
 #include "threads/SystemClock.h"
-#include "system.h"
 #if defined(TARGET_DARWIN)
 #include <sys/param.h>
 #include <mach-o/dyld.h>
@@ -38,11 +37,17 @@
 #include <sys/wait.h>
 #endif
 #if defined(TARGET_ANDROID)
-#include "android/bionic_supplement/bionic_supplement.h"
+#include <androidjni/ApplicationInfo.h>
+#include "platform/android/bionic_supplement/bionic_supplement.h"
+#include "platform/android/activity/XBMCApp.h"
+#include "CompileInfo.h"
 #endif
 #include <stdlib.h>
+#include <algorithm>
+#include <array>
 
-#include "Application.h"
+#include "addons/VFSEntry.h"
+#include "ServiceBroker.h"
 #include "Util.h"
 #include "filesystem/PVRDirectory.h"
 #include "filesystem/Directory.h"
@@ -50,15 +55,12 @@
 #include "filesystem/MultiPathDirectory.h"
 #include "filesystem/SpecialProtocol.h"
 #include "filesystem/RSSDirectory.h"
-#ifdef HAS_FILESYSTEM_RAR
-#include "filesystem/RarManager.h"
-#endif
 #ifdef HAS_UPNP
 #include "filesystem/UPnPDirectory.h"
 #endif
 #include "profiles/ProfilesManager.h"
 #include "utils/RegExp.h"
-#include "guilib/GraphicContext.h"
+#include "windowing/GraphicContext.h"
 #include "guilib/TextureManager.h"
 #include "utils/fstrcmp.h"
 #include "storage/MediaManager.h"
@@ -68,7 +70,7 @@
 #endif
 #if defined(TARGET_DARWIN)
 #include "CompileInfo.h"
-#include "osx/DarwinUtils.h"
+#include "platform/darwin/DarwinUtils.h"
 #endif
 #include "filesystem/File.h"
 #include "settings/MediaSettings.h"
@@ -78,14 +80,15 @@
 #ifdef HAS_IRSERVERSUITE
 #endif
 #include "guilib/LocalizeStrings.h"
-#include "utils/md5.h"
+#include "utils/Digest.h"
+#include "utils/FileExtensionProvider.h"
 #include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/log.h"
-#include "utils/Environment.h"
+#include "platform/Environment.h"
 
-#include "cores/dvdplayer/DVDSubtitles/DVDSubtitleTagSami.h"
-#include "cores/dvdplayer/DVDSubtitles/DVDSubtitleStream.h"
+#include "cores/VideoPlayer/DVDSubtitles/DVDSubtitleTagSami.h"
+#include "cores/VideoPlayer/DVDSubtitles/DVDSubtitleStream.h"
 #include "URL.h"
 #include "utils/LangCodeExpander.h"
 #include "video/VideoInfoTag.h"
@@ -93,9 +96,7 @@
   #include <sys/capability.h>
 #endif
 
-#include "cores/dvdplayer/DVDDemuxers/DVDDemux.h"
-
-using namespace std;
+#include "cores/VideoPlayer/DVDDemuxers/DVDDemux.h"
 
 #ifdef HAS_DVD_DRIVE
 using namespace MEDIA_DETECT;
@@ -103,17 +104,210 @@ using namespace MEDIA_DETECT;
 
 using namespace XFILE;
 using namespace PLAYLIST;
+using KODI::UTILITY::CDigest;
 
 #if !defined(TARGET_WINDOWS)
 unsigned int CUtil::s_randomSeed = time(NULL);
 #endif
 
-CUtil::CUtil(void)
+namespace
 {
+#ifdef TARGET_WINDOWS
+bool IsDirectoryValidRoot(std::wstring path)
+{
+  path += L"\\system\\settings\\settings.xml";
+#if defined(TARGET_WINDOWS_STORE)
+  auto h = CreateFile2(path.c_str(), GENERIC_READ, 0, OPEN_EXISTING, NULL);
+#else
+  auto h = CreateFileW(path.c_str(), GENERIC_READ, 0, nullptr,
+    OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+#endif
+  if (h != INVALID_HANDLE_VALUE)
+  {
+    CloseHandle(h);
+    return true;
+  }
+
+  return false;
 }
 
-CUtil::~CUtil(void)
-{}
+std::string GetHomePath(const std::string& strTarget, std::string strPath)
+{
+  std::wstring strPathW;
+
+  // Environment variable was set and we have a path
+  // Let's make sure it's not relative and test it
+  // so it's actually pointing to a directory containing
+  // our stuff
+  if (strPath.find("..") != std::string::npos)
+  {
+    //expand potential relative path to full path
+    g_charsetConverter.utf8ToW(strPath, strPathW, false);
+    CWIN32Util::AddExtraLongPathPrefix(strPathW);
+    auto bufSize = GetFullPathNameW(strPathW.c_str(), 0, nullptr, nullptr);
+    if (bufSize != 0)
+    {
+      auto buf = std::make_unique<wchar_t[]>(bufSize);
+      if (GetFullPathNameW(strPathW.c_str(), bufSize, buf.get(), nullptr) <= bufSize - 1)
+      {
+        strPathW = buf.get();
+        CWIN32Util::RemoveExtraLongPathPrefix(strPathW);
+
+        if (IsDirectoryValidRoot(strPathW))
+        {
+          g_charsetConverter.wToUTF8(strPathW, strPath);
+          return strPath;
+        }
+      }
+    }
+  }
+
+  // Okay se no environment variable is set, let's
+  // grab the executable path and check if it's being
+  // run from a directory containing our stuff
+  strPath = CUtil::ResolveExecutablePath();
+  auto last_sep = strPath.find_last_of(PATH_SEPARATOR_CHAR);
+  if (last_sep != std::string::npos)
+      strPath = strPath.substr(0, last_sep);
+
+  g_charsetConverter.utf8ToW(strPath, strPathW);
+  if (IsDirectoryValidRoot(strPathW))
+    return strPath;
+
+  // Still nothing, let's check the current working
+  // directory and see if it points to a directory
+  // with our stuff in it. This bit should never be
+  // needed when running on a users system, it's intended
+  // to make our dev environment easier.
+  auto bufSize = GetCurrentDirectoryW(0, nullptr);
+  if (bufSize > 0)
+  {
+    auto buf = std::make_unique<wchar_t[]>(bufSize);
+    if (0 != GetCurrentDirectoryW(bufSize, buf.get()))
+    {
+      std::string currentDirectory;
+      std::wstring currentDirectoryW(buf.get());
+      CWIN32Util::RemoveExtraLongPathPrefix(currentDirectoryW);
+      
+      if (IsDirectoryValidRoot(currentDirectoryW))
+      {
+        g_charsetConverter.wToUTF8(currentDirectoryW, currentDirectory);
+        return currentDirectory;
+      }
+    }
+  }
+
+  // If we ended up here we're most likely screwed
+  // we will crash in a few seconds
+  return strPath;
+}
+#endif
+#if defined(TARGET_DARWIN)
+#if !defined(TARGET_DARWIN_IOS)
+bool IsDirectoryValidRoot(std::string path)
+{
+  path += "/system/settings/settings.xml";
+  return CFile::Exists(path);
+}
+#endif
+
+std::string GetHomePath(const std::string& strTarget, std::string strPath)
+{
+  if (strPath.empty())
+  {
+    auto strHomePath = CUtil::ResolveExecutablePath();
+    int      result = -1;
+    char     given_path[2 * MAXPATHLEN];
+    size_t path_size = 2 * MAXPATHLEN;
+
+    result = CDarwinUtils::GetExecutablePath(given_path, &path_size);
+    if (result == 0)
+    {
+      // Move backwards to last /.
+      for (int n = strlen(given_path) - 1; given_path[n] != '/'; n--)
+        given_path[n] = '\0';
+
+#if defined(TARGET_DARWIN_IOS)
+      strcat(given_path, "/AppData/AppHome/");
+#else
+      // Assume local path inside application bundle.
+      strcat(given_path, "../Resources/");
+      strcat(given_path, CCompileInfo::GetAppName());
+      strcat(given_path, "/");
+      
+      // if this path doesn't exist we
+      // might not be started from the app bundle
+      // but from the debugger/xcode. Lets
+      // see if this assumption is valid
+      if (!CDirectory::Exists(given_path))
+      {
+        std::string given_path_stdstr = CUtil::ResolveExecutablePath();
+        // try to find the correct folder by going back
+        // in the executable path until settings.xml was found
+        bool validRoot = false;
+        do
+        {
+          given_path_stdstr = URIUtils::GetParentPath(given_path_stdstr);
+          validRoot = IsDirectoryValidRoot(given_path_stdstr);
+        }
+        while(given_path_stdstr.length() > 0 && !validRoot);
+        strncpy(given_path, given_path_stdstr.c_str(), sizeof(given_path)-1);
+      }
+      
+#endif
+
+      // Convert to real path.
+      char real_path[2 * MAXPATHLEN];
+      if (realpath(given_path, real_path) != NULL)
+      {
+        strPath = real_path;
+        return strPath;
+      }
+    }
+    size_t last_sep = strHomePath.find_last_of(PATH_SEPARATOR_CHAR);
+    if (last_sep != std::string::npos)
+      strPath = strHomePath.substr(0, last_sep);
+    else
+      strPath = strHomePath;
+
+  }
+  return strPath;
+}
+#endif
+#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
+std::string GetHomePath(const std::string& strTarget, std::string strPath)
+{
+  if (strPath.empty())
+  {
+    auto strHomePath = CUtil::ResolveExecutablePath();
+    size_t last_sep = strHomePath.find_last_of(PATH_SEPARATOR_CHAR);
+    if (last_sep != std::string::npos)
+      strPath = strHomePath.substr(0, last_sep);
+    else
+      strPath = strHomePath;
+  }
+  /* Change strPath accordingly when target is KODI_HOME and when INSTALL_PATH
+   * and BIN_INSTALL_PATH differ
+   */
+  std::string installPath = INSTALL_PATH;
+  std::string binInstallPath = BIN_INSTALL_PATH;
+
+  if (strTarget.empty() && installPath.compare(binInstallPath))
+  {
+    int pos = strPath.length() - binInstallPath.length();
+    std::string tmp = strPath;
+    tmp.erase(0, pos);
+    if (!tmp.compare(binInstallPath))
+    {
+      strPath.erase(pos, strPath.length());
+      strPath.append(installPath);
+    }
+  }
+
+  return strPath;
+}
+#endif
+}
 
 std::string CUtil::GetTitleFromPath(const std::string& strFileNameAndPath, bool bIsFolder /* = false */)
 {
@@ -136,7 +330,7 @@ std::string CUtil::GetTitleFromPath(const CURL& url, bool bIsFolder /* = false *
     strFilename = CUPnPDirectory::GetFriendlyName(url);
 #endif
 
-  if (url.IsProtocol("rss"))
+  if (url.IsProtocol("rss") || url.IsProtocol("rsss"))
   {
     CRSSDirectory dir;
     CFileItemList items;
@@ -167,35 +361,24 @@ std::string CUtil::GetTitleFromPath(const CURL& url, bool bIsFolder /* = false *
       strFilename = url.GetHostName();
     }
   }
-  // HDHomerun Devices
-  else if (url.IsProtocol("hdhomerun") && strFilename.empty())
-    strFilename = "HDHomerun Devices";
-
-  // Slingbox Devices
-  else if (url.IsProtocol("sling"))
-    strFilename = "Slingbox";
-
-  // SAP Streams
-  else if (url.IsProtocol("sap") && strFilename.empty())
-    strFilename = "SAP Streams";
 
   // Root file views
   else if (url.IsProtocol("sources"))
     strFilename = g_localizeStrings.Get(744);
 
   // Music Playlists
-  else if (URIUtils::PathStarts(path, "special://musicplaylists"))
+  else if (StringUtils::StartsWith(path, "special://musicplaylists"))
     strFilename = g_localizeStrings.Get(136);
 
   // Video Playlists
-  else if (URIUtils::PathStarts(path, "special://videoplaylists"))
+  else if (StringUtils::StartsWith(path, "special://videoplaylists"))
     strFilename = g_localizeStrings.Get(136);
 
   else if (URIUtils::HasParentInHostname(url) && strFilename.empty())
     strFilename = URIUtils::GetFileName(url.GetHostName());
 
   // now remove the extension if needed
-  if (!CSettings::Get().GetBool("filelists.showextensions") && !bIsFolder)
+  if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_FILELISTS_SHOWEXTENSIONS) && !bIsFolder)
   {
     URIUtils::RemoveExtension(strFilename);
     return strFilename;
@@ -218,7 +401,7 @@ void CUtil::CleanString(const std::string& strFileName,
   if (strFileName == "..")
    return;
 
-  const vector<string> &regexps = g_advancedSettings.m_videoCleanStringRegExps;
+  const std::vector<std::string> &regexps = g_advancedSettings.m_videoCleanStringRegExps;
 
   CRegExp reTags(true, CRegExp::autoUtf8);
   CRegExp reYear(false, CRegExp::autoUtf8);
@@ -331,95 +514,11 @@ void CUtil::RunShortcut(const char* szShortcutPath)
 {
 }
 
-void CUtil::GetHomePath(std::string& strPath, const std::string& strTarget)
+std::string CUtil::GetHomePath(std::string strTarget)
 {
-  if (strTarget.empty())
-    strPath = CEnvironment::getenv("KODI_HOME");
-  else
-    strPath = CEnvironment::getenv(strTarget);
+  auto strPath = CEnvironment::getenv(strTarget);
 
-#ifdef TARGET_WINDOWS
-  if (strPath.find("..") != std::string::npos)
-  {
-    //expand potential relative path to full path
-    std::wstring strPathW;
-    g_charsetConverter.utf8ToW(strPath, strPathW, false);
-    CWIN32Util::AddExtraLongPathPrefix(strPathW);
-    const unsigned int bufSize = GetFullPathNameW(strPathW.c_str(), 0, NULL, NULL);
-    if (bufSize != 0)
-    {
-      wchar_t * buf = new wchar_t[bufSize];
-      if (GetFullPathNameW(strPathW.c_str(), bufSize, buf, NULL) <= bufSize-1)
-      {
-        std::wstring expandedPathW(buf);
-        CWIN32Util::RemoveExtraLongPathPrefix(expandedPathW);
-        g_charsetConverter.wToUTF8(expandedPathW, strPath);
-      }
-
-      delete [] buf;
-    }
-  }
-#endif
-
-  if (strPath.empty())
-  {
-    std::string strHomePath = ResolveExecutablePath();
-#if defined(TARGET_DARWIN)
-    int      result = -1;
-    char     given_path[2*MAXPATHLEN];
-    uint32_t path_size =2*MAXPATHLEN;
-
-    result = CDarwinUtils::GetExecutablePath(given_path, &path_size);
-    if (result == 0)
-    {
-      // Move backwards to last /.
-      for (int n=strlen(given_path)-1; given_path[n] != '/'; n--)
-        given_path[n] = '\0';
-
-      #if defined(TARGET_DARWIN_IOS)
-        strcat(given_path, "/AppData/AppHome/");
-      #else
-        // Assume local path inside application bundle.
-        strcat(given_path, "../Resources/");
-        strcat(given_path, CCompileInfo::GetAppName());
-        strcat(given_path, "/");
-      #endif
-
-      // Convert to real path.
-      char real_path[2*MAXPATHLEN];
-      if (realpath(given_path, real_path) != NULL)
-      {
-        strPath = real_path;
-        return;
-      }
-    }
-#endif
-    size_t last_sep = strHomePath.find_last_of(PATH_SEPARATOR_CHAR);
-    if (last_sep != string::npos)
-      strPath = strHomePath.substr(0, last_sep);
-    else
-      strPath = strHomePath;
-  }
-
-#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
-  /* Change strPath accordingly when target is KODI_HOME and when INSTALL_PATH
-   * and BIN_INSTALL_PATH differ
-   */
-  std::string installPath = INSTALL_PATH;
-  std::string binInstallPath = BIN_INSTALL_PATH;
-
-  if (strTarget.empty() && installPath.compare(binInstallPath))
-  {
-    int pos = strPath.length() - binInstallPath.length();
-    std::string tmp = strPath;
-    tmp.erase(0, pos);
-    if (!tmp.compare(binInstallPath))
-    {
-      strPath.erase(pos, strPath.length());
-      strPath.append(installPath);
-    }
-  }
-#endif
+  return ::GetHomePath(strTarget, strPath);
 }
 
 bool CUtil::IsPVR(const std::string& strFile)
@@ -430,10 +529,6 @@ bool CUtil::IsPVR(const std::string& strFile)
 bool CUtil::IsLiveTV(const std::string& strFile)
 {
   if (StringUtils::StartsWithNoCase(strFile, "pvr://channels"))
-    return true;
-
-  if(URIUtils::IsHDHomeRun(strFile)
-  || StringUtils::StartsWithNoCase(strFile, "sap:"))
     return true;
 
   return false;
@@ -447,10 +542,19 @@ bool CUtil::IsTVRecording(const std::string& strFile)
 bool CUtil::IsPicture(const std::string& strFile)
 {
   return URIUtils::HasExtension(strFile,
-                  g_advancedSettings.m_pictureExtensions + "|.tbn|.dds");
+                  CServiceBroker::GetFileExtensionProvider().GetPictureExtensions()+ "|.tbn|.dds");
 }
 
-bool CUtil::ExcludeFileOrFolder(const std::string& strFileOrFolder, const vector<string>& regexps)
+std::string CUtil::GetSplashPath()
+{
+  std::array<std::string, 4> candidates {{ "special://home/media/splash.jpg", "special://home/media/splash.png", "special://xbmc/media/splash.jpg", "special://xbmc/media/splash.png" }};
+  auto it = std::find_if(candidates.begin(), candidates.end(), [](std::string const& file) { return XFILE::CFile::Exists(file); });
+  if (it == candidates.end())
+    throw std::runtime_error("No splash image found");
+  return CSpecialProtocol::TranslatePathConvertCase(*it);
+}
+
+bool CUtil::ExcludeFileOrFolder(const std::string& strFileOrFolder, const std::vector<std::string>& regexps)
 {
   if (strFileOrFolder.empty())
     return false;
@@ -491,22 +595,22 @@ int CUtil::GetDVDIfoTitle(const std::string& strFile)
   return atoi(strFilename.substr(4, 2).c_str());
 }
 
-std::string CUtil::GetFileMD5(const std::string& strPath)
+std::string CUtil::GetFileDigest(const std::string& strPath, KODI::UTILITY::CDigest::Type type)
 {
   CFile file;
   std::string result;
   if (file.Open(strPath))
   {
-    XBMC::XBMC_MD5 md5;
+    CDigest digest{type};
     char temp[1024];
     while (true)
     {
       ssize_t read = file.Read(temp,1024);
       if (read <= 0)
         break;
-      md5.append(temp,read);
+      digest.Update(temp,read);
     }
-    result = md5.getDigest();
+    result = digest.Finalize();
     file.Close();
   }
 
@@ -537,7 +641,7 @@ void CUtil::GetDVDDriveIcon(const std::string& strPath, std::string& strIcon)
 
   if ( URIUtils::IsDVD(strPath) )
   {
-    strIcon = "DefaultDVDRom.png";
+    strIcon = "DefaultDVDFull.png";
     return ;
   }
 
@@ -564,7 +668,9 @@ void CUtil::GetDVDDriveIcon(const std::string& strPath, std::string& strIcon)
 
 void CUtil::RemoveTempFiles()
 {
-  std::string searchPath = CProfilesManager::Get().GetDatabaseFolder();
+  const CProfilesManager &profileManager = CServiceBroker::GetProfileManager();
+
+  std::string searchPath = profileManager.GetDatabaseFolder();
   CFileItemList items;
   if (!XFILE::CDirectory::GetDirectory(searchPath, items, ".tmp", DIR_FLAG_NO_FILE_DIRS))
     return;
@@ -581,7 +687,7 @@ void CUtil::ClearSubtitles()
 {
   //delete cached subs
   CFileItemList items;
-  CDirectory::GetDirectory("special://temp/",items);
+  CDirectory::GetDirectory("special://temp/",items, "", DIR_FLAG_DEFAULTS);
   for( int i=0;i<items.Size();++i)
   {
     if (!items[i]->m_bIsFolder)
@@ -613,8 +719,6 @@ void CUtil::ClearTempFonts()
     CFile::Delete(items[i]->GetPath());
   }
 }
-
-static const char * sub_exts[] = { ".srt", ".idx", ".sub", ".ass", ".utf", ".utf8", ".utf-8", ".smi", ".rt", ".txt", ".ssa", ".aqt", ".jss", NULL};
 
 int64_t CUtil::ToInt64(uint32_t high, uint32_t low)
 {
@@ -818,12 +922,12 @@ bool CUtil::CreateDirectoryEx(const std::string& strPath)
     return false;
   }
 
-  vector<string> dirs = URIUtils::SplitPath(strPath);
+  std::vector<std::string> dirs = URIUtils::SplitPath(strPath);
   if (dirs.empty())
     return false;
   std::string dir(dirs.front());
   URIUtils::AddSlashAtEnd(dir);
-  for (vector<string>::const_iterator it = dirs.begin() + 1; it != dirs.end(); it ++)
+  for (std::vector<std::string>::const_iterator it = dirs.begin() + 1; it != dirs.end(); it ++)
   {
     dir = URIUtils::AddFileToFolder(dir, *it);
     CDirectory::Create(dir);
@@ -868,7 +972,7 @@ std::string CUtil::MakeLegalPath(const std::string &strPathAndFile, int LegalTyp
     return strPathAndFile; // we don't support writing anywhere except HD, SMB and NFS - no need to legalize path
 
   bool trailingSlash = URIUtils::HasSlashAtEnd(strPathAndFile);
-  vector<string> dirs = URIUtils::SplitPath(strPathAndFile);
+  std::vector<std::string> dirs = URIUtils::SplitPath(strPathAndFile);
   if (dirs.empty())
     return strPathAndFile;
   // we just add first token to path and don't legalize it - possible values: 
@@ -876,7 +980,7 @@ std::string CUtil::MakeLegalPath(const std::string &strPathAndFile, int LegalTyp
   // "protocol://domain"
   std::string dir(dirs.front());
   URIUtils::AddSlashAtEnd(dir);
-  for (vector<string>::const_iterator it = dirs.begin() + 1; it != dirs.end(); it ++)
+  for (std::vector<std::string>::const_iterator it = dirs.begin() + 1; it != dirs.end(); it ++)
     dir = URIUtils::AddFileToFolder(dir, MakeLegalFileName(*it, LegalType));
   if (trailingSlash) URIUtils::AddSlashAtEnd(dir);
   return dir;
@@ -941,10 +1045,10 @@ std::string CUtil::ValidatePath(const std::string &path, bool bFixDoubleSlashes 
 
 bool CUtil::IsUsingTTFSubtitles()
 {
-  return URIUtils::HasExtension(CSettings::Get().GetString("subtitles.font"), ".ttf");
+  return URIUtils::HasExtension(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SUBTITLES_FONT), ".ttf");
 }
 
-void CUtil::SplitExecFunction(const std::string &execString, std::string &function, vector<string> &parameters)
+void CUtil::SplitExecFunction(const std::string &execString, std::string &function, std::vector<std::string> &parameters)
 {
   std::string paramString;
 
@@ -1001,7 +1105,7 @@ void CUtil::SplitParams(const std::string &paramString, std::vector<std::string>
         inFunction++;
       }
       if (!inFunction && ch == ',')
-      { // not in a function, so a comma signfies the end of this parameter
+      { // not in a function, so a comma signifies the end of this parameter
         if (whiteSpacePos)
           parameter = parameter.substr(0, whiteSpacePos);
         // trim off start and end quotes
@@ -1141,10 +1245,10 @@ int CUtil::GetMatchingSource(const std::string& strPath1, VECSOURCES& VECSOURCES
     }
 
     // doesnt match a name, so try the source path
-    vector<string> vecPaths;
+    std::vector<std::string> vecPaths;
 
     // add any concatenated paths if they exist
-    if (share.vecPaths.size() > 0)
+    if (!share.vecPaths.empty())
       vecPaths = share.vecPaths;
 
     // add the actual share path at the front of the vector
@@ -1168,7 +1272,7 @@ int CUtil::GetMatchingSource(const std::string& strPath1, VECSOURCES& VECSOURCES
         // if exact match, return it immediately
         if (iLenPath == iLenShare)
         {
-          // if the path EXACTLY matches an item in a concatentated path
+          // if the path EXACTLY matches an item in a concatenated path
           // set source name to true to load the full virtualpath
           bIsSourceName = false;
           if (vecPaths.size() > 1)
@@ -1228,24 +1332,24 @@ std::string CUtil::TranslateSpecialSource(const std::string &strSpecial)
       return URIUtils::AddFileToFolder("special://cdrips/", strSpecial.substr(7));
     // this one will be removed post 2.0
     else if (StringUtils::StartsWithNoCase(strSpecial, "$playlists"))
-      return URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), strSpecial.substr(10));
+      return URIUtils::AddFileToFolder(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH), strSpecial.substr(10));
   }
   return strSpecial;
 }
 
 std::string CUtil::MusicPlaylistsLocation()
 {
-  vector<string> vec;
-  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "music"));
-  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "mixed"));
+  std::vector<std::string> vec;
+  vec.push_back(URIUtils::AddFileToFolder(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH), "music"));
+  vec.push_back(URIUtils::AddFileToFolder(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH), "mixed"));
   return XFILE::CMultiPathDirectory::ConstructMultiPath(vec);
 }
 
 std::string CUtil::VideoPlaylistsLocation()
 {
-  vector<string> vec;
-  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "video"));
-  vec.push_back(URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "mixed"));
+  std::vector<std::string> vec;
+  vec.push_back(URIUtils::AddFileToFolder(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH), "video"));
+  vec.push_back(URIUtils::AddFileToFolder(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH), "mixed"));
   return XFILE::CMultiPathDirectory::ConstructMultiPath(vec);
 }
 
@@ -1309,7 +1413,7 @@ void CUtil::GetRecursiveDirsListing(const std::string& strPath, CFileItemList& i
 void CUtil::ForceForwardSlashes(std::string& strPath)
 {
   size_t iPos = strPath.rfind('\\');
-  while (iPos != string::npos)
+  while (iPos != std::string::npos)
   {
     strPath.at(iPos) = '/';
     iPos = strPath.rfind('\\');
@@ -1343,7 +1447,10 @@ bool CUtil::MakeShortenPath(std::string StrInput, std::string& StrOutput, size_t
 {
   size_t iStrInputSize = StrInput.size();
   if(iStrInputSize <= 0 || iTextMaxLength >= iStrInputSize)
-    return false;
+  {
+    StrOutput = StrInput;
+    return true;
+  }
 
   char cDelim = '\0';
   size_t nGreaterDelim, nPos;
@@ -1369,10 +1476,16 @@ bool CUtil::MakeShortenPath(std::string StrInput, std::string& StrOutput, size_t
   {
     nPos = StrInput.find_last_of( cDelim, nPos );
     nGreaterDelim = nPos;
-    if ( nPos != std::string::npos )
-      nPos = StrInput.find_last_of( cDelim, nPos - 1 );
-    if ( nPos == std::string::npos ) break;
-    if ( nGreaterDelim > nPos ) StrInput.replace( nPos + 1, nGreaterDelim - nPos - 1, ".." );
+
+    if (nPos == std::string::npos || nPos == 0)
+      break;
+
+    nPos = StrInput.find_last_of( cDelim, nPos - 1 );
+
+    if ( nPos == std::string::npos )
+      break;
+    if ( nGreaterDelim > nPos )
+      StrInput.replace( nPos + 1, nGreaterDelim - nPos - 1, ".." );
     iStrInputSize = StrInput.size();
   }
   // replace any additional /../../ with just /../ if necessary
@@ -1412,6 +1525,18 @@ bool CUtil::SupportsWriteFileOperations(const std::string& strPath)
   if (URIUtils::IsMultiPath(strPath))
     return CMultiPathDirectory::SupportsWriteFileOperations(strPath);
 
+
+  if (CServiceBroker::IsBinaryAddonCacheUp())
+  {
+    CURL url(strPath);
+    for (const auto& addon : CServiceBroker::GetVFSAddonCache().GetAddonInstances())
+    {
+      const auto& info = addon->GetProtocolInfo();
+      if (info.type == url.GetProtocol() && info.supportWrite)
+        return true;
+    }
+  }
+
   return false;
 }
 
@@ -1425,16 +1550,18 @@ bool CUtil::SupportsReadFileOperations(const std::string& strPath)
 
 std::string CUtil::GetDefaultFolderThumb(const std::string &folderThumb)
 {
-  if (g_TextureManager.HasTexture(folderThumb))
+  if (CServiceBroker::GetGUI()->GetTextureManager().HasTexture(folderThumb))
     return folderThumb;
   return "";
 }
 
-void CUtil::GetSkinThemes(vector<std::string>& vecTheme)
+void CUtil::GetSkinThemes(std::vector<std::string>& vecTheme)
 {
-  std::string strPath = URIUtils::AddFileToFolder(g_graphicsContext.GetMediaDir(), "media");
+  static const std::string TexturesXbt = "Textures.xbt";
+
+  std::string strPath = URIUtils::AddFileToFolder(CServiceBroker::GetWinSystem()->GetGfxContext().GetMediaDir(), "media");
   CFileItemList items;
-  CDirectory::GetDirectory(strPath, items);
+  CDirectory::GetDirectory(strPath, items, "", DIR_FLAG_DEFAULTS);
   // Search for Themes in the Current skin!
   for (int i = 0; i < items.Size(); ++i)
   {
@@ -1442,15 +1569,23 @@ void CUtil::GetSkinThemes(vector<std::string>& vecTheme)
     if (!pItem->m_bIsFolder)
     {
       std::string strExtension = URIUtils::GetExtension(pItem->GetPath());
-      if ((strExtension == ".xpr" && !StringUtils::EqualsNoCase(pItem->GetLabel(), "Textures.xpr")) ||
-          (strExtension == ".xbt" && !StringUtils::EqualsNoCase(pItem->GetLabel(), "Textures.xbt")))
-      {
-        std::string strLabel = pItem->GetLabel();
-        vecTheme.push_back(strLabel.substr(0, strLabel.size() - 4));
-      }
+      std::string strLabel = pItem->GetLabel();
+      if ((strExtension == ".xbt" && !StringUtils::EqualsNoCase(strLabel, TexturesXbt)))
+        vecTheme.push_back(StringUtils::Left(strLabel, strLabel.size() - strExtension.size()));
+    }
+    else
+    {
+      // check if this is an xbt:// VFS path
+      CURL itemUrl(pItem->GetPath());
+      if (!itemUrl.IsProtocol("xbt") || !itemUrl.GetFileName().empty())
+        continue;
+
+      std::string strLabel = URIUtils::GetFileName(itemUrl.GetHostName());
+      if (!StringUtils::EqualsNoCase(strLabel, TexturesXbt))
+        vecTheme.push_back(StringUtils::Left(strLabel, strLabel.size() - URIUtils::GetExtension(strLabel).size()));
     }
   }
-  sort(vecTheme.begin(), vecTheme.end(), sortstringbyname());
+  std::sort(vecTheme.begin(), vecTheme.end(), sortstringbyname());
 }
 
 void CUtil::InitRandomSeed()
@@ -1466,13 +1601,13 @@ void CUtil::InitRandomSeed()
 #ifdef TARGET_POSIX
 bool CUtil::RunCommandLine(const std::string& cmdLine, bool waitExit)
 {
-  vector<string> args = StringUtils::Split(cmdLine, ",");
+  std::vector<std::string> args = StringUtils::Split(cmdLine, ",");
 
   // Strip quotes and whitespace around the arguments, or exec will fail.
   // This allows the python invocation to be written more naturally with any amount of whitespace around the args.
   // But it's still limited, for example quotes inside the strings are not expanded, etc.
-  // TODO: Maybe some python library routine can parse this more properly ?
-  for (vector<string>::iterator it = args.begin(); it != args.end(); ++it)
+  //! @todo Maybe some python library routine can parse this more properly ?
+  for (std::vector<std::string>::iterator it = args.begin(); it != args.end(); ++it)
   {
     size_t pos;
     pos = it->find_first_not_of(" \t\n\"'");
@@ -1515,7 +1650,7 @@ bool CUtil::Command(const std::vector<std::string>& arrArgs, bool waitExit)
     close(0);
     close(1);
     close(2);
-    if (arrArgs.size() > 0)
+    if (!arrArgs.empty())
     {
       char **args = (char **)alloca(sizeof(char *) * (arrArgs.size() + 3));
       memset(args, 0, (sizeof(char *) * (arrArgs.size() + 3)));
@@ -1659,7 +1794,7 @@ std::string CUtil::ResolveExecutablePath()
   delete[] buf;
 #elif defined(TARGET_DARWIN)
   char     given_path[2*MAXPATHLEN];
-  uint32_t path_size =2*MAXPATHLEN;
+  size_t path_size =2*MAXPATHLEN;
 
   CDarwinUtils::GetExecutablePath(given_path, &path_size);
   strExecutablePath = given_path;
@@ -1678,6 +1813,13 @@ std::string CUtil::ResolveExecutablePath()
     strExecutablePath = "";
   else
     strExecutablePath = buf;
+#elif defined(TARGET_ANDROID)
+  strExecutablePath = CXBMCApp::getApplicationInfo().nativeLibraryDir;
+
+  std::string appName = CCompileInfo::GetAppName();
+  std::string libName = "lib" + appName + ".so";
+  StringUtils::ToLower(libName);
+  strExecutablePath += "/" + libName;
 #else
   /* Get our PID and build the name of the link in /proc */
   pid_t pid = getpid();
@@ -1702,7 +1844,7 @@ std::string CUtil::GetFrameworksPath(bool forPython)
   std::string strFrameworksPath;
 #if defined(TARGET_DARWIN)
   char     given_path[2*MAXPATHLEN];
-  uint32_t path_size =2*MAXPATHLEN;
+  size_t path_size =2*MAXPATHLEN;
 
   CDarwinUtils::GetFrameworkPath(forPython, given_path, &path_size);
   strFrameworksPath = given_path;
@@ -1710,94 +1852,66 @@ std::string CUtil::GetFrameworksPath(bool forPython)
   return strFrameworksPath;
 }
 
-void CUtil::ScanForExternalSubtitles(const std::string& strMovie, std::vector<std::string>& vecSubtitles )
+void CUtil::GetVideoBasePathAndFileName(const std::string& videoPath, std::string& basePath, std::string& videoFileName)
 {
-  unsigned int startTimer = XbmcThreads::SystemClockMillis();
-  
-  CFileItem item(strMovie, false);
-  if ( item.IsInternetStream()
-    || item.IsHDHomeRun()
-    || item.IsSlingbox()
-    || item.IsPlayList()
-    || item.IsLiveTV()
-    || !item.IsVideo())
-    return;
-
-  CLog::Log(LOGDEBUG,"%s: Searching for subtitles...", __FUNCTION__);
-
-  std::string strBasePath;
-  std::string strSubtitle = URIUtils::ReplaceExtension(URIUtils::GetFileName(strMovie), "");
+  CFileItem item(videoPath, false);
+  videoFileName = URIUtils::ReplaceExtension(URIUtils::GetFileName(videoPath), "");
 
   if (item.HasVideoInfoTag())
-    strBasePath = item.GetVideoInfoTag()->m_basePath;
+    basePath = item.GetVideoInfoTag()->m_basePath;
 
-  if (strBasePath.empty() && item.IsOpticalMediaFile())
-    strBasePath = item.GetLocalMetadataPath();
+  if (basePath.empty() && item.IsOpticalMediaFile())
+    basePath = item.GetLocalMetadataPath();
 
-  CURL url(strMovie);
-  if (strBasePath.empty() && url.IsProtocol("bluray"))
+  CURL url(videoPath);
+  if (basePath.empty() && url.IsProtocol("bluray"))
   {
-    strBasePath = url.GetHostName();
-    strSubtitle = URIUtils::ReplaceExtension(GetTitleFromPath(url.GetHostName()), "");
+    basePath = url.GetHostName();
+    videoFileName = URIUtils::ReplaceExtension(GetTitleFromPath(url.GetHostName()), "");
 
     url = CURL(url.GetHostName());
     if (url.IsProtocol("udf"))
-      strBasePath = URIUtils::GetParentPath(url.GetHostName());
+      basePath = URIUtils::GetParentPath(url.GetHostName());
   }
 
-  if (strBasePath.empty())
-    strBasePath = URIUtils::GetBasePath(strMovie);
+  if (basePath.empty())
+    basePath = URIUtils::GetBasePath(videoPath);
+}
 
-  CFileItemList items;
-  vector<std::string> strLookInPaths;
-
+void CUtil::GetItemsToScan(const std::string& videoPath,
+                           const std::string& item_exts,
+                           const std::vector<std::string>& sub_dirs,
+                           CFileItemList& items)
+{
   int flags = DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_NO_FILE_INFO;
 
-  if (!strBasePath.empty())
-    CDirectory::GetDirectory(strBasePath, items, g_advancedSettings.m_subtitlesExtensions, flags);
+  if (!videoPath.empty())
+    CDirectory::GetDirectory(videoPath, items, item_exts, flags);
 
-  const std::vector<std::string> common_sub_dirs = {"subs", "subtitles", "vobsubs", "sub", "vobsub", "subtitle"};
-
+  std::vector<std::string> additionalPaths;
   for (int i = 0; i < items.Size(); ++i)
   {
-    for (const auto& subdir : common_sub_dirs)
+    for (const auto& subdir : sub_dirs)
     {
       if (StringUtils::EqualsNoCase(items[i]->GetLabel(), subdir))
-        strLookInPaths.push_back(items[i]->GetPath());
+        additionalPaths.push_back(items[i]->GetPath());
     }
   }
 
-  if (!CMediaSettings::Get().GetAdditionalSubtitleDirectoryChecked() && !CSettings::Get().GetString("subtitles.custompath").empty()) // to avoid checking non-existent directories (network) every time..
-  {
-    if (!g_application.getNetwork().IsAvailable() && !URIUtils::IsHD(CSettings::Get().GetString("subtitles.custompath")))
-    {
-      CLog::Log(LOGINFO,"CUtil::CacheSubtitles: disabling alternate subtitle directory for this session, it's nonaccessible");
-      CMediaSettings::Get().SetAdditionalSubtitleDirectoryChecked(-1); // disabled
-    }
-    else if (!CDirectory::Exists(CSettings::Get().GetString("subtitles.custompath")))
-    {
-      CLog::Log(LOGINFO,"CUtil::CacheSubtitles: disabling alternate subtitle directory for this session, it's nonexistant");
-      CMediaSettings::Get().SetAdditionalSubtitleDirectoryChecked(-1); // disabled
-    }
-    
-    CMediaSettings::Get().SetAdditionalSubtitleDirectoryChecked(1);
-  }
- 
-  // this is last because we dont want to check any common subdirs or cd-dirs in the alternate <subtitles> dir.
-  if (CMediaSettings::Get().GetAdditionalSubtitleDirectoryChecked() == 1)
-  {
-    std::string strPath2 = CSettings::Get().GetString("subtitles.custompath");
-    URIUtils::AddSlashAtEnd(strPath2);
-    strLookInPaths.push_back(strPath2);
-  }
-
-  for (std::vector<std::string>::const_iterator it = strLookInPaths.begin(); it != strLookInPaths.end(); ++it)
+  for (std::vector<std::string>::const_iterator it = additionalPaths.begin(); it != additionalPaths.end(); ++it)
   {
     CFileItemList moreItems;
-    CDirectory::GetDirectory(*it, moreItems, g_advancedSettings.m_subtitlesExtensions, flags);
+    CDirectory::GetDirectory(*it, moreItems, CServiceBroker::GetFileExtensionProvider().GetSubtitleExtensions(), flags);
     items.Append(moreItems);
   }
+}
 
+
+void CUtil::ScanPathsForAssociatedItems(const std::string& videoName,
+                                        const CFileItemList& items,
+                                        const std::vector<std::string>& item_exts,
+                                        std::vector<std::string>& associatedFiles)
+{
   for (int i = 0; i < items.Size(); ++i)
   {
     CFileItemPtr pItem = items[i];
@@ -1806,23 +1920,139 @@ void CUtil::ScanForExternalSubtitles(const std::string& strMovie, std::vector<st
       continue;
 
     std::string strCandidate = URIUtils::GetFileName(pItem->GetPath());
+
+    // skip duplicates
+    if (std::find(associatedFiles.begin(), associatedFiles.end(), pItem->GetPath()) != associatedFiles.end())
+      continue;
+
     URIUtils::RemoveExtension(strCandidate);
-    if (StringUtils::StartsWithNoCase(strCandidate, strSubtitle))
+    if (StringUtils::StartsWithNoCase(strCandidate, videoName))
     {
       if (URIUtils::IsRAR(pItem->GetPath()) || URIUtils::IsZIP(pItem->GetPath()))
-        CUtil::ScanArchiveForSubtitles(pItem->GetPath(), "", vecSubtitles);
+        CUtil::ScanArchiveForAssociatedItems(pItem->GetPath(), "", item_exts, associatedFiles);
       else
       {
-        vecSubtitles.push_back(pItem->GetPath());
-        CLog::Log(LOGINFO, "%s: found subtitle file %s\n", __FUNCTION__, CURL::GetRedacted(pItem->GetPath()).c_str());
+        associatedFiles.push_back(pItem->GetPath());
+        CLog::Log(LOGINFO, "%s: found associated file %s\n", __FUNCTION__, CURL::GetRedacted(pItem->GetPath()).c_str());
       }
     }
     else
     {
       if (URIUtils::IsRAR(pItem->GetPath()) || URIUtils::IsZIP(pItem->GetPath()))
-        CUtil::ScanArchiveForSubtitles(pItem->GetPath(), strSubtitle, vecSubtitles);
+        CUtil::ScanArchiveForAssociatedItems(pItem->GetPath(), videoName, item_exts, associatedFiles);
     }
   }
+}
+
+int CUtil::ScanArchiveForAssociatedItems(const std::string& strArchivePath,
+                                         const std::string& videoNameNoExt,
+                                         const std::vector<std::string>& item_exts,
+                                         std::vector<std::string>& associatedFiles)
+{
+  CLog::LogF(LOGDEBUG, "Scanning archive %s", CURL::GetRedacted(strArchivePath).c_str());
+  int nItemsAdded = 0;
+  CFileItemList ItemList;
+
+  // zip only gets the root dir
+  if (URIUtils::HasExtension(strArchivePath, ".zip"))
+  {
+    CURL pathToUrl(strArchivePath);
+    CURL zipURL = URIUtils::CreateArchivePath("zip", pathToUrl, "");
+    if (!CDirectory::GetDirectory(zipURL, ItemList, "", DIR_FLAG_NO_FILE_DIRS))
+      return false;
+  }
+  else if (URIUtils::HasExtension(strArchivePath, ".rar"))
+  {
+    CURL pathToUrl(strArchivePath);
+    CURL rarURL = URIUtils::CreateArchivePath("rar", pathToUrl, "");
+    if (!CDirectory::GetDirectory(rarURL, ItemList, "", DIR_FLAG_NO_FILE_DIRS))
+      return false;
+  }
+  for (int it = 0; it < ItemList.Size(); ++it)
+  {
+    std::string strPathInRar = ItemList[it]->GetPath();
+    std::string strExt = URIUtils::GetExtension(strPathInRar);
+
+    // check that the found filename matches the movie filename
+    int fnl = videoNameNoExt.size();
+    if (fnl && !StringUtils::StartsWithNoCase(URIUtils::GetFileName(strPathInRar), videoNameNoExt))
+      continue;
+
+    for (auto ext : item_exts)
+    {
+      if (StringUtils::EqualsNoCase(strExt, ext))
+      {
+        CLog::Log(LOGINFO, "%s: found associated file %s\n", __FUNCTION__, CURL::GetRedacted(strPathInRar).c_str());
+        associatedFiles.push_back(strPathInRar);
+        nItemsAdded++;
+        break;
+      }
+    }
+  }
+
+  return nItemsAdded;
+}
+
+void CUtil::ScanForExternalSubtitles(const std::string& strMovie, std::vector<std::string>& vecSubtitles)
+{
+  unsigned int startTimer = XbmcThreads::SystemClockMillis();
+
+  CFileItem item(strMovie, false);
+  if (item.IsInternetStream()
+    || item.IsPlayList()
+    || item.IsLiveTV()
+    || !item.IsVideo())
+    return;
+
+  CLog::Log(LOGDEBUG, "%s: Searching for subtitles...", __FUNCTION__);
+
+  std::string strBasePath;
+  std::string strSubtitle;
+
+  GetVideoBasePathAndFileName(strMovie, strBasePath, strSubtitle);
+
+  CFileItemList items;
+  const std::vector<std::string> common_sub_dirs = { "subs", "subtitles", "vobsubs", "sub", "vobsub", "subtitle" };
+  GetItemsToScan(strBasePath, CServiceBroker::GetFileExtensionProvider().GetSubtitleExtensions(), common_sub_dirs, items);
+
+  if (!CMediaSettings::GetInstance().GetAdditionalSubtitleDirectoryChecked() && !CServiceBroker::GetSettings().GetString(CSettings::SETTING_SUBTITLES_CUSTOMPATH).empty()) // to avoid checking non-existent directories (network) every time..
+  {
+    if (!CServiceBroker::GetNetwork().IsAvailable() && !URIUtils::IsHD(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SUBTITLES_CUSTOMPATH)))
+    {
+      CLog::Log(LOGINFO, "CUtil::CacheSubtitles: disabling alternate subtitle directory for this session, it's inaccessible");
+      CMediaSettings::GetInstance().SetAdditionalSubtitleDirectoryChecked(-1); // disabled
+    }
+    else if (!CDirectory::Exists(CServiceBroker::GetSettings().GetString(CSettings::SETTING_SUBTITLES_CUSTOMPATH)))
+    {
+      CLog::Log(LOGINFO, "CUtil::CacheSubtitles: disabling alternate subtitle directory for this session, it's nonexistent");
+      CMediaSettings::GetInstance().SetAdditionalSubtitleDirectoryChecked(-1); // disabled
+    }
+
+    CMediaSettings::GetInstance().SetAdditionalSubtitleDirectoryChecked(1);
+  }
+
+  std::vector<std::string> strLookInPaths;
+  // this is last because we dont want to check any common subdirs or cd-dirs in the alternate <subtitles> dir.
+  if (CMediaSettings::GetInstance().GetAdditionalSubtitleDirectoryChecked() == 1)
+  {
+    std::string strPath2 = CServiceBroker::GetSettings().GetString(CSettings::SETTING_SUBTITLES_CUSTOMPATH);
+    URIUtils::AddSlashAtEnd(strPath2);
+    strLookInPaths.push_back(strPath2);
+  }
+
+  int flags = DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_NO_FILE_INFO;
+  for (std::vector<std::string>::const_iterator it = strLookInPaths.begin(); it != strLookInPaths.end(); ++it)
+  {
+    CFileItemList moreItems;
+    CDirectory::GetDirectory(*it, moreItems, CServiceBroker::GetFileExtensionProvider().GetSubtitleExtensions(), flags);
+    items.Append(moreItems);
+  }
+
+  std::vector<std::string> exts = StringUtils::Split(CServiceBroker::GetFileExtensionProvider().GetSubtitleExtensions(), '|');
+  exts.erase(std::remove(exts.begin(), exts.end(), ".zip"), exts.end());
+  exts.erase(std::remove(exts.begin(), exts.end(), ".rar"), exts.end());
+
+  ScanPathsForAssociatedItems(strSubtitle, items, exts, vecSubtitles);
 
   int iSize = vecSubtitles.size();
   for (int i = 0; i < iSize; i++)
@@ -1830,11 +2060,11 @@ void CUtil::ScanForExternalSubtitles(const std::string& strMovie, std::vector<st
     if (URIUtils::HasExtension(vecSubtitles[i], ".smi"))
     {
       //Cache multi-language sami subtitle
-      CDVDSubtitleStream* pStream = new CDVDSubtitleStream();
-      if(pStream->Open(vecSubtitles[i]))
+      CDVDSubtitleStream stream;
+      if (stream.Open(vecSubtitles[i]))
       {
         CDVDSubtitleTagSami TagConv;
-        TagConv.LoadHead(pStream);
+        TagConv.LoadHead(&stream);
         if (TagConv.m_Langclass.size() >= 2)
         {
           for (unsigned int k = 0; k < TagConv.m_Langclass.size(); k++)
@@ -1848,105 +2078,33 @@ void CUtil::ScanForExternalSubtitles(const std::string& strMovie, std::vector<st
           }
         }
       }
-      delete pStream;
     }
   }
-  CLog::Log(LOGDEBUG,"%s: END (total time: %i ms)", __FUNCTION__, (int)(XbmcThreads::SystemClockMillis() - startTimer));
+  CLog::Log(LOGDEBUG, "%s: END (total time: %i ms)", __FUNCTION__, (int)(XbmcThreads::SystemClockMillis() - startTimer));
 }
 
-int CUtil::ScanArchiveForSubtitles(const std::string& strArchivePath, const std::string& strMovieFileNameNoExt, std::vector<std::string>& vecSubtitles)
+ExternalStreamInfo CUtil::GetExternalStreamDetailsFromFilename(const std::string& videoPath, const std::string& associatedFile)
 {
-  CLog::Log(LOGDEBUG, "ScanArchiveForSubtitles:: Scanning archive %s", strArchivePath.c_str());
-  int nSubtitlesAdded = 0;
-  CFileItemList ItemList;
+  ExternalStreamInfo info;
 
-  // zip only gets the root dir
-  if (URIUtils::HasExtension(strArchivePath, ".zip"))
-  {
-    CURL pathToUrl(strArchivePath);
-    CURL zipURL = URIUtils::CreateArchivePath("zip", pathToUrl, "");
-    if (!CDirectory::GetDirectory(zipURL, ItemList, "", DIR_FLAG_NO_FILE_DIRS))
-      return false;
-  }
-  else
-  {
-#ifdef HAS_FILESYSTEM_RAR
-    // get _ALL_files in the rar, even those located in subdirectories because we set the bMask to false.
-    // so now we dont have to find any subdirs anymore, all files in the rar is checked.
-    if (!g_RarManager.GetFilesInRar(ItemList, strArchivePath, false, ""))
-      return false;
-#else
-    return false;
-#endif
-  }
-  for (int it = 0; it < ItemList.Size(); ++it)
-  {
-    std::string strPathInRar = ItemList[it]->GetPath();
-    std::string strExt = URIUtils::GetExtension(strPathInRar);
-
-    // checking for embedded archives
-    if (URIUtils::IsArchive(strPathInRar))
-    {
-      std::string archInArch(strPathInRar);
-      if (strExt == ".rar")
-      {
-        CURL pathToUrl(strArchivePath);
-        archInArch = URIUtils::CreateArchivePath("rar", pathToUrl, strPathInRar).Get();
-      }
-
-      ScanArchiveForSubtitles(archInArch, strMovieFileNameNoExt, vecSubtitles);
-      continue;
-    }
-    // check that the found filename matches the movie filename
-    int fnl = strMovieFileNameNoExt.size();
-    if (fnl && !StringUtils::StartsWithNoCase(URIUtils::GetFileName(strPathInRar), strMovieFileNameNoExt))
-      continue;
-
-    int iPos = 0;
-    while (sub_exts[iPos])
-    {
-      if (StringUtils::EqualsNoCase(strExt, sub_exts[iPos]))
-      {
-        CURL pathToURL(strArchivePath);
-        std::string strSourceUrl;
-        if (URIUtils::HasExtension(strArchivePath, ".rar"))
-          strSourceUrl = URIUtils::CreateArchivePath("rar", pathToURL, strPathInRar).Get();
-        else
-          strSourceUrl = strPathInRar;
-
-        CLog::Log(LOGINFO, "%s: found subtitle file %s\n", __FUNCTION__, strSourceUrl.c_str());
-        vecSubtitles.push_back(strSourceUrl);
-        nSubtitlesAdded++;
-        break;
-      }
-
-      iPos++;
-    }
-  }
-
-  return nSubtitlesAdded;
-}
-
-void CUtil::GetExternalStreamDetailsFromFilename(const std::string& strVideo, const std::string& strStream, ExternalStreamInfo& info)
-{
-  std::string videoBaseName = URIUtils::GetFileName(strVideo);
+  std::string videoBaseName = URIUtils::GetFileName(videoPath);
   URIUtils::RemoveExtension(videoBaseName);
 
-  std::string toParse = URIUtils::GetFileName(strStream);
+  std::string toParse = URIUtils::GetFileName(associatedFile);
   URIUtils::RemoveExtension(toParse);
 
   // we check left part - if it's same as video base name - strip it
   if (StringUtils::StartsWithNoCase(toParse, videoBaseName))
     toParse = toParse.substr(videoBaseName.length());
-  else if (URIUtils::GetExtension(strStream) == ".sub" && URIUtils::IsInArchive(strStream))
+  else if (URIUtils::GetExtension(associatedFile) == ".sub" && URIUtils::IsInArchive(associatedFile))
   {
-    // exclude parsing of vobsub file names that embedded in an archive
-    CLog::Log(LOGDEBUG, "%s - skipping archived vobsub filename parsing: %s", __FUNCTION__, CURL::GetRedacted(strStream).c_str());
+    // exclude parsing of vobsub file names that are embedded in an archive
+    CLog::Log(LOGDEBUG, "%s - skipping archived vobsub filename parsing: %s", __FUNCTION__, CURL::GetRedacted(associatedFile).c_str());
     toParse.clear();
   }
 
-  // trim any non-alphanumeric char in the begining
-  std::string::iterator result = std::find_if(toParse.begin(), toParse.end(), ::isalnum);
+  // trim any non-alphanumeric char in the beginning
+  std::string::iterator result = std::find_if(toParse.begin(), toParse.end(), StringUtils::isasciialphanum);
 
   std::string name;
   if (result != toParse.end()) // if we have anything to parse
@@ -1963,7 +2121,7 @@ void CUtil::GetExternalStreamDetailsFromFilename(const std::string& strVideo, co
         std::string langTmp(*it);
         std::string langCode;
         // try to recognize language
-        if (g_LangCodeExpander.ConvertToISO6392T(langTmp, langCode))
+        if (g_LangCodeExpander.ConvertToISO6392B(langTmp, langCode))
         {
           info.language = langCode;
           continue;
@@ -1975,17 +2133,17 @@ void CUtil::GetExternalStreamDetailsFromFilename(const std::string& strVideo, co
       StringUtils::ToLower(flag_tmp);
       if (!flag_tmp.compare("none"))
       {
-        info.flag |= CDemuxStream::FLAG_NONE;
+        info.flag |= StreamFlags::FLAG_NONE;
         continue;
       }
       else if (!flag_tmp.compare("default"))
       {
-        info.flag |= CDemuxStream::FLAG_DEFAULT;
+        info.flag |= StreamFlags::FLAG_DEFAULT;
         continue;
       }
       else if (!flag_tmp.compare("forced"))
       {
-        info.flag |= CDemuxStream::FLAG_FORCED;
+        info.flag |= StreamFlags::FLAG_FORCED;
         continue;
       }
 
@@ -1997,10 +2155,12 @@ void CUtil::GetExternalStreamDetailsFromFilename(const std::string& strVideo, co
   StringUtils::Trim(name);
   info.name = StringUtils::RemoveDuplicatedSpacesAndTabs(name);
   if (info.flag == 0)
-    info.flag = CDemuxStream::FLAG_NONE;
+    info.flag = StreamFlags::FLAG_NONE;
 
   CLog::Log(LOGDEBUG, "%s - Language = '%s' / Name = '%s' / Flag = '%u' from %s",
-             __FUNCTION__, info.language.c_str(), info.name.c_str(), info.flag, CURL::GetRedacted(strStream).c_str());
+             __FUNCTION__, info.language.c_str(), info.name.c_str(), info.flag, CURL::GetRedacted(associatedFile).c_str());
+
+  return info;
 }
 
 /*! \brief in a vector of subtitles finds the corresponding .sub file for a given .idx file
@@ -2119,6 +2279,53 @@ std::string CUtil::GetVobSubIdxFromSub(const std::string& vobSub)
   return std::string();
 }
 
+void CUtil::ScanForExternalDemuxSub(const std::string& videoPath, std::vector<std::string>& vecSubtitles)
+{
+  CFileItem item(videoPath, false);
+  if (item.IsInternetStream()
+    || item.IsPlayList()
+    || item.IsLiveTV()
+    || item.IsPVR()
+    || !item.IsVideo())
+    return;
+
+  std::string strBasePath;
+  std::string strSubtitle;
+
+  GetVideoBasePathAndFileName(videoPath, strBasePath, strSubtitle);
+
+  CFileItemList items;
+  const std::vector<std::string> common_sub_dirs = { "subs", "subtitles", "vobsubs", "sub", "vobsub", "subtitle" };
+  const std::string DemuxSubExtensions = ".sup";
+  GetItemsToScan(strBasePath, DemuxSubExtensions, common_sub_dirs, items);
+
+  std::vector<std::string> exts = StringUtils::Split(DemuxSubExtensions, "|");
+  ScanPathsForAssociatedItems(strSubtitle, items, exts, vecSubtitles);
+}
+
+void CUtil::ScanForExternalAudio(const std::string& videoPath, std::vector<std::string>& vecAudio)
+{
+  CFileItem item(videoPath, false);
+  if ( item.IsInternetStream()
+   ||  item.IsPlayList()
+   ||  item.IsLiveTV()
+   ||  item.IsPVR()
+   || !item.IsVideo()) 
+    return;
+
+  std::string strBasePath;
+  std::string strAudio;  
+
+  GetVideoBasePathAndFileName(videoPath, strBasePath, strAudio);
+  
+  CFileItemList items;
+  const std::vector<std::string> common_sub_dirs = { "audio", "tracks"};
+  GetItemsToScan(strBasePath, CServiceBroker::GetFileExtensionProvider().GetMusicExtensions(), common_sub_dirs, items);
+
+  std::vector<std::string> exts = StringUtils::Split(CServiceBroker::GetFileExtensionProvider().GetMusicExtensions(), "|");
+  ScanPathsForAssociatedItems(strAudio, items, exts, vecAudio);
+}
+
 bool CUtil::CanBindPrivileged()
 {
 #ifdef TARGET_POSIX
@@ -2171,14 +2378,14 @@ bool CUtil::ValidatePort(int port)
 
 int CUtil::GetRandomNumber()
 {
-#ifdef TARGET_WINDOWS
+#if !defined(TARGET_WINDOWS)
+  return rand_r(&s_randomSeed);
+#else
   unsigned int number;
   if (rand_s(&number) == 0)
     return (int)number;
-#else
-  return rand_r(&s_randomSeed);
-#endif
 
   return rand();
+#endif
 }
 

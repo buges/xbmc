@@ -1,8 +1,7 @@
 #pragma once
-
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,21 +19,16 @@
  *
  */
 
-#include "PVRChannelGroups.h"
 #include "threads/CriticalSection.h"
+
+#include "pvr/channels/PVRChannelGroups.h"
+
+class CURL;
 
 namespace PVR
 {
-  class CPVRManager;
-  class CPVRChannelsUpdateJob;
-  class CPVRChannelGroupsUpdateJob;
-
   class CPVRChannelGroupsContainer
   {
-    friend class CPVRManager;
-    friend class CPVRChannelsUpdateJob;
-    friend class CPVRChannelGroupsUpdateJob;
-
   public:
     /*!
      * @brief Create a new container for all channel groups
@@ -53,9 +47,22 @@ namespace PVR
     bool Load(void);
 
     /*!
+     * @brief Checks whether groups were already loaded.
+     * @return True if groups were successfully loaded, false otherwise.
+     */
+    bool Loaded(void) const;
+
+    /*!
      * @brief Unload and destruct all channel groups and all channels in them.
      */
     void Unload(void);
+
+    /*!
+     * @brief Update the contents of all the groups in this container.
+     * @param bChannelsOnly Set to true to only update channels, not the groups themselves.
+     * @return True if the update was successful, false otherwise.
+     */
+    bool Update(bool bChannelsOnly = false);
 
     /*!
      * @brief Get the TV channel groups.
@@ -121,7 +128,7 @@ namespace PVR
      * @param strBase The directory path.
      * @param results The file list to store the results in.
      * @param bRadio Get radio channels or tv channels.
-     * @return True if the list was filled succesfully.
+     * @return True if the list was filled successfully.
      */
     bool GetGroupsDirectory(CFileItemList *results, bool bRadio) const;
 
@@ -139,12 +146,6 @@ namespace PVR
      * @return True if the directory was found, false if not.
      */
     bool GetDirectory(const std::string& strPath, CFileItemList &results) const;
-
-    /*!
-     * @brief The total amount of unique channels in all containers.
-     * @return The total amount of unique channels in all containers.
-     */
-    int GetNumChannelsFromAll(void) const;
 
     /*!
      * @brief Get the group that is currently selected in the UI.
@@ -181,7 +182,7 @@ namespace PVR
 
     /*!
      * @brief Create EPG tags for channels in all internal channel groups.
-     * @return True if EPG tags were created succesfully.
+     * @return True if EPG tags were created successfully.
      */
     bool CreateChannelEpgs(void);
 
@@ -195,16 +196,9 @@ namespace PVR
      * @brief Set the last played group.
      * @param The last played group
      */
-    void SetLastPlayedGroup(CPVRChannelGroupPtr group);
+    void SetLastPlayedGroup(const CPVRChannelGroupPtr &group);
 
   protected:
-    /*!
-     * @brief Update the contents of all the groups in this container.
-     * @param bChannelsOnly Set to true to only update channels, not the groups themselves.
-     * @return True if the update was successful, false otherwise.
-     */
-    bool Update(bool bChannelsOnly = false);
-
     CPVRChannelGroups *m_groupsRadio; /*!< all radio channel groups */
     CPVRChannelGroups *m_groupsTV;    /*!< all TV channel groups */
     CCriticalSection   m_critSection;
@@ -213,7 +207,11 @@ namespace PVR
     CPVRChannelGroupPtr m_lastPlayedGroups[2]; /*!< used to store the last played groups */
 
   private :
-    CPVRChannelGroupsContainer& operator=(const CPVRChannelGroupsContainer&);
-    CPVRChannelGroupsContainer(const CPVRChannelGroupsContainer&);
+    CPVRChannelGroupsContainer& operator=(const CPVRChannelGroupsContainer&) = delete;
+    CPVRChannelGroupsContainer(const CPVRChannelGroupsContainer&) = delete;
+
+    bool FilterDirectory(const CURL &url, CFileItemList &results) const;
+
+    bool m_bLoaded;
   };
 }

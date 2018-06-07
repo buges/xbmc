@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 class ISettingsHandler
 {
 public:
-  virtual ~ISettingsHandler() { }
+  virtual ~ISettingsHandler() = default;
 
   /*!
    \brief Settings loading has been initiated.
@@ -52,7 +52,7 @@ public:
 
    This callback can be used to trigger saving other settings.
    */
-  virtual void OnSettingsSaved() { }
+  virtual void OnSettingsSaved() const { }
   /*!
    \brief Setting values have been unloaded.
 

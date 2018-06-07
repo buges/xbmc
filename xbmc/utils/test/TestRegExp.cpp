@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  *
  */
 
-/* TODO: gtest/gtest.h needs to come in before utils/RegExp.h.
+/** @todo gtest/gtest.h needs to come in before utils/RegExp.h.
  * Investigate why.
  */
 #include "gtest/gtest.h"
@@ -137,8 +137,8 @@ TEST(TestRegExp, operatorEqual)
 class TestRegExpLog : public testing::Test
 {
 protected:
-  TestRegExpLog(){}
-  ~TestRegExpLog()
+  TestRegExpLog() = default;
+  ~TestRegExpLog() override
   {
     CLog::Close();
   }

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,22 +19,24 @@
  */
 
 #include "ViewDatabase.h"
-#include "utils/URIUtils.h"
-#include "view/ViewState.h"
-#include "utils/LegacyPathTranslation.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-#ifdef TARGET_POSIX
-#include "linux/ConvUtils.h" // GetLastError()
-#endif
+
+#include <utility>
+
 #include "dbwrappers/dataset.h"
 #include "SortFileItem.h"
+#include "utils/LegacyPathTranslation.h"
+#include "utils/log.h"
+#include "utils/SortUtils.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "view/ViewState.h"
 
-CViewDatabase::CViewDatabase(void)
-{ }
+#ifdef TARGET_POSIX
+#include "platform/linux/ConvUtils.h"
+#endif
+CViewDatabase::CViewDatabase(void) = default;
 
-CViewDatabase::~CViewDatabase(void)
-{ }
+CViewDatabase::~CViewDatabase(void) = default;
 
 bool CViewDatabase::Open()
 {
@@ -57,7 +59,7 @@ void CViewDatabase::CreateTables()
 
 void CViewDatabase::CreateAnalytics()
 {
-  CLog::Log(LOGINFO, "%s - creating indicies", __FUNCTION__);
+  CLog::Log(LOGINFO, "%s - creating indices", __FUNCTION__);
   m_pDS->exec("CREATE INDEX idxViews ON view(path)");
   m_pDS->exec("CREATE INDEX idxViewsWindow ON view(window)");
 }
@@ -88,7 +90,7 @@ void CViewDatabase::UpdateTables(int version)
       m_pDS->close();
 
       for (std::vector< std::pair<int, std::string> >::const_iterator it = paths.begin(); it != paths.end(); ++it)
-        m_pDS->exec(PrepareSQL("UPDATE view SET path='%s' WHERE idView=%d", it->second.c_str(), it->first).c_str());
+        m_pDS->exec(PrepareSQL("UPDATE view SET path='%s' WHERE idView=%d", it->second.c_str(), it->first));
     }
   }
   if (version < 6)
@@ -139,7 +141,7 @@ bool CViewDatabase::GetViewState(const std::string &path, int window, CViewState
       sql = PrepareSQL("select * from view where window = %i and path='%s'", window, path1.c_str());
     else
       sql = PrepareSQL("select * from view where window = %i and path='%s' and skin='%s'", window, path1.c_str(), skin.c_str());
-    m_pDS->query(sql.c_str());
+    m_pDS->query(sql);
 
     if (!m_pDS->eof())
     { // have some information
@@ -171,21 +173,21 @@ bool CViewDatabase::SetViewState(const std::string &path, int window, const CVie
     if (path1.empty()) path1 = "root://";
 
     std::string sql = PrepareSQL("select idView from view where window = %i and path='%s' and skin='%s'", window, path1.c_str(), skin.c_str());
-    m_pDS->query(sql.c_str());
+    m_pDS->query(sql);
     if (!m_pDS->eof())
     { // update the view
       int idView = m_pDS->fv("idView").get_asInt();
       m_pDS->close();
       sql = PrepareSQL("update view set viewMode=%i,sortMethod=%i,sortOrder=%i,sortAttributes=%i where idView=%i",
         state.m_viewMode, (int)state.m_sortDescription.sortBy, (int)state.m_sortDescription.sortOrder, (int)state.m_sortDescription.sortAttributes, idView);
-      m_pDS->exec(sql.c_str());
+      m_pDS->exec(sql);
     }
     else
     { // add the view
       m_pDS->close();
       sql = PrepareSQL("insert into view (idView, path, window, viewMode, sortMethod, sortOrder, sortAttributes, skin) values(NULL, '%s', %i, %i, %i, %i, %i, '%s')",
         path1.c_str(), window, state.m_viewMode, (int)state.m_sortDescription.sortBy, (int)state.m_sortDescription.sortOrder, (int)state.m_sortDescription.sortAttributes, skin.c_str());
-      m_pDS->exec(sql.c_str());
+      m_pDS->exec(sql);
     }
   }
   catch (...)
@@ -203,7 +205,7 @@ bool CViewDatabase::ClearViewStates(int windowID)
     if (NULL == m_pDS.get()) return false;
 
     std::string sql = PrepareSQL("delete from view where window = %i", windowID);
-    m_pDS->exec(sql.c_str());
+    m_pDS->exec(sql);
   }
   catch (...)
   {

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,10 +22,9 @@
 #include "guilib/LocalizeStrings.h"
 
 using namespace PERIPHERALS;
-using namespace std;
 
-CPeripheralNIC::CPeripheralNIC(const PeripheralScanResult& scanResult) :
-  CPeripheral(scanResult)
+CPeripheralNIC::CPeripheralNIC(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus) :
+  CPeripheral(manager, scanResult, bus)
 {
   m_strDeviceName = scanResult.m_strDeviceName.empty() ? g_localizeStrings.Get(35002) : scanResult.m_strDeviceName;
   m_features.push_back(FEATURE_NIC);

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,13 +23,15 @@
 
 #include "DbUrl.h"
 
+class CVariant;
+
 class CMusicDbUrl : public CDbUrl
 {
 public:
   CMusicDbUrl();
-  virtual ~CMusicDbUrl();
+  ~CMusicDbUrl() override;
 
 protected:
-  virtual bool parse();
-  virtual bool validateOption(const std::string &key, const CVariant &value);
+  bool parse() override;
+  bool validateOption(const std::string &key, const CVariant &value) override;
 };

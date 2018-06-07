@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,11 +21,7 @@
 #include "TimeUtils.h"
 #include "XBDateTime.h"
 #include "threads/SystemClock.h"
-#include "guilib/GraphicContext.h"
-
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
+#include "windowing/GraphicContext.h"
 
 #if   defined(TARGET_DARWIN)
 #include <mach/mach_time.h>
@@ -35,8 +31,6 @@
 #else
 #include <time.h>
 #endif
-
-#include "TimeSmoother.h"
 
 int64_t CurrentHostCounter(void)
 {
@@ -70,28 +64,18 @@ int64_t CurrentHostFrequency(void)
 #endif
 }
 
-CTimeSmoother CTimeUtils::frameTimer;
 unsigned int CTimeUtils::frameTime = 0;
 
-void CTimeUtils::UpdateFrameTime(bool flip, bool vsync)
+void CTimeUtils::UpdateFrameTime(bool flip)
 {
   unsigned int currentTime = XbmcThreads::SystemClockMillis();
-  if (vsync)
+  unsigned int last = frameTime;
+  while (frameTime < currentTime)
   {
-    unsigned int last = frameTime;
-    while (frameTime < currentTime)
-    {
-      frameTime += (unsigned int)(1000 / g_graphicsContext.GetFPS());
-      // observe wrap around
-      if (frameTime < last)
-        break;
-    }
-  }
-  else
-  {
-    if (flip)
-      frameTimer.AddTimeStamp(currentTime);
-    frameTime = frameTimer.GetNextFrameTime(currentTime);
+    frameTime += (unsigned int)(1000 / CServiceBroker::GetWinSystem()->GetGfxContext().GetFPS());
+    // observe wrap around
+    if (frameTime < last)
+      break;
   }
 }
 

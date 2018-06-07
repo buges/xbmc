@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,20 +18,17 @@
  *
  */
 
-/*!
-\file TextureManager.h
-\brief
-*/
+#pragma once
 
-#ifndef GUILIB_TEXTUREMANAGER_H
-#define GUILIB_TEXTUREMANAGER_H
-
-#include <vector>
 #include <list>
+#include <vector>
+#include <utility>
+
 #include "TextureBundle.h"
 #include "threads/CriticalSection.h"
 
-#pragma once
+#include "GUIComponent.h"
+#include "ServiceBroker.h"
 
 /************************************************************************/
 /*                                                                      */
@@ -85,6 +82,8 @@ public:
   uint32_t GetMemoryUsage() const;
   void Flush();
   bool IsEmpty() const;
+  void SetHeight(int height);
+  void SetWidth(int height);
 protected:
   void FreeTexture();
 
@@ -137,9 +136,3 @@ protected:
   CCriticalSection m_section;
 };
 
-/*!
- \ingroup textures
- \brief
- */
-extern CGUITextureManager g_TextureManager;
-#endif

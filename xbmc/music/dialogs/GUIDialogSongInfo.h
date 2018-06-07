@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2018 Team XBMC
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,32 +21,43 @@
  */
 
 #include "guilib/GUIDialog.h"
-
-class CFileItem;
+#include "FileItem.h"
+#include "threads/Event.h"
 
 class CGUIDialogSongInfo :
       public CGUIDialog
 {
 public:
   CGUIDialogSongInfo(void);
-  virtual ~CGUIDialogSongInfo(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  void SetSong(CFileItem *item);
-  virtual bool OnAction(const CAction &action);
-  virtual bool OnBack(int actionID);
-  bool NeedsUpdate() const { return m_needsUpdate; };
+  ~CGUIDialogSongInfo(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool SetSong(CFileItem* item);
+  void SetArtTypeList(CFileItemList& artlist);
+  bool OnAction(const CAction& action) override;
+  bool OnBack(int actionID) override;
+  bool HasUpdatedUserrating() const { return m_hasUpdatedUserrating; };
 
-  virtual bool HasListItems() const { return true; };
-  virtual CFileItemPtr GetCurrentListItem(int offset = 0);
+  bool HasListItems() const override { return true; };
+  CFileItemPtr GetCurrentListItem(int offset = 0) override;
+  std::string GetContent();
+  //const CFileItemList& CurrentDirectory() const { return m_artTypeList; };
+  bool IsCancelled() const { return m_cancelled; };
+  void FetchComplete();
+
+  static void ShowFor(CFileItem* pItem);
 protected:
-  virtual void OnInitWindow();
-  bool DownloadThumbnail(const std::string &thumbFile);
-  void OnGetThumb();
-  void SetRating(char rating);
+  void OnInitWindow() override;
+  void Update();
+  void OnGetArt();
+  void SetUserrating(int userrating);
+  void OnSetUserrating();
 
   CFileItemPtr m_song;
-  char m_startRating;
+  CFileItemList m_artTypeList;
+  CEvent m_event;
+  int m_startUserrating;
   bool m_cancelled;
-  bool m_needsUpdate;
+  bool m_hasUpdatedUserrating;
   long m_albumId;
+
 };

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,14 +19,14 @@
  *
  */
 
+#include <array>
+#include <memory>
 #include <set>
 
 #include "input/touch/ITouchInputHandler.h"
 #include "input/touch/TouchTypes.h"
 #include "threads/CriticalSection.h"
 #include "threads/Timer.h"
-
-#define TOUCH_MAX_POINTERS  2
 
 class IGenericTouchGestureDetector;
 
@@ -48,18 +48,19 @@ public:
   /*!
    \brief Get an instance of the touch input manager
    */
-  static CGenericTouchInputHandler &Get();
+  static CGenericTouchInputHandler &GetInstance();
+  static constexpr int MAX_POINTERS = 2;
 
   // implementation of ITouchInputHandler
-  virtual bool HandleTouchInput(TouchInput event, float x, float y, int64_t time, int32_t pointer = 0, float size = 0.0f);
-  virtual bool UpdateTouchPointer(int32_t pointer, float x, float y, int64_t time, float size = 0.0f);
+  bool HandleTouchInput(TouchInput event, float x, float y, int64_t time, int32_t pointer = 0, float size = 0.0f) override;
+  bool UpdateTouchPointer(int32_t pointer, float x, float y, int64_t time, float size = 0.0f) override;
 
 private:
-  // private construction, and no assignements; use the provided singleton methods
+  // private construction, and no assignments; use the provided singleton methods
   CGenericTouchInputHandler();
-  CGenericTouchInputHandler(const CGenericTouchInputHandler&);
-  CGenericTouchInputHandler const& operator=(CGenericTouchInputHandler const&);
-  virtual ~CGenericTouchInputHandler();
+  ~CGenericTouchInputHandler();
+  CGenericTouchInputHandler(const CGenericTouchInputHandler&) = delete;
+  CGenericTouchInputHandler const& operator=(CGenericTouchInputHandler const&) = delete;
 
   typedef enum {
     TouchGestureUnknown = 0,
@@ -80,16 +81,17 @@ private:
   } TouchGestureState;
 
   // implementation of ITimerCallback
-  virtual void OnTimeout();
+  void OnTimeout() override;
 
   void saveLastTouch();
   void setGestureState(TouchGestureState gestureState) { m_gestureStateOld = m_gestureState; m_gestureState = gestureState; }
   void triggerDetectors(TouchInput event, int32_t pointer);
+  float AdjustPointerSize(float size);
 
   CCriticalSection m_critical;
-  CTimer *m_holdTimer;
-  Pointer m_pointers[TOUCH_MAX_POINTERS];
-  std::set<IGenericTouchGestureDetector*> m_detectors;
+  std::unique_ptr<CTimer> m_holdTimer;
+  std::array<Pointer, MAX_POINTERS> m_pointers;
+  std::set<std::unique_ptr<IGenericTouchGestureDetector>> m_detectors;
 
   TouchGestureState m_gestureState;
   TouchGestureState m_gestureStateOld;

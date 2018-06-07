@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  */
 
 #include "utils/UrlOptions.h"
+#include "utils/Variant.h"
 
 #include "gtest/gtest.h"
 
@@ -181,7 +182,7 @@ TEST(TestUrlOptions, GetOptions)
   urlOptions.AddOption(key2, value2);
   const CUrlOptions::UrlOptions &options = urlOptions.GetOptions();
   EXPECT_FALSE(options.empty());
-  EXPECT_EQ(2, options.size());
+  EXPECT_EQ(2U, options.size());
 
   CUrlOptions::UrlOptions::const_iterator it1 = options.find(key1);
   EXPECT_TRUE(it1 != options.end());

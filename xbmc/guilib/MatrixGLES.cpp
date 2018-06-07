@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,28 +19,19 @@
  */
 
 
-#include "system.h"
-
-#if defined(HAS_GL) || HAS_GLES == 2
 #include "system_gl.h"
 
 #include <cmath>
 #include "MatrixGLES.h"
 #include "utils/log.h"
-#if defined(__ARM_NEON__)
+#if defined(HAS_NEON)
 #include "utils/CPUInfo.h"
 #endif
 
 
-#ifdef HAS_GL
-CMatrixGLStack glMatrixModview(GL_MODELVIEW);
-CMatrixGLStack glMatrixProject(GL_PROJECTION);
-CMatrixGLStack glMatrixTexture(GL_TEXTURE);
-#else
-CMatrixGLStack glMatrixModview(0);
-CMatrixGLStack glMatrixProject(0);
-CMatrixGLStack glMatrixTexture(0);
-#endif
+CMatrixGLStack glMatrixModview = CMatrixGLStack();
+CMatrixGLStack glMatrixProject = CMatrixGLStack();
+CMatrixGLStack glMatrixTexture = CMatrixGLStack();
 
 void CMatrixGL::LoadIdentity()
 {
@@ -113,12 +104,12 @@ void CMatrixGL::Scalef(GLfloat x, GLfloat y, GLfloat z)
 
 void CMatrixGL::Rotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 {
-  GLfloat modulous = sqrt((x*x)+(y*y)+(z*z));
-  if (modulous != 0.0)
+  GLfloat modulus = sqrt((x*x)+(y*y)+(z*z));
+  if (modulus != 0.0)
   {
-    x /= modulous;
-    y /= modulous;
-    z /= modulous;
+    x /= modulus;
+    y /= modulus;
+    z /= modulus;
   }
   GLfloat cosine = cos(angle);
   GLfloat sine   = sin(angle);
@@ -139,7 +130,7 @@ void CMatrixGL::Rotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
   MultMatrixf(matrix);
 }
 
-#if defined(__ARM_NEON__)
+#if defined(HAS_NEON) && !defined(__LP64__)
   
 inline void Matrix4Mul(const float* src_mat_1, const float* src_mat_2, float* dst_mat)
 {
@@ -182,7 +173,7 @@ inline void Matrix4Mul(const float* src_mat_1, const float* src_mat_2, float* ds
 #endif
 void CMatrixGL::MultMatrixf(const GLfloat *matrix)
 {
-#if defined(__ARM_NEON__)
+#if defined(HAS_NEON) && !defined(__LP64__)
     if ((g_cpuInfo.GetCPUFeatures() & CPU_FEATURE_NEON) == CPU_FEATURE_NEON)
     {
       GLfloat m[16];
@@ -326,10 +317,5 @@ void CMatrixGL::PrintMatrix(void)
 
 void CMatrixGLStack::Load()
 {
-#ifdef HAS_GL
-  glMatrixMode(m_type);
-  glLoadMatrixf(m_current);
-#endif
-}
 
-#endif
+}

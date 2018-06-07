@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,10 +26,12 @@
 
 #include <sys/stat.h>
 
+#if defined (TARGET_WINDOWS)
+#pragma comment(lib, "zlib.lib")
+#endif
 #define ZIP_CACHE_LIMIT 4*1024*1024
 
 using namespace XFILE;
-using namespace std;
 
 CZipFile::CZipFile()
 {
@@ -306,7 +308,7 @@ ssize_t CZipFile::Read(void* lpBuf, size_t uiBufSize)
   {
     uLong iDecompressed = 0;
     uLong prevOut = m_ZStream.total_out;
-    while ((static_cast<size_t>(iDecompressed) < uiBufSize) && ((m_iZipFilePos < mZipItem.csize) || (m_bFlush)))
+    while ((iDecompressed < uiBufSize) && ((m_iZipFilePos < mZipItem.csize) || (m_bFlush)))
     {
       m_ZStream.next_out = (Bytef*)(lpBuf)+iDecompressed;
       m_ZStream.avail_out = static_cast<uInt>(uiBufSize-iDecompressed);
@@ -370,76 +372,6 @@ void CZipFile::Close()
 
   mFile.Close();
 }
-/* CHANGED: JM - moved to CFile
-bool CZipFile::ReadString(char* szLine, int iLineLength)
-{
-  if (!m_szStringBuffer)
-  {
-    m_szStringBuffer = new char[1024]; // 1024 byte long strings per read
-    m_szStartOfStringBuffer = m_szStringBuffer;
-    m_iDataInStringBuffer = 0;
-    m_iRead = 0;
-  }
-
-  bool bEof = m_iDataInStringBuffer==0;
-  while ((iLineLength > 1) && (m_iRead > -1))
-  {
-    if (m_iDataInStringBuffer > 0)
-    {
-      bEof = false;
-      m_iRead = 1;
-      int iMax = (iLineLength<m_iDataInStringBuffer?iLineLength-1:m_iDataInStringBuffer-1);
-      for( int i=0;i<iMax;++i )
-      {
-        if (m_szStartOfStringBuffer[i] == '\r') // mac or win32 endings
-        {
-          strncpy(szLine,m_szStartOfStringBuffer,i);
-          szLine[i] = '\0';
-          m_iDataInStringBuffer -= i+1;
-          m_szStartOfStringBuffer += i+1;
-          if( m_szStartOfStringBuffer[0] == '\n') // win32 endings
-          {
-            m_szStartOfStringBuffer++;
-            m_iDataInStringBuffer--;
-          }
-          return true;
-        }
-        else if (m_szStartOfStringBuffer[i] == '\n') // unix or fucked up win32 endings
-        {
-          strncpy(szLine,m_szStartOfStringBuffer,i);
-          szLine[i] = '\0';
-          m_iDataInStringBuffer -= i+1;
-          m_szStartOfStringBuffer += i+1;
-          if (m_szStartOfStringBuffer[0] == '\r')
-          {
-            m_szStartOfStringBuffer++;
-            m_iDataInStringBuffer--;
-          }
-          return true;
-        }
-      }
-      strncpy(szLine,m_szStartOfStringBuffer,iMax);
-      szLine += iMax;
-      iLineLength -= iMax;
-      m_iDataInStringBuffer -= iMax;
-    }
-
-    if (m_iRead == 1 && (m_iDataInStringBuffer == 1))
-    {
-      m_szStringBuffer[0] = m_szStringBuffer[1023]; // need to make sure we don't loose any '\r\n' between buffers
-      m_iDataInStringBuffer = Read(m_szStringBuffer+1,1023);
-    }
-    else
-      m_iDataInStringBuffer = Read(m_szStringBuffer,1024);
-    m_szStartOfStringBuffer = m_szStringBuffer;
-    if (m_iDataInStringBuffer)
-      m_iRead = 1;
-    else
-      m_iRead = -1;
-  }
-  szLine[0] = '\0';
-  return !bEof;
-}*/
 
 bool CZipFile::FillBuffer()
 {
@@ -472,7 +404,7 @@ void CZipFile::DestroyBuffer(void* lpBuffer, int iBufSize)
   m_bFlush = false;
 }
 
-int CZipFile::UnpackFromMemory(string& strDest, const string& strInput, bool isGZ)
+int CZipFile::UnpackFromMemory(std::string& strDest, const std::string& strInput, bool isGZ)
 {
   unsigned int iPos=0;
   int iResult=0;
@@ -526,4 +458,49 @@ int CZipFile::UnpackFromMemory(string& strDest, const string& strInput, bool isG
   return iResult;
 }
 
+bool CZipFile::DecompressGzip(const std::string& in, std::string& out)
+{
+  const int windowBits = MAX_WBITS + 16;
 
+  z_stream strm;
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+
+  int err = inflateInit2(&strm, windowBits);
+  if (err != Z_OK)
+  {
+    CLog::Log(LOGERROR, "FileZip: zlib error %d", err);
+    return false;
+  }
+
+  const int bufferSize = 16384;
+  unsigned char buffer[bufferSize];
+
+  strm.avail_in = in.size();
+  strm.next_in = (unsigned char*)in.c_str();
+
+  do
+  {
+    strm.avail_out = bufferSize;
+    strm.next_out = buffer;
+    int err = inflate(&strm, Z_NO_FLUSH);
+    switch (err)
+    {
+      case Z_NEED_DICT:
+        err = Z_DATA_ERROR;
+      case Z_DATA_ERROR:
+      case Z_MEM_ERROR:
+      case Z_STREAM_ERROR:
+        CLog::Log(LOGERROR, "FileZip: failed to decompress. zlib error %d", err);
+        inflateEnd(&strm);
+        return false;
+    }
+    int read = bufferSize - strm.avail_out;
+    out.append((char*)buffer, read);
+  }
+  while (strm.avail_out == 0);
+
+  inflateEnd(&strm);
+  return true;
+}

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@
 
 using namespace XFILE;
 
-CHTTPDirectory::CHTTPDirectory(void){}
-CHTTPDirectory::~CHTTPDirectory(void){}
+CHTTPDirectory::CHTTPDirectory(void) = default;
+CHTTPDirectory::~CHTTPDirectory(void) = default;
 
 bool CHTTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -75,7 +75,7 @@ bool CHTTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   while(http.ReadString(buffer, sizeof(buffer)-1))
   {
     std::string strBuffer = buffer;
-    std::string fileCharset(http.GetServerReportedCharset());
+    std::string fileCharset(http.GetProperty(XFILE::FILE_PROPERTY_CONTENT_CHARSET));
     if (!fileCharset.empty() && fileCharset != "UTF-8")
     {
       std::string converted;
@@ -136,7 +136,7 @@ bool CHTTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
         CURL url2(url);
 
         /* NOTE: Force any &...; encoding (e.g. &amp;) into % encoding else CURL objects interpret them incorrectly
-         * due to the ; also being allowed as URL option seperator
+         * due to the ; also being allowed as URL option separator
          */
         if (fileCharset.empty())
           g_charsetConverter.unknownToUTF8(strLinkBase);

@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,22 +29,22 @@
  */
 
 #include "GUITexture.h"
-
-#ifdef HAS_DX
+#include "utils/Color.h"
 
 class CGUITextureD3D : public CGUITextureBase
 {
 public:
   CGUITextureD3D(float posX, float posY, float width, float height, const CTextureInfo& texture);
-  static void DrawQuad(const CRect &coords, color_t color, CBaseTexture *texture = NULL, const CRect *texCoords = NULL);
+  ~CGUITextureD3D();
+  static void DrawQuad(const CRect &coords, UTILS::Color color, CBaseTexture *texture = NULL, const CRect *texCoords = NULL);
+
 protected:
-  void Begin(color_t color);
+  void Begin(UTILS::Color color);
   void Draw(float *x, float *y, float *z, const CRect &texture, const CRect &diffuse, int orientation);
   void End();
-private:
-  color_t m_col;
-};
 
-#endif
+private:
+  UTILS::Color       m_col;
+};
 
 #endif

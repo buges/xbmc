@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,6 @@
  */
 
 #pragma once
-
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
 
 #include <Python.h>
 
@@ -54,35 +50,36 @@ namespace XBMCAddon
 
     public:
 
-      inline PythonLanguageHook(PyInterpreterState* interp) : m_interp(interp)  {  }
-      virtual ~PythonLanguageHook();
+      inline explicit PythonLanguageHook(PyInterpreterState* interp) : m_interp(interp)  {  }
+      ~PythonLanguageHook() override;
 
-      virtual void DelayedCallOpen();
-      virtual void DelayedCallClose();
-      virtual void MakePendingCalls();
+      void DelayedCallOpen() override;
+      void DelayedCallClose() override;
+      void MakePendingCalls() override;
       
       /**
        * PythonCallbackHandler expects to be instantiated PER AddonClass instance
-       *  that is to be used as a callback. This is why this cannot be instantited
+       *  that is to be used as a callback. This is why this cannot be instantiated
        *  once.
        *
        * There is an expectation that this method is called from the Python thread
        *  that instantiated an AddonClass that has the potential for a callback.
        *
-       * See RetardedAsynchCallbackHandler for more details.
+       * See RetardedAsyncCallbackHandler for more details.
        * See PythonCallbackHandler for more details
        * See PythonCallbackHandler::PythonCallbackHandler for more details
        */
-      virtual XBMCAddon::CallbackHandler* GetCallbackHandler();
+      XBMCAddon::CallbackHandler* GetCallbackHandler() override;
 
-      virtual String GetAddonId();
-      virtual String GetAddonVersion();
+      String GetAddonId() override;
+      String GetAddonVersion() override;
+      long GetInvokerId() override;
 
-      virtual void RegisterPlayerCallback(IPlayerCallback* player);
-      virtual void UnregisterPlayerCallback(IPlayerCallback* player);
-      virtual void RegisterMonitorCallback(XBMCAddon::xbmc::Monitor* monitor);
-      virtual void UnregisterMonitorCallback(XBMCAddon::xbmc::Monitor* monitor);
-      virtual bool WaitForEvent(CEvent& hEvent, unsigned int milliseconds);
+      void RegisterPlayerCallback(IPlayerCallback* player) override;
+      void UnregisterPlayerCallback(IPlayerCallback* player) override;
+      void RegisterMonitorCallback(XBMCAddon::xbmc::Monitor* monitor) override;
+      void UnregisterMonitorCallback(XBMCAddon::xbmc::Monitor* monitor) override;
+      bool WaitForEvent(CEvent& hEvent, unsigned int milliseconds) override;
 
       static AddonClass::Ref<PythonLanguageHook> GetIfExists(PyInterpreterState* interp);
       static bool IsAddonClassInstanceRegistered(AddonClass* obj);

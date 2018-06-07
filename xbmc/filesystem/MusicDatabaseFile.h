@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,16 +28,16 @@ class CMusicDatabaseFile : public IFile
 {
 public:
   CMusicDatabaseFile(void);
-  virtual ~CMusicDatabaseFile(void);
-  virtual bool Open(const CURL& url);
-  virtual bool Exists(const CURL& url);
-  virtual int Stat(const CURL& url, struct __stat64* buffer);
+  ~CMusicDatabaseFile(void) override;
+  bool Open(const CURL& url) override;
+  bool Exists(const CURL& url) override;
+  int Stat(const CURL& url, struct __stat64* buffer) override;
 
-  virtual ssize_t Read(void* lpBuf, size_t uiBufSize);
-  virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
-  virtual void Close();
-  virtual int64_t GetPosition();
-  virtual int64_t GetLength();
+  ssize_t Read(void* lpBuf, size_t uiBufSize) override;
+  int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET) override;
+  void Close() override;
+  int64_t GetPosition() override;
+  int64_t GetLength() override;
 
   static std::string TranslateUrl(const CURL& url);
 protected:

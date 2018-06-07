@@ -1,6 +1,6 @@
 /*
 *      Copyright (C) 2015 Team XBMC
-*      http://xbmc.org
+*      http://kodi.tv
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -30,8 +30,7 @@ ILanguageInvoker::ILanguageInvoker(ILanguageInvocationHandler *invocationHandler
     m_invocationHandler(invocationHandler)
 { }
 
-ILanguageInvoker::~ILanguageInvoker()
-{ }
+ILanguageInvoker::~ILanguageInvoker() = default;
 
 bool ILanguageInvoker::Execute(const std::string &script, const std::vector<std::string> &arguments /* = std::vector<std::string>() */)
 {

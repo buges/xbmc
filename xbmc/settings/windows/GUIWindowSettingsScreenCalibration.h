@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,20 +20,22 @@
  *
  */
 
+#include <vector>
+
 #include "guilib/GUIWindow.h"
 
 class CGUIWindowSettingsScreenCalibration : public CGUIWindow
 {
 public:
   CGUIWindowSettingsScreenCalibration(void);
-  virtual ~CGUIWindowSettingsScreenCalibration(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
-  virtual void DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void FrameMove();
-  virtual void DoRender();
-  virtual void AllocResources(bool forceLoad = false);
-  virtual void FreeResources(bool forceUnLoad = false);
+  ~CGUIWindowSettingsScreenCalibration(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
+  void DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void FrameMove() override;
+  void DoRender() override;
+  void AllocResources(bool forceLoad = false) override;
+  void FreeResources(bool forceUnLoad = false) override;
 
 protected:
   unsigned int FindCurrentResolution();
@@ -41,7 +43,7 @@ protected:
   void ResetControls();
   void EnableControl(int iControl);
   void UpdateFromControl(int iControl);
-  UINT m_iCurRes;
+  unsigned int m_iCurRes;
   std::vector<RESOLUTION> m_Res;
   int m_iControl;
   float m_fPixelRatioBoxHeight;

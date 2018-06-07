@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include <string>
 #include <vector>
-#include "guilib/GraphicContext.h" // for VIEW_TYPE
+#include "windowing/GraphicContext.h" // for VIEW_TYPE
 
 class CGUIControl;
 class CFileItemList;
@@ -52,6 +52,7 @@ public:
   bool HasControl(int controlID) const;
   int GetNextViewMode(int direction = 1) const;
   int GetViewModeNumber(int number) const;
+  int GetViewModeCount() const;
   int GetViewModeByID(int id) const;
 
   int GetCurrentControl() const;
@@ -60,7 +61,7 @@ public:
 
 protected:
   int GetSelectedItem(const CGUIControl *control) const;
-  void UpdateContents(const CGUIControl *control, int currentItem);
+  void UpdateContents(const CGUIControl *control, int currentItem) const;
   void UpdateView();
   void UpdateViewAsControl(const std::string &viewLabel);
   void UpdateViewVisibility();

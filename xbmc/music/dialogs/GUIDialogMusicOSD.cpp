@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2018 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,12 +19,14 @@
  */
 
 #include "GUIDialogMusicOSD.h"
+#include "addons/GUIWindowAddonBrowser.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
+#include "GUIUserMessages.h"
 #include "input/Key.h"
 #include "input/InputManager.h"
-#include "GUIUserMessages.h"
 #include "settings/Settings.h"
-#include "addons/GUIWindowAddonBrowser.h"
+#include "ServiceBroker.h"
 
 #define CONTROL_VIS_BUTTON       500
 #define CONTROL_LOCK_BUTTON      501
@@ -35,9 +37,7 @@ CGUIDialogMusicOSD::CGUIDialogMusicOSD(void)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIDialogMusicOSD::~CGUIDialogMusicOSD(void)
-{
-}
+CGUIDialogMusicOSD::~CGUIDialogMusicOSD(void) = default;
 
 bool CGUIDialogMusicOSD::OnMessage(CGUIMessage &message)
 {
@@ -51,15 +51,15 @@ bool CGUIDialogMusicOSD::OnMessage(CGUIMessage &message)
         std::string addonID;
         if (CGUIWindowAddonBrowser::SelectAddonID(ADDON::ADDON_VIZ, addonID, true) == 1)
         {
-          CSettings::Get().SetString("musicplayer.visualisation", addonID);
-          CSettings::Get().Save();
-          g_windowManager.SendMessage(GUI_MSG_VISUALISATION_RELOAD, 0, 0);
+          CServiceBroker::GetSettings().SetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION, addonID);
+          CServiceBroker::GetSettings().Save();
+          CServiceBroker::GetGUI()->GetWindowManager().SendMessage(GUI_MSG_VISUALISATION_RELOAD, 0, 0);
         }
       }
       else if (iControl == CONTROL_LOCK_BUTTON)
       {
         CGUIMessage msg(GUI_MSG_VISUALISATION_ACTION, 0, 0, ACTION_VIS_PRESET_LOCK);
-        g_windowManager.SendMessage(msg);
+        CServiceBroker::GetGUI()->GetWindowManager().SendMessage(msg);
       }
       return true;
     }
@@ -72,12 +72,11 @@ bool CGUIDialogMusicOSD::OnAction(const CAction &action)
 {
   switch (action.GetID())
   {
-  case ACTION_SHOW_OSD:
-    Close();
-    return true;
-
-  default:
-    break;
+    case ACTION_SHOW_OSD:
+      Close();
+      return true;
+    default:
+      break;
   }
 
   return CGUIDialog::OnAction(action);
@@ -88,9 +87,10 @@ void CGUIDialogMusicOSD::FrameMove()
   if (m_autoClosing)
   {
     // check for movement of mouse or a submenu open
-    if (CInputManager::Get().IsMouseActive() ||
-        g_windowManager.IsWindowActive(WINDOW_DIALOG_VIS_SETTINGS) ||
-        g_windowManager.IsWindowActive(WINDOW_DIALOG_VIS_PRESET_LIST))
+    if (CServiceBroker::GetInputManager().IsMouseActive() ||
+        CServiceBroker::GetGUI()->GetWindowManager().IsWindowActive(WINDOW_DIALOG_VIS_SETTINGS) ||
+        CServiceBroker::GetGUI()->GetWindowManager().IsWindowActive(WINDOW_DIALOG_VIS_PRESET_LIST) ||
+        CServiceBroker::GetGUI()->GetWindowManager().IsWindowActive(WINDOW_DIALOG_PVR_RADIO_RDS_INFO))
       // extend show time by original value
       SetAutoClose(m_showDuration);
   }

@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,14 +39,14 @@ class CGUIVideoControl :
 {
 public:
   CGUIVideoControl(int parentID, int controlID, float posX, float posY, float width, float height);
-  virtual ~CGUIVideoControl(void);
-  virtual CGUIVideoControl *Clone() const { return new CGUIVideoControl(*this); };
+  ~CGUIVideoControl(void) override;
+  CGUIVideoControl *Clone() const override { return new CGUIVideoControl(*this); };
 
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual void RenderEx();
-  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
-  virtual bool CanFocus() const;
-  virtual bool CanFocusFromPoint(const CPoint &point) const;
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  void RenderEx() override;
+  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
+  bool CanFocus() const override;
+  bool CanFocusFromPoint(const CPoint &point) const override;
 };
 #endif

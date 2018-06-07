@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,11 +31,11 @@ enum ERecentlyAddedFlag
 class CRecentlyAddedJob : public CJob
 {
 public:
-  CRecentlyAddedJob(int flag);
+  explicit CRecentlyAddedJob(int flag);
   static bool UpdateVideo();
   static bool UpdateMusic();
   static bool UpdateTotal();
-  virtual bool DoWork();
+  bool DoWork() override;
 private:
   int m_flag;
 };

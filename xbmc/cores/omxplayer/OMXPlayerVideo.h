@@ -1,6 +1,8 @@
+#pragma once
+
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,13 +15,10 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifndef _OMX_PLAYERVIDEO_H_
-#define _OMX_PLAYERVIDEO_H_
 
 #include <deque>
 #include <sys/types.h>
@@ -28,15 +27,16 @@
 #include "DVDStreamInfo.h"
 #include "OMXVideo.h"
 #include "threads/Thread.h"
-#include "IDVDPlayer.h"
+#include "IVideoPlayer.h"
 
 #include "DVDDemuxers/DVDDemux.h"
 #include "DVDCodecs/Video/DVDVideoCodec.h"
 #include "DVDOverlayContainer.h"
 #include "DVDMessageQueue.h"
 #include "utils/BitstreamStats.h"
-#include "linux/DllBCM.h"
-#include "cores/VideoRenderers/RenderManager.h"
+#include "platform/linux/DllBCM.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
+#include <atomic>
 
 class OMXPlayerVideo : public CThread, public IDVDStreamPlayerVideo
 {
@@ -51,18 +51,16 @@ protected:
   COMXVideo                 m_omxVideo;
   float                     m_fFrameRate;
   bool                      m_hdmi_clock_sync;
-  double                    m_iVideoDelay;
   int                       m_speed;
   bool                      m_stalled;
-  bool                      m_started;
+  IDVDStreamPlayer::ESyncState m_syncState;
   bool                      m_flush;
   std::string               m_codecname;
+  std::atomic_bool          m_bAbortOutput;
   double                    m_iSubtitleDelay;
   bool                      m_bRenderSubs;
-  bool                      m_bAllowFullscreen;
 
   float                     m_fForcedAspectRatio;
-  unsigned                  m_flags;
 
   CRect                     m_src_rect;
   CRect                     m_dst_rect;
@@ -75,6 +73,7 @@ protected:
   CDVDMessageQueue      &m_messageParent;
 
   BitstreamStats m_videoStats;
+  CRenderManager& m_renderManager;
 
   void ProcessOverlays(double pts);
   double NextOverlay(double pts);
@@ -83,50 +82,39 @@ protected:
   virtual void OnStartup();
   virtual void OnExit();
   virtual void Process();
+  void SendMessageBack(CDVDMsg* pMsg, int priority = 0);
+  MsgQueueReturnCode GetMessage(CDVDMsg** pMsg, unsigned int iTimeoutInMilliSeconds, int &priority);
+  std::string GetStereoMode();
 private:
 public:
-  OMXPlayerVideo(OMXClock *av_clock, CDVDOverlayContainer* pOverlayContainer, CDVDMessageQueue& parent);
+  OMXPlayerVideo(OMXClock *av_clock, CDVDOverlayContainer* pOverlayContainer, CDVDMessageQueue& parent, CRenderManager& renderManager, CProcessInfo &processInfo);
   ~OMXPlayerVideo();
-  bool OpenStream(CDVDStreamInfo &hints);
-  void SendMessage(CDVDMsg* pMsg, int priority = 0) { m_messageQueue.Put(pMsg, priority); }
-  void FlushMessages()                              { m_messageQueue.Flush(); }
-  bool AcceptsData() const                          { return !m_messageQueue.IsFull(); }
-  bool HasData() const                              { return m_messageQueue.GetDataSize() > 0; }
-  bool IsInited() const                             { return m_messageQueue.IsInited(); }
-  void WaitForBuffers()                             { m_messageQueue.WaitUntilEmpty(); }
-  int  GetLevel() const                             { return m_messageQueue.GetLevel(); }
-  bool IsStalled() const                            { return m_stalled;  }
-  bool IsEOS();
-  void CloseStream(bool bWaitForBuffers);
+  bool OpenStream(CDVDStreamInfo hints) override;
+  void SendMessage(CDVDMsg* pMsg, int priority = 0) override;
+  void FlushMessages() override;
+  bool AcceptsData() const override;
+  bool HasData() const override;
+  bool IsInited() const override;
+  bool IsStalled() const                            override { return m_stalled;  }
+  bool IsEOS() override;
+  void CloseStream(bool bWaitForBuffers) override;
   void Output(double pts, bool bDropPacket);
   bool StepFrame();
-  void Flush();
+  void Flush(bool sync) override;
   bool OpenDecoder();
-  int  GetDecoderBufferSize();
-  int  GetDecoderFreeSpace();
-  double GetCurrentPts() { return m_iCurrentPts; };
-  double GetFPS() { return m_fFrameRate; };
+  double GetCurrentPts() override { return m_iCurrentPts; };
   void  SubmitEOS();
   bool SubmittedEOS() const { return m_omxVideo.SubmittedEOS(); }
-  void SetDelay(double delay) { m_iVideoDelay = delay; }
-  double GetDelay() { return m_iVideoDelay; }
-  void SetSpeed(int iSpeed);
-  std::string GetPlayerInfo();
-  int GetVideoBitrate();
-  std::string GetStereoMode();
-  double GetOutputDelay();
-  double GetSubtitleDelay()                         { return m_iSubtitleDelay; }
-  void SetSubtitleDelay(double delay)               { m_iSubtitleDelay = delay; }
-  void EnableSubtitle(bool bEnable)                 { m_bRenderSubs = bEnable; }
-  bool IsSubtitleEnabled()                          { return m_bRenderSubs; }
-  void EnableFullscreen(bool bEnable)               { m_bAllowFullscreen = bEnable; }
-  float GetAspectRatio()                            { return g_renderManager.GetAspectRatio(); }
-  void SetFlags(unsigned flags)                     { m_flags = flags; };
-  int GetFreeSpace();
+  void SetSpeed(int iSpeed) override;
+  std::string GetPlayerInfo() override;
+  int GetVideoBitrate() override;
+  double GetOutputDelay() override;
+  double GetSubtitleDelay()                         override { return m_iSubtitleDelay; }
+  void SetSubtitleDelay(double delay)               override { m_iSubtitleDelay = delay; }
+  void EnableSubtitle(bool bEnable)                 override { m_bRenderSubs = bEnable; }
+  bool IsSubtitleEnabled()                          override { return m_bRenderSubs; }
+  float GetAspectRatio()                                     { return m_renderManager.GetAspectRatio(); }
   void  SetVideoRect(const CRect &SrcRect, const CRect &DestRect);
-  void GetVideoRect(CRect& SrcRect, CRect& DestRect, CRect& ViewRect) const { g_renderManager.GetVideoRect(SrcRect, DestRect, ViewRect); }
-  static void RenderUpdateCallBack(const void *ctx, const CRect &SrcRect, const CRect &DestRect);
   void ResolutionUpdateCallBack(uint32_t width, uint32_t height, float framerate, float pixel_aspect);
   static void ResolutionUpdateCallBack(void *ctx, uint32_t width, uint32_t height, float framerate, float pixel_aspect);
 };
-#endif

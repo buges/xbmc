@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -80,16 +80,27 @@ public:
   void SaveAuthenticatedURL(const CURL &url, bool saveToProfile = true);
 
   /*!
+   \brief Is an URL is supported (by the manager)
+
+   This routine checks that an URL is supported by the manager
+
+   \param url the URL to check.
+   \return true if the URL is supported
+   \sa CURL, IsURLSupported
+   */
+  bool IsURLSupported(const CURL &url);
+
+  /*!
    \brief Clear any previously cached passwords
    */
   void Clear();
 
 private:
-  // private construction, and no assignements; use the provided singleton methods
+  // private construction, and no assignments; use the provided singleton methods
   CPasswordManager();
-  CPasswordManager(const CPasswordManager&);
-  CPasswordManager const & operator=(CPasswordManager const&);
-  ~CPasswordManager() {};
+  CPasswordManager(const CPasswordManager&) = delete;
+  CPasswordManager& operator=(CPasswordManager const&) = delete;
+  ~CPasswordManager() = default;
 
   void Load();
   void Save() const;

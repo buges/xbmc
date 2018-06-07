@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,8 +29,8 @@ public:
   Crc32();
   void Reset();
   void Compute(const char* buffer, size_t count);
-  void Compute(const std::string& strValue);
-  void ComputeFromLowerCase(const std::string& strValue);
+  static uint32_t Compute(const std::string& strValue);
+  static uint32_t ComputeFromLowerCase(const std::string& strValue);
 
   operator uint32_t () const
   {

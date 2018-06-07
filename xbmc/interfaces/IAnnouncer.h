@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,8 @@ namespace ANNOUNCEMENT
     Application   = 0x040,
     Input         = 0x080,
     PVR           = 0x100,
-    Other         = 0x200
+    Other         = 0x200,
+    Info          = 0x400
   };
 
   #define ANNOUNCE_ALL (Player | Playlist | GUI | System | VideoLibrary | AudioLibrary | Application | Input | ANNOUNCEMENT::PVR | Other)
@@ -68,6 +69,8 @@ namespace ANNOUNCEMENT
       return "PVR";
     case Other:
       return "Other";
+    case Info:
+      return "Info";
     default:
       return "Unknown";
     }
@@ -76,8 +79,8 @@ namespace ANNOUNCEMENT
   class IAnnouncer
   {
   public:
-    IAnnouncer() { };
-    virtual ~IAnnouncer() { };
+    IAnnouncer() = default;
+    virtual ~IAnnouncer() = default;
     virtual void Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) = 0;
   };
 }

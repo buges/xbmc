@@ -2,7 +2,7 @@
  *      Copyright (c) 2002 Frodo
  *      Portions Copyright (c) by the authors of ffmpeg and xvid
  *      Copyright (C) 2002-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #if !defined(AFX_IOSUPPORT_H__F084A488_BD6E_49D5_8CD3_0BE62149DB40__INCLUDED_)
 #define AFX_IOSUPPORT_H__F084A488_BD6E_49D5_8CD3_0BE62149DB40__INCLUDED_
 
-#include "system.h" // for Win32 types
+#include "PlatformDefs.h" // for Win32 types
 
 #pragma once
 
@@ -44,13 +44,13 @@ public:
   static void FreeReadBuffer();
 
   static HANDLE OpenCDROM();
-  static INT ReadSector(HANDLE hDevice, DWORD dwSector, LPSTR lpczBuffer);
-  static INT ReadSectorMode2(HANDLE hDevice, DWORD dwSector, LPSTR lpczBuffer);
-  static INT ReadSectorCDDA(HANDLE hDevice, DWORD dwSector, LPSTR lpczBuffer);
-  static VOID CloseCDROM(HANDLE hDevice);
+  static int ReadSector(HANDLE hDevice, DWORD dwSector, char* lpczBuffer);
+  static int ReadSectorMode2(HANDLE hDevice, DWORD dwSector, char* lpczBuffer);
+  static int ReadSectorCDDA(HANDLE hDevice, DWORD dwSector, char* lpczBuffer);
+  static void CloseCDROM(HANDLE hDevice);
 
 private:
-  static PVOID m_rawXferBuffer;
+  static void* m_rawXferBuffer;
 };
 
 #endif // !defined(AFX_IOSUPPORT_H__F084A488_BD6E_49D5_8CD3_0BE62149DB40__INCLUDED_)

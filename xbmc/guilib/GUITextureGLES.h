@@ -1,16 +1,8 @@
-/*!
-\file GUITextureGLES.h
-\brief
-*/
-
-#ifndef GUILIB_GUITEXTUREGLES_H
-#define GUILIB_GUITEXTUREGLES_H
-
 #pragma once
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,6 +24,7 @@
 
 #include "system_gl.h"
 #include <vector>
+#include "utils/Color.h"
 
 struct PackedVertex
 {
@@ -41,13 +34,15 @@ struct PackedVertex
 };
 typedef std::vector<PackedVertex> PackedVertices;
 
+class CRenderSystemGLES;
+
 class CGUITextureGLES : public CGUITextureBase
 {
 public:
   CGUITextureGLES(float posX, float posY, float width, float height, const CTextureInfo& texture);
-  static void DrawQuad(const CRect &coords, color_t color, CBaseTexture *texture = NULL, const CRect *texCoords = NULL);
+  static void DrawQuad(const CRect &coords, UTILS::Color color, CBaseTexture *texture = NULL, const CRect *texCoords = NULL);
 protected:
-  void Begin(color_t color);
+  void Begin(UTILS::Color color);
   void Draw(float *x, float *y, float *z, const CRect &texture, const CRect &diffuse, int orientation);
   void End();
 
@@ -55,6 +50,6 @@ protected:
 
   PackedVertices m_packedVertices;
   std::vector<GLushort> m_idx;
+  CRenderSystemGLES *m_renderSystem;
 };
 
-#endif

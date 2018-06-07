@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,21 +35,19 @@ namespace CEC
 namespace PERIPHERALS
 {
   class CPeripherals;
-  class DllLibCEC;
 
   class CPeripheralBusCEC : public CPeripheralBus
   {
   public:
-    CPeripheralBusCEC(CPeripherals *manager);
-    virtual ~CPeripheralBusCEC(void);
+    explicit CPeripheralBusCEC(CPeripherals& manager);
+    ~CPeripheralBusCEC(void) override;
 
     /*!
      * @see PeripheralBus::PerformDeviceScan()
      */
-    bool PerformDeviceScan(PeripheralScanResults &results);
+    bool PerformDeviceScan(PeripheralScanResults &results) override;
 
   private:
-    DllLibCEC*                m_dll;
     CEC::ICECAdapter*         m_cecAdapter;
     CEC::libcec_configuration m_configuration;
   };

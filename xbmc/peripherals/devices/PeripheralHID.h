@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,11 +27,11 @@ namespace PERIPHERALS
   class CPeripheralHID : public CPeripheral
   {
   public:
-    CPeripheralHID(const PeripheralScanResult& scanResult);
-    virtual ~CPeripheralHID(void);
-    virtual bool InitialiseFeature(const PeripheralFeature feature);
+    CPeripheralHID(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus);
+    ~CPeripheralHID(void) override;
+    bool InitialiseFeature(const PeripheralFeature feature) override;
     virtual bool LookupSymAndUnicode(XBMC_keysym &keysym, uint8_t *key, char *unicode) { return false; }
-    virtual void OnSettingChanged(const std::string &strChangedSetting);
+    void OnSettingChanged(const std::string &strChangedSetting) override;
 
   protected:
     std::string m_strKeymap;

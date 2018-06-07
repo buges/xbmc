@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,19 +26,19 @@ class CGUIWindowVideoPlaylist : public CGUIWindowVideoBase
 {
 public:
   CGUIWindowVideoPlaylist(void);
-  virtual ~CGUIWindowVideoPlaylist(void);
+  ~CGUIWindowVideoPlaylist(void) override;
 
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
-  virtual bool OnBack(int actionID);
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
+  bool OnBack(int actionID) override;
 
 protected:
-  virtual bool OnPlayMedia(int iItem);
-  virtual void UpdateButtons();
+  bool OnPlayMedia(int iItem, const std::string &player = "") override;
+  void UpdateButtons() override;
   void MarkPlaying();
 
-  virtual void GetContextButtons(int itemNumber, CContextButtons &buttons);
-  virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
+  void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
+  bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
 
   void OnMove(int iItem, int iAction);
 

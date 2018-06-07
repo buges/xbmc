@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,9 +27,11 @@ class CGUIDialogSlider : public CGUIDialog
 {
 public:
   CGUIDialogSlider();
-  virtual ~CGUIDialogSlider(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
+  ~CGUIDialogSlider(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
+
+  void SetModalityType(DialogModalityType type);
 
   /*! \brief Show the slider dialog and wait for the user to change the value
    Shows the slider until the user is happy with the adjusted value.  Calls back with each change to the callback function
@@ -59,7 +61,7 @@ public:
   static void Display(int label, float value, float min, float delta, float max, ISliderCallback *callback);
 protected:
   void SetSlider(const std::string &label, float value, float min, float delta, float max, ISliderCallback *callback, void *callbackData);
-  virtual void OnWindowLoaded();
+  void OnWindowLoaded() override;
 
   ISliderCallback *m_callback;
   void *m_callbackData;

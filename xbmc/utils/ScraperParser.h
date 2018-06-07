@@ -3,7 +3,7 @@
 
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ private:
    to a different type of XML document, ready to be output direct
    to the album loaders or similar
    \param input the input document
-   \param dest the output destation for the conversion
+   \param dest the output destination for the conversion
    \param element the current XML element
    \param bAppend append or clear the buffer
    */

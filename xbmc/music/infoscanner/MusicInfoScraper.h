@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
  *
  */
 
+#include <vector>
+
 #include "MusicAlbumInfo.h"
 #include "MusicArtistInfo.h"
 #include "addons/Scraper.h"
@@ -35,8 +37,8 @@ namespace MUSIC_GRABBER
 class CMusicInfoScraper : public CThread
 {
 public:
-  CMusicInfoScraper(const ADDON::ScraperPtr &scraper);
-  virtual ~CMusicInfoScraper(void);
+  explicit CMusicInfoScraper(const ADDON::ScraperPtr &scraper);
+  ~CMusicInfoScraper(void) override;
   void FindAlbumInfo(const std::string& strAlbum, const std::string& strArtist = "");
   void LoadAlbumInfo(int iAlbum);
   void FindArtistInfo(const std::string& strArtist);
@@ -74,8 +76,8 @@ protected:
   void LoadAlbumInfo();
   void FindArtistInfo();
   void LoadArtistInfo();
-  virtual void OnStartup();
-  virtual void Process();
+  void OnStartup() override;
+  void Process() override;
   std::vector<CMusicAlbumInfo> m_vecAlbums;
   std::vector<CMusicArtistInfo> m_vecArtists;
   std::string m_strAlbum;

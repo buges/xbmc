@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,16 +18,13 @@
  *
  */
 
-#include "system.h"
 #include <cassert>
-
-#if defined(TARGET_RASPBERRY_PI)
 
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "ActiveAEResamplePi.h"
 #include "settings/Settings.h"
 #include "utils/log.h"
-#include "linux/RBP.h"
+#include "platform/linux/RBP.h"
 
 extern "C" {
 #include "libavutil/channel_layout.h"
@@ -114,7 +111,12 @@ bool CActiveAEResamplePi::Init(uint64_t dst_chan_layout, int dst_channels, int d
 {
   LOGTIMEINIT("x");
 
-  CLog::Log(LOGINFO, "%s::%s remap:%p chan:%d->%d rate:%d->%d format:%d->%d bits:%d->%d dither:%d->%d norm:%d upmix:%d", CLASSNAME, __func__, remapLayout, src_channels, dst_channels, src_rate, dst_rate, src_fmt, dst_fmt, src_bits, dst_bits, src_dither, dst_dither, normalize, upmix);
+  CLog::Log(LOGINFO,
+            "%s::%s remap:%p chan:%d->%d rate:%d->%d format:%d->%d bits:%d->%d dither:%d->%d "
+            "norm:%d upmix:%d",
+            CLASSNAME, __func__, static_cast<void*>(remapLayout), src_channels, dst_channels,
+            src_rate, dst_rate, src_fmt, dst_fmt, src_bits, dst_bits, src_dither, dst_dither,
+            normalize, upmix);
 
   m_dst_chan_layout = dst_chan_layout;
   m_dst_channels = dst_channels;
@@ -592,5 +594,3 @@ int CActiveAEResamplePi::GetDstBufferSize(int samples)
   #endif
   return ret;
 }
-
-#endif

@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include <string>
 #include <vector>
-#include "GUIPassword.h"
+#include "LockType.h"
 
 /*!
 \ingroup windows
@@ -42,13 +42,13 @@ public:
     SOURCE_TYPE_REMOVABLE    = 6
   };
   CMediaSource() { m_iDriveType=SOURCE_TYPE_UNKNOWN; m_iLockMode=LOCK_MODE_EVERYONE; m_iBadPwdCount=0; m_iHasLock=0; m_ignore=false; m_allowSharing=true; };
-  virtual ~CMediaSource() {};
+  virtual ~CMediaSource() = default;
 
   bool operator==(const CMediaSource &right) const;
 
   void FromNameAndPaths(const std::string &category, const std::string &name, const std::vector<std::string> &paths);
   bool IsWritable() const;
-  std::string strName; ///< Name of the share, can be choosen freely.
+  std::string strName; ///< Name of the share, can be chosen freely.
   std::string strStatus; ///< Status of the share (eg has disk etc.)
   std::string strDiskUniqueId; ///< removable:// + DVD Label + DVD ID for resume point storage, if available
   std::string strPath; ///< Path of the share, eg. iso9660:// or F:

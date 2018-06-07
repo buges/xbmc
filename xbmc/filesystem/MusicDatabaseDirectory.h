@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,15 +29,14 @@ namespace XFILE
   {
   public:
     CMusicDatabaseDirectory(void);
-    virtual ~CMusicDatabaseDirectory(void);
-    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
-    virtual bool AllowAll() const { return true; }
-    virtual bool Exists(const CURL& url);
+    ~CMusicDatabaseDirectory(void) override;
+    bool GetDirectory(const CURL& url, CFileItemList &items) override;
+    bool AllowAll() const override { return true; }
+    bool Exists(const CURL& url) override;
     static MUSICDATABASEDIRECTORY::NODE_TYPE GetDirectoryChildType(const std::string& strPath);
     static MUSICDATABASEDIRECTORY::NODE_TYPE GetDirectoryType(const std::string& strPath);
     static MUSICDATABASEDIRECTORY::NODE_TYPE GetDirectoryParentType(const std::string& strPath);
     bool IsArtistDir(const std::string& strDirectory);
-    bool HasAlbumInfo(const std::string& strDirectory);
     void ClearDirectoryCache(const std::string& strDirectory);
     static bool IsAllItem(const std::string& strDirectory);
     static bool GetLabel(const std::string& strDirectory, std::string& strLabel);

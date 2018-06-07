@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,16 +22,18 @@
 
 #include "guilib/GUIWindow.h"
 
+class CFileItemList;
+
 class CGUIWindowSettingsProfile :
       public CGUIWindow
 {
 public:
   CGUIWindowSettingsProfile(void);
-  virtual ~CGUIWindowSettingsProfile(void);
-  virtual bool OnMessage(CGUIMessage& message);
+  ~CGUIWindowSettingsProfile(void) override;
+  bool OnMessage(CGUIMessage& message) override;
 
 protected:
-  virtual void OnInitWindow();
+  void OnInitWindow() override;
   CFileItemList *m_listItems;
 
   void OnPopupMenu(int iItem);

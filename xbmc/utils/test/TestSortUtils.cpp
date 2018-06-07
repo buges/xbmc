@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -125,9 +125,11 @@ TEST(TestSortUtils, GetFieldsForSorting)
   EXPECT_EQ(FieldAlbum, *it);
   it = fields.find(FieldArtist);
   EXPECT_EQ(FieldArtist, *it);
+  it = fields.find(FieldArtistSort);
+  EXPECT_EQ(FieldArtistSort, *it);
   it = fields.find(FieldYear);
   EXPECT_EQ(FieldYear, *it);
   it = fields.find(FieldTrackNumber);
   EXPECT_EQ(FieldTrackNumber, *it);
-  EXPECT_EQ((unsigned int)4, fields.size());
+  EXPECT_EQ((unsigned int)5, fields.size());
 }

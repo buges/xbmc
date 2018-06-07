@@ -21,6 +21,10 @@
 %module xbmcvfs
 
 %{
+#if defined(TARGET_WINDOWS)
+#  include <windows.h>
+#endif
+
 #include "interfaces/legacy/ModuleXbmcvfs.h"
 #include "interfaces/legacy/File.h"
 #include "interfaces/legacy/Stat.h"
@@ -29,7 +33,7 @@
 using namespace XBMCAddon;
 using namespace xbmcvfs;
 
-#if defined(__GNUG__) && (__GNUC__>4) || (__GNUC__==4 && __GNUC_MINOR__>=2)
+#if defined(__GNUG__)
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 

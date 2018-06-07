@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013-2015 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,60 +19,60 @@
  *
  */
 
-#include <map>
-#include "addons/ContextItemAddon.h"
+#include <utility>
+#include <vector>
+
+#include "addons/ContextMenuAddon.h"
+#include "ContextMenuItem.h"
 #include "dialogs/GUIDialogContextMenu.h"
 
-#define CONTEXT_MENU_GROUP_MANAGE "kodi.core.manage"
+
+using ContextMenuView = std::vector<std::shared_ptr<const IContextMenuItem>>;
 
 class CContextMenuManager
 {
 public:
-  static CContextMenuManager& Get();
+  static const CContextMenuItem MAIN;
+  static const CContextMenuItem MANAGE;
 
-  /*!
-   * \brief Executes a context menu item.
-   * \param id - id of the context button to execute.
-   * \param item - the currently selected item.
-   * \return true if executed successfully, false otherwise
-   */
-  bool Execute(unsigned int id, const CFileItemPtr& item);
-
-  /*!
-   * \brief Adds all registered context item to the list.
-   * \param item - the currently selected item.
-   * \param list - the context menu.
-   * \param parent - the ID of the context menu. Empty string if the root menu.
-   * CONTEXT_MENU_GROUP_MANAGE if the 'manage' submenu.
-   */
-  void AddVisibleItems(const CFileItemPtr& item, CContextButtons& list, const std::string& parent = "");
-
-  /*!
-   * \brief Adds a context item to this manager.
-   * NOTE: only 'enabled' context addons should be added.
-   */
-  void Register(const ADDON::ContextItemAddonPtr& cm);
-
-  /*!
-   * \brief Removes a context addon from this manager.
-   */
-  bool Unregister(const ADDON::ContextItemAddonPtr& cm);
-
-private:
-  CContextMenuManager();
-  CContextMenuManager(const CContextMenuManager&);
-  CContextMenuManager const& operator=(CContextMenuManager const&);
-  virtual ~CContextMenuManager() {}
+  explicit CContextMenuManager(ADDON::CAddonMgr& addonMgr);
+  ~CContextMenuManager();
 
   void Init();
+  void Deinit();
+
+  ContextMenuView GetItems(const CFileItem& item, const CContextMenuItem& root = MAIN) const;
+
+  ContextMenuView GetAddonItems(const CFileItem& item, const CContextMenuItem& root = MAIN) const;
+
+private:
+  CContextMenuManager(const CContextMenuManager&) = delete;
+  CContextMenuManager& operator=(CContextMenuManager const&) = delete;
+
+  bool IsVisible(
+    const CContextMenuItem& menuItem,
+    const CContextMenuItem& root,
+    const CFileItem& fileItem) const;
+
+  void ReloadAddonItems();
+  void OnEvent(const ADDON::AddonEvent& event);
+
+  ADDON::CAddonMgr& m_addonMgr;
+
+  CCriticalSection m_criticalSection;
+  std::vector<CContextMenuItem> m_addonItems;
+  std::vector<std::shared_ptr<IContextMenuItem>> m_items;
+};
+
+namespace CONTEXTMENU
+{
+  /*!
+   * Starts the context menu loop for a file item.
+   * */
+  bool ShowFor(const CFileItemPtr& fileItem, const CContextMenuItem& root=CContextMenuManager::MAIN);
 
   /*!
-   * \brief Get a context menu item by its assigned id.
-   * \param id - the button id of the context item.
-   * \return the addon or NULL if no item with given id is registered.
+   * Shortcut for continuing the context menu loop from an existing menu item.
    */
-  ADDON::ContextItemAddonPtr GetContextItemByID(const unsigned int id);
-
-  std::map<unsigned int, ADDON::ContextItemAddonPtr> m_contextAddons;
-  unsigned int m_iCurrentContextId;
-};
+  bool LoopFrom(const IContextMenuItem& menu, const CFileItemPtr& fileItem);
+}

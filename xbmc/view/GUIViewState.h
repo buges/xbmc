@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#include <vector>
 
 #include "utils/LabelFormatter.h"
 #include "utils/SortUtils.h"
@@ -37,11 +39,13 @@ public:
   void SaveViewAsControl(int viewAsControl);
   int GetViewAsControl() const;
 
+  bool ChooseSortMethod();
   SortDescription SetNextSortMethod(int direction = 1);
   void SetCurrentSortMethod(int method);
   SortDescription GetSortMethod() const;
   bool HasMultipleSortMethods() const;
   int GetSortMethodLabel() const;
+  int GetSortOrderLabel() const;
   void GetSortMethodLabelMasks(LABEL_MASKS& masks) const;
 
   SortOrder SetNextSortOrder();
@@ -62,7 +66,7 @@ public:
   virtual VECSOURCES& GetSources();
 
 protected:
-  CGUIViewState(const CFileItemList& items);  // no direct object creation, use GetViewState()
+  explicit CGUIViewState(const CFileItemList& items);  // no direct object creation, use GetViewState()
 
   virtual void SaveViewState() = 0;
   virtual void SaveViewToDb(const std::string &path, int windowID, CViewState *viewState = NULL);
@@ -74,9 +78,6 @@ protected:
    \param thumb the skin image to use as the icon
    */
   void AddAddonsSource(const std::string &content, const std::string &label, const std::string& thumb);
-#if defined(TARGET_ANDROID)
-  void AddAndroidSource(const std::string &content, const std::string &label, const std::string& thumb);
-#endif
   void AddLiveTVSources();
 
   /*! \brief Add the sort order defined in a smartplaylist
@@ -108,26 +109,27 @@ protected:
 class CGUIViewStateGeneral : public CGUIViewState
 {
 public:
-  CGUIViewStateGeneral(const CFileItemList& items);
+  explicit CGUIViewStateGeneral(const CFileItemList& items);
 
 protected:
-  virtual void SaveViewState() { }
+  void SaveViewState() override { }
 };
 
 class CGUIViewStateFromItems : public CGUIViewState
 {
 public:
-  CGUIViewStateFromItems(const CFileItemList& items);
+  explicit CGUIViewStateFromItems(const CFileItemList& items);
+  bool AutoPlayNextItem() override;
 
 protected:
-  virtual void SaveViewState();
+  void SaveViewState() override;
 };
 
 class CGUIViewStateLibrary : public CGUIViewState
 {
 public:
-  CGUIViewStateLibrary(const CFileItemList& items);
+  explicit CGUIViewStateLibrary(const CFileItemList& items);
 
 protected:
-  virtual void SaveViewState();
+  void SaveViewState() override;
 };

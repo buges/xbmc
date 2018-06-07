@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -105,15 +105,17 @@ void Crc32::Compute(const char* buffer, size_t count)
       m_crc = (m_crc << 8) ^ crc_tab[((m_crc >> 24) ^ *buffer++) & 0xFF];
 }
 
-void Crc32::Compute(const std::string& strValue)
+uint32_t Crc32::Compute(const std::string& strValue)
 {
-  Compute(strValue.c_str(), strValue.size());
+  Crc32 crc;
+  crc.Compute(strValue.c_str(), strValue.size());
+  return crc;
 }
 
-void Crc32::ComputeFromLowerCase(const std::string& strValue)
+uint32_t Crc32::ComputeFromLowerCase(const std::string& strValue)
 {
   std::string strLower = strValue;
   StringUtils::ToLower(strLower);
-  Compute(strLower.c_str(), strLower.size());
+  return Compute(strLower.c_str());
 }
 

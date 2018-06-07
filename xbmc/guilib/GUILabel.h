@@ -7,7 +7,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,9 +26,10 @@
  */
 
 #include "GUITextLayout.h"
-#include "GUIInfoTypes.h"
+#include "guiinfo/GUIInfoTypes.h"
 #include "GUIFont.h"
-#include "Geometry.h"
+#include "utils/Color.h"
+#include "utils/Geometry.h"
 
 class CLabelInfo
 {
@@ -57,12 +58,12 @@ public:
     return changed;
   };
   
-  CGUIInfoColor textColor;
-  CGUIInfoColor shadowColor;
-  CGUIInfoColor selectedColor;
-  CGUIInfoColor disabledColor;
-  CGUIInfoColor focusedColor;
-  CGUIInfoColor invalidColor;
+  KODI::GUILIB::GUIINFO::CGUIInfoColor textColor;
+  KODI::GUILIB::GUIINFO::CGUIInfoColor shadowColor;
+  KODI::GUILIB::GUIINFO::CGUIInfoColor selectedColor;
+  KODI::GUILIB::GUIINFO::CGUIInfoColor disabledColor;
+  KODI::GUILIB::GUIINFO::CGUIInfoColor focusedColor;
+  KODI::GUILIB::GUIINFO::CGUIInfoColor invalidColor;
   uint32_t align;
   float offsetX;
   float offsetY;
@@ -108,8 +109,8 @@ public:
   void Render();
   
   /*! \brief Set the maximal extent of the label
-   Sets the maximal size and positioning that the label may render in.  Note that <textwidth> can override
-   this, and <textoffsetx> and <textoffsety> may also allow the label to be moved outside this rectangle.
+   Sets the maximal size and positioning that the label may render in.  Note that `textwidth>` can override
+   this, and `<textoffsetx>` and `<textoffsety>` may also allow the label to be moved outside this rectangle.
    */
   bool SetMaxRect(float x, float y, float w, float h);
 
@@ -135,7 +136,7 @@ public:
    \param colors colors referenced in the styled text.
    \sa SetText, SetTextW
    */
-  bool SetStyledText(const vecText &text, const vecColors &colors);
+  bool SetStyledText(const vecText &text, const std::vector<UTILS::Color> &colors);
 
   /*! \brief Set the color to use for the label
    Sets the color to be used for this label.  Takes effect at the next render
@@ -154,6 +155,10 @@ public:
    \param scrolling true if this label should scroll.
    */
   bool SetScrolling(bool scrolling);
+
+  /*! \brief Set max. text scroll count
+  */
+  void SetScrollLoopCount(unsigned int loopCount) { m_maxScrollLoops = loopCount; };
 
   /*! \brief Set how this label should handle overflowing text.
    \param overflow the overflow type
@@ -221,7 +226,7 @@ public:
   static bool CheckAndCorrectOverlap(CGUILabel &label1, CGUILabel &label2);
   
 protected:
-  color_t GetColor() const;
+  UTILS::Color GetColor() const;
   
   /*! \brief Computes the final layout of the text
    Uses the maximal position and width of the text, as well as the text length
@@ -236,10 +241,10 @@ private:
 
   bool           m_scrolling;
   OVER_FLOW      m_overflowType;
-  bool           m_selected;
   CScrollInfo    m_scrollInfo;
   CRect          m_renderRect;   ///< actual sizing of text
   CRect          m_maxRect;      ///< maximum sizing of text
   bool           m_invalid;      ///< if true, the label needs recomputing
   COLOR          m_color;        ///< color to render text \sa SetColor, GetColor
+  unsigned int   m_maxScrollLoops = ~0U;
 };

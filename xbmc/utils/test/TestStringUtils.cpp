@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -266,35 +266,35 @@ TEST(TestStringUtils, Split)
 
   EXPECT_TRUE(StringUtils::Split("", "|").empty());
 
-  EXPECT_EQ(4, StringUtils::Split("a bc  d ef ghi ", " ", 4).size());
+  EXPECT_EQ(4U, StringUtils::Split("a bc  d ef ghi ", " ", 4).size());
   EXPECT_STREQ("d ef ghi ", StringUtils::Split("a bc  d ef ghi ", " ", 4).at(3).c_str()) << "Last part must include rest of the input string";
-  EXPECT_EQ(7, StringUtils::Split("a bc  d ef ghi ", " ").size()) << "Result must be 7 strings including two empty strings";
+  EXPECT_EQ(7U, StringUtils::Split("a bc  d ef ghi ", " ").size()) << "Result must be 7 strings including two empty strings";
   EXPECT_STREQ("bc", StringUtils::Split("a bc  d ef ghi ", " ").at(1).c_str());
   EXPECT_STREQ("", StringUtils::Split("a bc  d ef ghi ", " ").at(2).c_str());
   EXPECT_STREQ("", StringUtils::Split("a bc  d ef ghi ", " ").at(6).c_str());
 
-  EXPECT_EQ(2, StringUtils::Split("a bc  d ef ghi ", "  ").size());
-  EXPECT_EQ(2, StringUtils::Split("a bc  d ef ghi ", "  ", 10).size());
+  EXPECT_EQ(2U, StringUtils::Split("a bc  d ef ghi ", "  ").size());
+  EXPECT_EQ(2U, StringUtils::Split("a bc  d ef ghi ", "  ", 10).size());
   EXPECT_STREQ("a bc", StringUtils::Split("a bc  d ef ghi ", "  ", 10).at(0).c_str());
 
-  EXPECT_EQ(1, StringUtils::Split("a bc  d ef ghi ", " z").size());
+  EXPECT_EQ(1U, StringUtils::Split("a bc  d ef ghi ", " z").size());
   EXPECT_STREQ("a bc  d ef ghi ", StringUtils::Split("a bc  d ef ghi ", " z").at(0).c_str());
 
-  EXPECT_EQ(1, StringUtils::Split("a bc  d ef ghi ", "").size());
+  EXPECT_EQ(1U, StringUtils::Split("a bc  d ef ghi ", "").size());
   EXPECT_STREQ("a bc  d ef ghi ", StringUtils::Split("a bc  d ef ghi ", "").at(0).c_str());
   
   // test overload with char as delimiter
-  EXPECT_EQ(4, StringUtils::Split("a bc  d ef ghi ", ' ', 4).size());
+  EXPECT_EQ(4U, StringUtils::Split("a bc  d ef ghi ", ' ', 4).size());
   EXPECT_STREQ("d ef ghi ", StringUtils::Split("a bc  d ef ghi ", ' ', 4).at(3).c_str());
-  EXPECT_EQ(7, StringUtils::Split("a bc  d ef ghi ", ' ').size()) << "Result must be 7 strings including two empty strings";
+  EXPECT_EQ(7U, StringUtils::Split("a bc  d ef ghi ", ' ').size()) << "Result must be 7 strings including two empty strings";
   EXPECT_STREQ("bc", StringUtils::Split("a bc  d ef ghi ", ' ').at(1).c_str());
   EXPECT_STREQ("", StringUtils::Split("a bc  d ef ghi ", ' ').at(2).c_str());
   EXPECT_STREQ("", StringUtils::Split("a bc  d ef ghi ", ' ').at(6).c_str());
 
-  EXPECT_EQ(1, StringUtils::Split("a bc  d ef ghi ", 'z').size());
+  EXPECT_EQ(1U, StringUtils::Split("a bc  d ef ghi ", 'z').size());
   EXPECT_STREQ("a bc  d ef ghi ", StringUtils::Split("a bc  d ef ghi ", 'z').at(0).c_str());
 
-  EXPECT_EQ(1, StringUtils::Split("a bc  d ef ghi ", "").size());
+  EXPECT_EQ(1U, StringUtils::Split("a bc  d ef ghi ", "").size());
   EXPECT_STREQ("a bc  d ef ghi ", StringUtils::Split("a bc  d ef ghi ", 'z').at(0).c_str());
 }
 
@@ -524,4 +524,39 @@ TEST(TestStringUtils, sortstringbyname)
   EXPECT_STREQ("a", strarray[0].c_str());
   EXPECT_STREQ("B", strarray[1].c_str());
   EXPECT_STREQ("c", strarray[2].c_str());
+}
+
+TEST(TestStringUtils, FileSizeFormat)
+{
+  EXPECT_STREQ("0B", StringUtils::FormatFileSize(0).c_str());
+
+  EXPECT_STREQ("999B", StringUtils::FormatFileSize(999).c_str());
+  EXPECT_STREQ("0.98kB", StringUtils::FormatFileSize(1000).c_str());
+
+  EXPECT_STREQ("1.00kB", StringUtils::FormatFileSize(1024).c_str());
+  EXPECT_STREQ("9.99kB", StringUtils::FormatFileSize(10229).c_str());
+
+  EXPECT_STREQ("10.1kB", StringUtils::FormatFileSize(10387).c_str());
+  EXPECT_STREQ("99.9kB", StringUtils::FormatFileSize(102297).c_str());
+
+  EXPECT_STREQ("100kB", StringUtils::FormatFileSize(102400).c_str());
+  EXPECT_STREQ("999kB", StringUtils::FormatFileSize(1023431).c_str());
+
+  EXPECT_STREQ("0.98MB", StringUtils::FormatFileSize(1023897).c_str());
+  EXPECT_STREQ("0.98MB", StringUtils::FormatFileSize(1024000).c_str());
+
+  //Last unit should overflow the 3 digit limit
+  EXPECT_STREQ("5432PB", StringUtils::FormatFileSize(6115888293969133568).c_str());
+}
+
+TEST(TestStringUtils, ToHexadecimal)
+{
+  EXPECT_STREQ("", StringUtils::ToHexadecimal("").c_str());
+  EXPECT_STREQ("616263", StringUtils::ToHexadecimal("abc").c_str());
+  std::string a{"a\0b\n", 4};
+  EXPECT_STREQ("6100620a", StringUtils::ToHexadecimal(a).c_str());
+  std::string nul{"\0", 1};
+  EXPECT_STREQ("00", StringUtils::ToHexadecimal(nul).c_str());
+  std::string ff{"\xFF", 1};
+  EXPECT_STREQ("ff", StringUtils::ToHexadecimal(ff).c_str());
 }

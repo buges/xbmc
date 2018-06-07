@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -83,7 +83,7 @@ bool CXBMCTinyXML::LoadFile(const std::string& _filename, TiXmlEncoding encoding
   buffer.clear(); // free memory early
 
   if (encoding == TIXML_ENCODING_UNKNOWN)
-    Parse(data, file.GetContentCharset());
+    Parse(data, file.GetProperty(XFILE::FILE_PROPERTY_CONTENT_CHARSET));
   else
     Parse(data, encoding);
 
@@ -125,11 +125,6 @@ bool CXBMCTinyXML::SaveFile(const std::string& filename) const
     return file.Write(printer.CStr(), printer.Size()) == static_cast<ssize_t>(printer.Size());
   }
   return false;
-}
-
-bool CXBMCTinyXML::Parse(const char *_data, TiXmlEncoding encoding)
-{
-  return Parse(std::string(_data), encoding);
 }
 
 bool CXBMCTinyXML::Parse(const std::string& data, const std::string& dataCharset)
@@ -262,7 +257,7 @@ bool CXBMCTinyXML::Test()
                   "http://api.themoviedb.org/3/movie/12244"
                   "?api_key=57983e31fb435df4df77afb854740ea9"
                   "&language=en&#x3f;&#x003F;&#0063;</url></details>");
-  doc.Parse(data.c_str());
+  doc.Parse(data, TIXML_DEFAULT_ENCODING);
   TiXmlNode *root = doc.RootElement();
   if (root && root->ValueStr() == "details")
   {

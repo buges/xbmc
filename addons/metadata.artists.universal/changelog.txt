@@ -1,3 +1,27 @@
+[B]4.1.0[/B]
+added: Artist type, gender and disambiguation from MusicBrainz
+
+[B]4.0.0[/B]
+added: Artist Clearlogo from fanart.tv; bump version for Leia
+
+[B]3.7.3[/B]
+cleanup: sources and options what won't work
+
+[B]3.7.2[/B]
+Fixed: another try to fix all scenarios for mbid resolution
+
+[B]3.7.1[/B]
+Fixed: mbid resolution under certain scenarios
+
+[B]3.7.0[/B]
+Added: ability to define MusicBrainz mirror
+
+[B]3.6.2[/B]
+Update author name
+
+[B]3.6.1[/B]
+Fixed: Won't scrape MBID randomly
+
 [B]3.6.0[/B]
 Changed: Language is now a selection list
 

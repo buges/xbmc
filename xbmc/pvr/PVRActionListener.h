@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2015 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,18 +21,31 @@
  */
 
 #include "interfaces/IActionListener.h"
+#include "settings/lib/ISettingCallback.h"
 
-class CPVRActionListener : public IActionListener
+namespace PVR
+{
+
+enum class ChannelSwitchMode;
+
+class CPVRActionListener : public IActionListener, public ISettingCallback
 {
 public:
+  CPVRActionListener();
+  ~CPVRActionListener() override;
 
-  static CPVRActionListener &Get();
+  // IActionListener implementation
+  bool OnAction(const CAction &action) override;
 
-  bool OnAction(const CAction &action);
+  // ISettingCallback implementation
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
 
 private:
-  CPVRActionListener();
-  CPVRActionListener(const CPVRActionListener&);
-  CPVRActionListener& operator=(const CPVRActionListener&);
-  ~CPVRActionListener() {};
+  CPVRActionListener(const CPVRActionListener&) = delete;
+  CPVRActionListener& operator=(const CPVRActionListener&) = delete;
+
+  static ChannelSwitchMode GetChannelSwitchMode(int iAction);
 };
+
+} // namespace PVR

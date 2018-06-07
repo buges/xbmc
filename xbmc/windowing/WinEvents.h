@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,31 +18,14 @@
  *
  */
 
-#ifndef WINDOW_EVENTS_H
-#define WINDOW_EVENTS_H
-
 #pragma once
 
-#include "utils/Observer.h"
 #include "XBMC_events.h"
 
-typedef bool (* PHANDLE_EVENT_FUNC)(XBMC_Event& newEvent);
-
-class IWinEvents : public Observer
+class IWinEvents
 {
-  public:
-    virtual       ~IWinEvents() {};
-    virtual bool  MessagePump()   = 0;
-    virtual size_t GetQueueSize()  = 0;
-    virtual void  MessagePush(XBMC_Event* ev) {};
-    virtual void  Notify(const Observable &obs, const ObservableMessage msg) {};
-};
-class CWinEvents
-{
-  public:
-    static void MessagePush(XBMC_Event* ev);
-    static bool MessagePump();
-    static size_t GetQueueSize();
+public:
+  virtual ~IWinEvents() = default;
+  virtual bool  MessagePump() = 0;
 };
 
-#endif // WINDOW_EVENTS_H

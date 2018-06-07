@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,24 +18,23 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
-
 // python.h should always be included first before any other includes
 #include <Python.h>
+#include <iterator>
 #include <osdefs.h>
 
-#include "system.h"
 #include "PythonInvoker.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "ServiceBroker.h"
+#include "messaging/ApplicationMessenger.h"
 #include "addons/AddonManager.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
-#include "guilib/GraphicContext.h"
+#include "guilib/GUIComponent.h"
+#include "windowing/GraphicContext.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "interfaces/legacy/Addon.h"
 #include "interfaces/python/LanguageHook.h"
 #include "interfaces/python/PyContext.h"
@@ -49,6 +48,9 @@
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#ifdef TARGET_POSIX
+#include "platform/linux/XTimeUtils.h"
+#endif
 
 #ifdef TARGET_WINDOWS
 extern "C" FILE *fopen_utf8(const char *_Filename, const char *_Mode);
@@ -65,8 +67,8 @@ extern "C" FILE *fopen_utf8(const char *_Filename, const char *_Mode);
 // Time before ill-behaved scripts are terminated
 #define PYTHON_SCRIPT_TIMEOUT 5000 // ms
 
-using namespace std;
 using namespace XFILE;
+using namespace KODI::MESSAGING;
 
 extern "C"
 {
@@ -96,9 +98,28 @@ static const std::string getListOfAddonClassesAsString(XBMCAddon::AddonClass::Re
   return message;
 }
 
+static std::vector<std::vector<char>> storeArgumentsCCompatible(std::vector<std::string> const & input)
+{
+  std::vector<std::vector<char>> output;
+  std::transform(input.begin(), input.end(), std::back_inserter(output),
+                [](std::string const & i) { return std::vector<char>(i.c_str(), i.c_str() + i.length() + 1); });
+
+  if (output.empty())
+    output.push_back(std::vector<char>(1u, '\0'));
+
+  return output;
+}
+
+static std::vector<char *> getCPointersToArguments(std::vector<std::vector<char>> & input)
+{
+  std::vector<char *> output;
+  std::transform(input.begin(), input.end(), std::back_inserter(output), 
+                [](std::vector<char> & i) { return &i[0]; });
+  return output;
+}
+
 CPythonInvoker::CPythonInvoker(ILanguageInvocationHandler *invocationHandler)
   : ILanguageInvoker(invocationHandler),
-    m_argc(0), m_argv(NULL),
     m_threadState(NULL), m_stop(false)
 { }
 
@@ -115,12 +136,6 @@ CPythonInvoker::~CPythonInvoker()
   Stop(true);
   pulseGlobalEvent();
 
-  if (m_argv != NULL)
-  {
-    for (unsigned int i = 0; i < m_argc; i++)
-      delete [] m_argv[i];
-    delete [] m_argv;
-  }
   onExecutionFinalized();
 }
 
@@ -147,13 +162,9 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
   m_sourceFile = script;
 
   // copy the arguments into a local buffer
-  m_argc = arguments.size();
-  m_argv = new char*[m_argc];
-  for (unsigned int i = 0; i < m_argc; i++)
-  {
-    m_argv[i] = new char[arguments.at(i).length() + 1];
-    strcpy(m_argv[i], arguments.at(i).c_str());
-  }
+  unsigned int argc = arguments.size();
+  std::vector<std::vector<char>> argvStorage = storeArgumentsCCompatible(arguments);
+  std::vector<char *> argv = getCPointersToArguments(argvStorage);
 
   CLog::Log(LOGDEBUG, "CPythonInvoker(%d, %s): start processing", GetId(), m_sourceFile.c_str());
 
@@ -187,7 +198,7 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
   URIUtils::RemoveSlashAtEnd(scriptDir);
   addPath(scriptDir);
 
-  // add all addon module dependecies to path
+  // add all addon module dependencies to path
   if (m_addon)
   {
     std::set<std::string> paths;
@@ -202,7 +213,7 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
         "modules installed to python path as fallback. This behaviour will be removed in future "
         "version.", GetId());
     ADDON::VECADDONS addons;
-    ADDON::CAddonMgr::Get().GetAddons(ADDON::ADDON_SCRIPT_MODULE, addons);
+    CServiceBroker::GetAddonMgr().GetAddons(addons, ADDON::ADDON_SCRIPT_MODULE);
     for (unsigned int i = 0; i < addons.size(); ++i)
       addPath(CSpecialProtocol::TranslatePath(addons[i]->LibPath()));
   }
@@ -220,6 +231,15 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
       PyObject *e = PyList_GetItem(pathObj, i); // borrowed ref, no need to delete
       if (e != NULL && PyString_Check(e))
         addNativePath(PyString_AsString(e)); // returns internal data, don't delete or modify
+#ifdef TARGET_WINDOWS_STORE
+      // uwp python operates unicodes
+      else if (e != NULL && PyUnicode_Check(e))
+      {
+        PyObject *utf8 = PyUnicode_AsUTF8String(e);
+        addNativePath(PyString_AsString(utf8));
+        Py_DECREF(utf8);
+      }
+#endif
     }
   }
   else
@@ -228,8 +248,7 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
   Py_DECREF(sysMod); // release ref to sysMod
 
   // set current directory and python's path.
-  if (m_argv != NULL)
-    PySys_SetArgv(m_argc, m_argv);
+  PySys_SetArgv(argc, &argv[0]);
 
 #ifdef TARGET_WINDOWS
   std::string pyPathUtf8;
@@ -376,7 +395,7 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
   }
 
   // pending calls must be cleared out
-  XBMCAddon::RetardedAsynchCallbackHandler::clearPendingCalls(state);
+  XBMCAddon::RetardedAsyncCallbackHandler::clearPendingCalls(state);
 
   PyThreadState_Swap(NULL);
   PyEval_ReleaseLock();
@@ -398,7 +417,7 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
 
   // run the gc before finishing
   //
-  // if the script exited by throwing a SystemExit excepton then going back
+  // if the script exited by throwing a SystemExit exception then going back
   // into the interpreter causes this python bug to get hit:
   //    http://bugs.python.org/issue10582
   // and that causes major failures. So we are not going to go back in
@@ -476,8 +495,7 @@ bool CPythonInvoker::stop(bool abort)
       // on TMSG_GUI_PYTHON_DIALOG messages, so pump the message loop.
       if (g_application.IsCurrentThread())
       {
-        CSingleExit ex(g_graphicsContext);
-        CApplicationMessenger::Get().ProcessMessages();
+        CApplicationMessenger::GetInstance().ProcessMessages();
       }
     }
 
@@ -571,6 +589,9 @@ void CPythonInvoker::onPythonModuleInitialization(void* moduleDict)
   PyObject *pyxbmcapiversion = PyString_FromString(version.asString().c_str());
   PyDict_SetItemString(moduleDictionary, "__xbmcapiversion__", pyxbmcapiversion);
 
+  PyObject *pyinvokerid = PyLong_FromLong(GetId());
+  PyDict_SetItemString(moduleDictionary, "__xbmcinvokerid__", pyinvokerid);
+
   CLog::Log(LOGDEBUG, "CPythonInvoker(%d, %s): instantiating addon using automatically obtained id of \"%s\" dependent on version %s of the xbmc.python api",
             GetId(), m_sourceFile.c_str(), m_addon->ID().c_str(), version.asString().c_str());
 }
@@ -583,9 +604,9 @@ void CPythonInvoker::onDeinitialization()
 void CPythonInvoker::onError(const std::string &exceptionType /* = "" */, const std::string &exceptionValue /* = "" */, const std::string &exceptionTraceback /* = "" */)
 {
   CPyThreadState releaseGil;
-  CSingleLock gc(g_graphicsContext);
+  CSingleLock gc(CServiceBroker::GetWinSystem()->GetGfxContext());
 
-  CGUIDialogKaiToast *pDlgToast = (CGUIDialogKaiToast*)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
+  CGUIDialogKaiToast *pDlgToast = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogKaiToast>(WINDOW_DIALOG_KAI_TOAST);
   if (pDlgToast != NULL)
   {
     std::string message;
@@ -624,12 +645,11 @@ bool CPythonInvoker::initializeModule(PythonModuleInitialization module)
 
 void CPythonInvoker::getAddonModuleDeps(const ADDON::AddonPtr& addon, std::set<std::string>& paths)
 {
-  ADDON::ADDONDEPS deps = addon->GetDeps();
-  for (ADDON::ADDONDEPS::const_iterator it = deps.begin(); it != deps.end(); ++it)
+  for (const auto& it : addon->GetDependencies())
   {
     //Check if dependency is a module addon
     ADDON::AddonPtr dependency;
-    if (ADDON::CAddonMgr::Get().GetAddon(it->first, dependency, ADDON::ADDON_SCRIPT_MODULE))
+    if (CServiceBroker::GetAddonMgr().GetAddon(it.id, dependency, ADDON::ADDON_SCRIPT_MODULE))
     {
       std::string path = CSpecialProtocol::TranslatePath(dependency->LibPath());
       if (paths.find(path) == paths.end())

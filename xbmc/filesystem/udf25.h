@@ -5,7 +5,7 @@
  *      http://www.boxee.tv
  *
  *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ struct AD {
 };
 
 /* Previously dvdread would assume files only had one AD chain, and since they
- * are 1GB or less, this is most problably true. However, now we handle chains
+ * are 1GB or less, this is most probably true. However, now we handle chains
  * for large files. ECMA_167 does not specify the maximum number of chains, is
  * it as many as can fit in a 2048 block (minus ID 266 size), or some other
  * limit. For now, I have assumed that;
@@ -188,7 +188,7 @@ public:
   udf25( );
   virtual ~udf25( );
 
-  DWORD SetFilePointer(HANDLE hFile, LONG lDistanceToMove, PLONG lpDistanceToMoveHigh, DWORD dwMoveMethod );
+  DWORD SetFilePointer(HANDLE hFile, long lDistanceToMove, long* lpDistanceToMoveHigh, DWORD dwMoveMethod );
   int64_t GetFileSize(HANDLE hFile);
   int64_t GetFilePosition(HANDLE hFile);
   int64_t Seek(HANDLE hFile, int64_t lOffset, int whence);

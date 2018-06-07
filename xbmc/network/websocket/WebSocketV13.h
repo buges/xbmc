@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,6 @@ class CWebSocketV13 : public CWebSocketV8
 public:
   CWebSocketV13() { m_version = 13; }
 
-  virtual bool Handshake(const char* data, size_t length, std::string &response);
-  virtual const CWebSocketFrame* Close(WebSocketCloseReason reason = WebSocketCloseNormal, const std::string &message = "");
+  bool Handshake(const char* data, size_t length, std::string &response) override;
+  const CWebSocketFrame* Close(WebSocketCloseReason reason = WebSocketCloseNormal, const std::string &message = "") override;
 };

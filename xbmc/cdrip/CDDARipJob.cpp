@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,12 +22,14 @@
 #include "Encoder.h"
 #include "EncoderFFmpeg.h"
 #include "FileItem.h"
+#include "ServiceBroker.h"
 #include "utils/log.h"
 #include "utils/SystemInfo.h"
 #include "Util.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "settings/Settings.h"
@@ -36,6 +38,10 @@
 #include "storage/MediaManager.h"
 #include "addons/AddonManager.h"
 #include "addons/AudioEncoder.h"
+
+#if defined(TARGET_WINDOWS)
+#include "platform/win32/CharsetConverter.h"
+#endif
 
 using namespace ADDON;
 using namespace MUSIC_INFO;
@@ -54,9 +60,7 @@ CCDDARipJob::CCDDARipJob(const std::string& input,
 {
 }
 
-CCDDARipJob::~CCDDARipJob()
-{
-}
+CCDDARipJob::~CCDDARipJob() = default;
 
 bool CCDDARipJob::DoWork()
 {
@@ -85,12 +89,12 @@ bool CCDDARipJob::DoWork()
 
   // setup the progress dialog
   CGUIDialogExtendedProgressBar* pDlgProgress = 
-      (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
+      CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogExtendedProgressBar>(WINDOW_DIALOG_EXT_PROGRESS);
   CGUIDialogProgressBarHandle* handle = pDlgProgress->GetHandle(g_localizeStrings.Get(605));
 
   int iTrack = atoi(m_input.substr(13, m_input.size() - 13 - 5).c_str());
   std::string strLine0 = StringUtils::Format("%02i. %s - %s", iTrack,
-                                            StringUtils::Join(m_tag.GetArtist(), g_advancedSettings.m_musicItemSeparator).c_str(),
+                                            m_tag.GetArtistString().c_str(),
                                             m_tag.GetTitle().c_str());
   handle->SetText(strLine0);
 
@@ -180,21 +184,18 @@ int CCDDARipJob::RipChunk(CFile& reader, CEncoder* encoder, int& percent)
 CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
 {
   CEncoder* encoder = NULL;
-  if (CSettings::Get().GetString("audiocds.encoder") == "audioencoder.xbmc.builtin.aac" ||
-           CSettings::Get().GetString("audiocds.encoder") == "audioencoder.xbmc.builtin.wma")
+  if (CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOCDS_ENCODER) == "audioencoder.kodi.builtin.aac" ||
+      CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOCDS_ENCODER) == "audioencoder.kodi.builtin.wma")
   {
     std::shared_ptr<IEncoder> enc(new CEncoderFFmpeg());
     encoder = new CEncoder(enc);
   }
   else
   {
-    AddonPtr addon;
-    CAddonMgr::Get().GetAddon(CSettings::Get().GetString("audiocds.encoder"), addon);
-    if (addon)
+    const BinaryAddonBasePtr addonInfo = CServiceBroker::GetBinaryAddonManager().GetInstalledAddonInfo(CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOCDS_ENCODER), ADDON_AUDIOENCODER);
+    if (addonInfo)
     {
-      std::shared_ptr<CAudioEncoder> aud =  std::static_pointer_cast<CAudioEncoder>(addon);
-      aud->Create();
-      std::shared_ptr<IEncoder> enc =  std::static_pointer_cast<IEncoder>(aud);
+      std::shared_ptr<IEncoder> enc = std::make_shared<CAudioEncoder>(addonInfo);
       encoder = new CEncoder(enc);
     }
   }
@@ -227,8 +228,12 @@ CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
 std::string CCDDARipJob::SetupTempFile()
 {
   char tmp[MAX_PATH];
-#ifndef TARGET_POSIX
-  GetTempFileName(CSpecialProtocol::TranslatePath("special://temp/").c_str(), "riptrack", 0, tmp);
+#if defined(TARGET_WINDOWS)
+  using namespace KODI::PLATFORM::WINDOWS;
+  wchar_t tmpW[MAX_PATH];
+  GetTempFileName(ToW(CSpecialProtocol::TranslatePath("special://temp/")).c_str(), L"riptrack", 0, tmpW);
+  auto tmpString = FromW(tmpW);
+  strncpy_s(tmp, tmpString.length(), tmpString.c_str(), MAX_PATH);
 #else
   int fd;
   strncpy(tmp, CSpecialProtocol::TranslatePath("special://temp/riptrackXXXXXX").c_str(), MAX_PATH);

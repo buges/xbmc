@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,11 +32,9 @@ using namespace XFILE;
 //[InternetShortcut]
 //URL=http://msdn2.microsoft.com/en-us/library/ms812698.aspx
 
-CPlayListURL::CPlayListURL(void)
-{}
+CPlayListURL::CPlayListURL(void) = default;
 
-CPlayListURL::~CPlayListURL(void)
-{}
+CPlayListURL::~CPlayListURL(void) = default;
 
 bool CPlayListURL::Load(const std::string& strFileName)
 {

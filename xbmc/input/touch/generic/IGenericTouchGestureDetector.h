@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,10 @@
  *
  */
 
+#include <array>
+
 #include "input/touch/ITouchInputHandling.h"
 #include "input/touch/TouchTypes.h"
-
-#define TOUCH_MAX_POINTERS  2
 
 /*!
  * \ingroup touch_generic
@@ -37,7 +37,8 @@ public:
   {
     RegisterHandler(handler);
   }
-  virtual ~IGenericTouchGestureDetector() { }
+  ~IGenericTouchGestureDetector() override = default;
+  static constexpr int MAX_POINTERS = 2;
 
   /*!
    * \brief Check whether the gesture recognition is finished or not
@@ -99,5 +100,5 @@ protected:
   /*!
    * \brief Local list of all known touch pointers
    */
-  Pointer m_pointers[TOUCH_MAX_POINTERS];
+  std::array<Pointer, MAX_POINTERS> m_pointers;
 };

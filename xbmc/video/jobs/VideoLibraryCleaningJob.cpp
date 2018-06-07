@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,8 +22,6 @@
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "video/VideoDatabase.h"
 
-using namespace std;
-
 CVideoLibraryCleaningJob::CVideoLibraryCleaningJob(const std::set<int>& paths /* = std::set<int>() */, bool showDialog /* = false */)
   : CVideoLibraryProgressJob(NULL),
     m_paths(paths),
@@ -36,8 +34,7 @@ CVideoLibraryCleaningJob::CVideoLibraryCleaningJob(const std::set<int>& paths, C
     m_showDialog(false)
 { }
 
-CVideoLibraryCleaningJob::~CVideoLibraryCleaningJob()
-{ }
+CVideoLibraryCleaningJob::~CVideoLibraryCleaningJob() = default;
 
 bool CVideoLibraryCleaningJob::operator==(const CJob* job) const
 {

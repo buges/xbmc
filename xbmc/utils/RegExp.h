@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,20 +22,19 @@
 #ifndef REGEXP_H
 #define REGEXP_H
 
+//! @todo - move to std::regex (after switching to gcc 4.9 or higher) and get rid of CRegExp
+
 #include <string>
 #include <vector>
+
+/* make sure stdlib.h is included before including pcre.h inside the
+   namespace; this works around stdlib.h definitions also living in
+   the PCRE namespace */
+#include <stdlib.h>
 
 namespace PCRE {
 struct real_pcre_jit_stack; // forward declaration for PCRE without JIT
 typedef struct real_pcre_jit_stack pcre_jit_stack;
-#ifdef TARGET_WINDOWS
-#define PCRE_STATIC 1
-#ifdef _DEBUG
-#pragma comment(lib, "pcred.lib")
-#else  // ! _DEBUG
-#pragma comment(lib, "pcre.lib")
-#endif // ! _DEBUG
-#endif // TARGET_WINDOWS
 #include <pcre.h>
 }
 

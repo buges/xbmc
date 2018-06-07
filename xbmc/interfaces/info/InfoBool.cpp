@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,12 +23,13 @@
 
 namespace INFO
 {
-  InfoBool::InfoBool(const std::string &expression, int context)
+  InfoBool::InfoBool(const std::string &expression, int context, unsigned int &refreshCounter)
     : m_value(false),
       m_context(context),
       m_listItemDependent(false),
       m_expression(expression),
-      m_dirty(true)
+      m_refreshCounter(0),
+      m_parentRefreshCounter(refreshCounter)
   {
     StringUtils::ToLower(m_expression);
   }

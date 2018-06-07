@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,19 +30,19 @@ class CPVRDirectory
 {
 public:
   CPVRDirectory();
-  virtual ~CPVRDirectory();
+  ~CPVRDirectory() override;
 
-  virtual bool GetDirectory(const CURL& url, CFileItemList &items);
-  virtual bool AllowAll() const { return true; }
+  bool GetDirectory(const CURL& url, CFileItemList &items) override;
+  bool AllowAll() const override { return true; }
+  DIR_CACHE_TYPE GetCacheType(const CURL& url) const override { return DIR_CACHE_NEVER; };
+  bool Exists(const CURL& url) override;
 
   static bool SupportsWriteFileOperations(const std::string& strPath);
   static bool IsLiveTV(const std::string& strPath);
-  static bool HasRecordings();
-  static bool HasDeletedRecordings();
-
-  virtual bool Exists(const CURL& url);
-
-private:
+  static bool HasTVRecordings();
+  static bool HasDeletedTVRecordings();
+  static bool HasRadioRecordings();
+  static bool HasDeletedRadioRecordings();
 };
 
 }

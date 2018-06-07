@@ -1,5 +1,5 @@
 /*!
-\file GUIScrollBar.h
+\file 
 \brief
 */
 
@@ -10,7 +10,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,36 +35,35 @@
  \ingroup controls
  \brief
  */
-class CGUIScrollBar :
+class GUIScrollBarControl :
       public CGUIControl
 {
 public:
-  CGUIScrollBar(int parentID, int controlID, float posX, float posY,
+  GUIScrollBarControl(int parentID, int controlID, float posX, float posY,
                        float width, float height,
                        const CTextureInfo& backGroundTexture,
                        const CTextureInfo& barTexture, const CTextureInfo& barTextureFocus,
                        const CTextureInfo& nibTexture, const CTextureInfo& nibTextureFocus,
                        ORIENTATION orientation, bool showOnePage);
-  virtual ~CGUIScrollBar(void);
-  virtual CGUIScrollBar *Clone() const { return new CGUIScrollBar(*this); };
+  ~GUIScrollBarControl(void) override;
+  GUIScrollBarControl *Clone() const override { return new GUIScrollBarControl(*this); };
 
-  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
-  virtual void Render();
-  virtual bool OnAction(const CAction &action);
-  virtual void AllocResources();
-  virtual void FreeResources(bool immediately = false);
-  virtual void DynamicResourceAlloc(bool bOnOff);
-  virtual void SetInvalid();
+  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  void Render() override;
+  bool OnAction(const CAction &action) override;
+  void AllocResources() override;
+  void FreeResources(bool immediately = false) override;
+  void DynamicResourceAlloc(bool bOnOff) override;
+  void SetInvalid() override;
   virtual void SetRange(int pageSize, int numItems);
-  virtual bool OnMessage(CGUIMessage& message);
+  bool OnMessage(CGUIMessage& message) override;
   void SetValue(int value);
   int GetValue() const;
-  virtual std::string GetDescription() const;
-  virtual bool IsVisible() const;
+  std::string GetDescription() const override;
+  bool IsVisible() const override;
 protected:
-  virtual bool HitTest(const CPoint &point) const;
-  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
-  virtual bool UpdateColors();
+  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
+  bool UpdateColors() override;
   bool UpdateBarSize();
   bool Move(int iNumSteps);
   virtual void SetFromPosition(const CPoint &point);

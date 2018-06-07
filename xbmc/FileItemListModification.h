@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,17 +26,17 @@
 class CFileItemListModification : public IFileItemListModifier
 {
 public:
-  ~CFileItemListModification();
+  ~CFileItemListModification() override;
 
-  static CFileItemListModification& Get();
+  static CFileItemListModification& GetInstance();
 
-  virtual bool CanModify(const CFileItemList &items) const;
-  virtual bool Modify(CFileItemList &items) const;
+  bool CanModify(const CFileItemList &items) const override;
+  bool Modify(CFileItemList &items) const override;
 
 private:
   CFileItemListModification();
-  CFileItemListModification(const CFileItemListModification&);
-  CFileItemListModification const& operator=(CFileItemListModification const&);
+  CFileItemListModification(const CFileItemListModification&) = delete;
+  CFileItemListModification& operator=(CFileItemListModification const&) = delete;
 
   std::set<IFileItemListModifier*> m_modifiers;
 };

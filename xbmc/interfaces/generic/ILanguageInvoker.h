@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ typedef enum {
 class ILanguageInvoker
 {
 public:
-  ILanguageInvoker(ILanguageInvocationHandler *invocationHandler);
+  explicit ILanguageInvoker(ILanguageInvocationHandler *invocationHandler);
   virtual ~ILanguageInvoker();
 
   virtual bool Execute(const std::string &script, const std::vector<std::string> &arguments = std::vector<std::string>());

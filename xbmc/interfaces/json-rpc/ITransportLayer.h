@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ namespace JSONRPC
   class ITransportLayer
   {
   public:
-    virtual ~ITransportLayer() { };
+    virtual ~ITransportLayer() = default;
     virtual bool PrepareDownload(const char *path, CVariant &details, std::string &protocol) = 0;
     virtual bool Download(const char *path, CVariant &result) = 0;
     virtual int GetCapabilities() = 0;

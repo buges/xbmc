@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ class CHttpRange
 public:
   CHttpRange();
   CHttpRange(uint64_t firstPosition, uint64_t lastPosition);
-  virtual ~CHttpRange() { }
+  virtual ~CHttpRange() = default;
 
   bool operator<(const CHttpRange &other) const;
   bool operator==(const CHttpRange &other) const;
@@ -59,7 +59,7 @@ public:
   CHttpResponseRange(uint64_t firstPosition, uint64_t lastPosition);
   CHttpResponseRange(const void* data, uint64_t firstPosition, uint64_t lastPosition);
   CHttpResponseRange(const void* data, uint64_t length);
-  virtual ~CHttpResponseRange() { }
+  ~CHttpResponseRange() override = default;
 
   bool operator==(const CHttpResponseRange &other) const;
   bool operator!=(const CHttpResponseRange &other) const;
@@ -69,7 +69,7 @@ public:
   void SetData(const void* data, uint64_t length);
   void SetData(const void* data, uint64_t firstPosition, uint64_t lastPosition);
 
-  virtual bool IsValid() const;
+  bool IsValid() const override;
 
 protected:
   const void* m_data;
@@ -81,8 +81,8 @@ class CHttpRanges
 {
 public:
   CHttpRanges();
-  CHttpRanges(const HttpRanges& httpRanges);
-  virtual ~CHttpRanges() { }
+  explicit CHttpRanges(const HttpRanges& httpRanges);
+  virtual ~CHttpRanges() = default;
 
   const HttpRanges& Get() const { return m_ranges; }
   bool Get(size_t index, CHttpRange& range) const;
@@ -136,6 +136,7 @@ public:
   */
   static std::string GenerateContentRangeHeaderValue(uint64_t start, uint64_t end, uint64_t total);
 
+#ifdef HAS_WEB_SERVER
   /*!
    * \brief Generates a multipart boundary that can be used in ranged HTTP
    * responses.
@@ -195,5 +196,5 @@ public:
   * \return Multipart boundary end that can be used in a ranged HTTP response
   */
   static std::string GenerateMultipartBoundaryEnd(const std::string& multipartBoundary);
+#endif // HAS_WEB_SERVER
 };
-

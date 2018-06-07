@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,8 @@
 
 #include "guilib/GUIDialog.h"
 #include "view/GUIViewControl.h"
-#include "../channels/PVRChannelGroup.h"
+
+#include "pvr/channels/PVRChannelGroup.h"
 
 class CFileItemList;
 
@@ -31,20 +32,20 @@ namespace PVR
   {
   public:
     CGUIDialogPVRGroupManager(void);
-    virtual ~CGUIDialogPVRGroupManager(void);
-    virtual bool OnMessage(CGUIMessage& message);
-    virtual void OnWindowLoaded();
-    virtual void OnWindowUnload();
-    void SetRadio(bool IsRadio) { m_bIsRadio = IsRadio; }
+    ~CGUIDialogPVRGroupManager(void) override;
+    bool OnMessage(CGUIMessage& message) override;
+    void OnWindowLoaded() override;
+    void OnWindowUnload() override;
+
+    void SetRadio(bool bIsRadio);
 
   protected:
-    virtual void OnInitWindow();
-    virtual void OnDeinitWindow(int nextWindowID);
-
-    void Clear();
-    void Update();
+    void OnInitWindow() override;
+    void OnDeinitWindow(int nextWindowID) override;
 
   private:
+    void Clear();
+    void Update();
     bool PersistChanges(void);
     bool CancelChanges(void);
     bool ActionButtonOk(CGUIMessage &message);
@@ -55,6 +56,7 @@ namespace PVR
     bool ActionButtonGroupMembers(CGUIMessage &message);
     bool ActionButtonChannelGroups(CGUIMessage &message);
     bool ActionButtonHideGroup(CGUIMessage &message);
+    bool ActionButtonToggleRadioTV(CGUIMessage &message);
     bool OnMessageClick(CGUIMessage &message);
 
     CPVRChannelGroupPtr m_selectedGroup;

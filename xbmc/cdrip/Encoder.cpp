@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ CEncoder::~CEncoder()
   FileClose();
 }
 
-int CEncoder::WriteCallback(void *opaque, uint8_t *data, int size)
+int CEncoder::WriteCallback(void *opaque, const uint8_t *data, int size)
 {
   if (opaque)
   {
@@ -72,10 +72,10 @@ bool CEncoder::Init(const char* strFile, int iInChannels, int iInRate, int iInBi
     return false;
   }
 
-  audioenc_callbacks callbacks;
-  callbacks.opaque = this;
-  callbacks.write  = WriteCallback;
-  callbacks.seek   = SeekCallback;
+  AddonToKodiFuncTable_AudioEncoder callbacks;
+  callbacks.kodiInstance = this;
+  callbacks.write = WriteCallback;
+  callbacks.seek = SeekCallback;
   return m_impl->Init(callbacks);
 }
 

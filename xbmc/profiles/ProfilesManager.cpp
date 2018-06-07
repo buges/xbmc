@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,25 +18,33 @@
  *
  */
 
-#include "system.h"
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "ProfilesManager.h"
-#include "Application.h"
 #include "DatabaseManager.h"
 #include "FileItem.h"
 #include "GUIInfoManager.h"
+#include "GUIPassword.h"
 #include "PasswordManager.h"
+#include "ServiceBroker.h"
 #include "Util.h"
-#include "dialogs/GUIDialogOK.h"
+#include "addons/Skin.h"
+#include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogYesNo.h"
+#include "events/EventLog.h"
+#include "events/EventLogManager.h"
 #include "filesystem/Directory.h"
 #include "filesystem/DirectoryCache.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "input/ButtonTranslator.h"
 #include "input/InputManager.h"
 #include "settings/Settings.h"
+#include "settings/lib/SettingsManager.h"
 #if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
 #include "storage/DetectDVDType.h"
 #endif
@@ -45,12 +53,27 @@
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "utils/XMLUtils.h"
 
-// TODO
-// eventually the profile should dictate where special://masterprofile/ is
-// but for now it makes sense to leave all the profile settings in a user
-// writeable location like special://masterprofile/
+#include "addons/AddonManager.h" //! @todo Remove me
+#include "addons/Service.h" //! @todo Remove me
+#include "favourites/FavouritesService.h" //! @todo Remove me
+#include "guilib/StereoscopicsManager.h" //! @todo Remove me
+#include "interfaces/json-rpc/JSONRPC.h" //! @todo Remove me
+#include "network/Network.h" //! @todo Remove me
+#include "network/NetworkServices.h" //! @todo Remove me
+#include "pvr/PVRManager.h" //! @todo Remove me
+#include "video/VideoLibraryQueue.h"//! @todo Remove me
+#include "weather/WeatherManager.h" //! @todo Remove me
+#include "Application.h" //! @todo Remove me
+#include "ContextMenuManager.h" //! @todo Remove me
+#include "PlayListPlayer.h" //! @todo Remove me
+
+//! @todo
+//! eventually the profile should dictate where special://masterprofile/ is
+//! but for now it makes sense to leave all the profile settings in a user
+//! writeable location like special://masterprofile/
 #define PROFILES_FILE     "special://masterprofile/profiles.xml"
 
 #define XML_PROFILES      "profiles"
@@ -60,33 +83,46 @@
 #define XML_NEXTID        "nextIdProfile"
 #define XML_PROFILE       "profile"
 
-using namespace std;
 using namespace XFILE;
 
 static CProfile EmptyProfile;
 
-CProfilesManager::CProfilesManager()
-  : m_usingLoginScreen(false), m_autoLoginProfile(-1), m_lastUsedProfile(0),
-    m_currentProfile(0), m_nextProfileId(0)
-{ }
+CProfilesManager::CProfilesManager(CSettings &settings) :
+    m_settings(settings),
+    m_usingLoginScreen(false),
+    m_profileLoadedForLogin(false),
+    m_autoLoginProfile(-1),
+    m_lastUsedProfile(0),
+    m_currentProfile(0),
+    m_nextProfileId(0),
+    m_eventLogs(new CEventLogManager)
+{
+  if (m_settings.IsLoaded())
+    OnSettingsLoaded();
+
+  m_settings.GetSettingsManager()->RegisterSettingsHandler(this);
+
+  std::set<std::string> settingSet = {
+    CSettings::SETTING_EVENTLOG_SHOW
+  };
+
+  m_settings.GetSettingsManager()->RegisterCallback(this, settingSet);
+}
 
 CProfilesManager::~CProfilesManager()
-{ }
-
-CProfilesManager& CProfilesManager::Get()
 {
-  static CProfilesManager sProfilesManager;
-  return sProfilesManager;
+  m_settings.GetSettingsManager()->UnregisterCallback(this);
+  m_settings.GetSettingsManager()->UnregisterSettingsHandler(this);
 }
 
 void CProfilesManager::OnSettingsLoaded()
 {
   // check them all
-  string strDir = CSettings::Get().GetString("system.playlistspath");
+  std::string strDir = m_settings.GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
   if (strDir == "set default" || strDir.empty())
   {
     strDir = "special://profile/playlists/";
-    CSettings::Get().SetString("system.playlistspath", strDir.c_str());
+    m_settings.SetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH, strDir.c_str());
   }
 
   CDirectory::Create(strDir);
@@ -95,7 +131,7 @@ void CProfilesManager::OnSettingsLoaded()
   CDirectory::Create(URIUtils::AddFileToFolder(strDir,"mixed"));
 }
 
-void CProfilesManager::OnSettingsSaved()
+void CProfilesManager::OnSettingsSaved() const
 {
   // save mastercode
   Save();
@@ -185,7 +221,7 @@ bool CProfilesManager::Load(const std::string &file)
   return ret;
 }
 
-bool CProfilesManager::Save()
+bool CProfilesManager::Save() const
 {
   return Save(PROFILES_FILE);
 }
@@ -205,7 +241,7 @@ bool CProfilesManager::Save(const std::string &file) const
   XMLUtils::SetInt(pRoot, XML_AUTO_LOGIN, m_autoLoginProfile);
   XMLUtils::SetInt(pRoot, XML_NEXTID, m_nextProfileId);      
 
-  for (vector<CProfile>::const_iterator profile = m_profiles.begin(); profile != m_profiles.end(); ++profile)
+  for (std::vector<CProfile>::const_iterator profile = m_profiles.begin(); profile != m_profiles.end(); ++profile)
     profile->Save(pRoot);
 
   // save the file
@@ -216,14 +252,48 @@ void CProfilesManager::Clear()
 {
   CSingleLock lock(m_critical);
   m_usingLoginScreen = false;
+  m_profileLoadedForLogin = false;
   m_lastUsedProfile = 0;
   m_nextProfileId = 0;
   SetCurrentProfileId(0);
   m_profiles.clear();
 }
 
-bool CProfilesManager::LoadProfile(size_t index)
+void CProfilesManager::PrepareLoadProfile(unsigned int profileIndex)
 {
+  CContextMenuManager &contextMenuManager = CServiceBroker::GetContextMenuManager();
+  ADDON::CServiceAddonManager &serviceAddons = CServiceBroker::GetServiceAddons();
+  PVR::CPVRManager &pvrManager = CServiceBroker::GetPVRManager();
+  CNetworkBase &networkManager = CServiceBroker::GetNetwork();
+
+  contextMenuManager.Deinit();
+
+  serviceAddons.Stop();
+
+  // stop PVR related services
+  pvrManager.Stop();
+
+  if (profileIndex != 0 || !IsMasterProfile())
+    networkManager.NetworkMessage(CNetwork::SERVICES_DOWN, 1);
+}
+
+bool CProfilesManager::LoadProfile(unsigned int index)
+{
+  PrepareLoadProfile(index);
+
+  if (index == 0 && IsMasterProfile())
+  {
+    CGUIWindow* pWindow = CServiceBroker::GetGUI()->GetWindowManager().GetWindow(WINDOW_HOME);
+    if (pWindow)
+      pWindow->ResetControlStates();
+
+    UpdateCurrentProfileDate();
+    Save();
+    FinalizeLoadProfile();
+
+    return true;
+  }
+
   CSingleLock lock(m_critical);
   // check if the index is valid or not
   if (index >= m_profiles.size())
@@ -233,36 +303,48 @@ bool CProfilesManager::LoadProfile(size_t index)
   if (m_currentProfile == index)
     return true;
 
+  // save any settings of the currently used skin but only if the (master)
+  // profile hasn't just been loaded as a temporary profile for login
+  if (g_SkinInfo != nullptr && !m_profileLoadedForLogin)
+    g_SkinInfo->SaveSettings();
+
   // unload any old settings
-  CSettings::Get().Unload();
+  CServiceBroker::GetSettings().Unload();
 
   SetCurrentProfileId(index);
+  m_profileLoadedForLogin = false;
 
   // load the new settings
-  if (!CSettings::Get().Load())
+  if (!CServiceBroker::GetSettings().Load())
   {
     CLog::Log(LOGFATAL, "CProfilesManager: unable to load settings for profile \"%s\"", m_profiles.at(index).getName().c_str());
     return false;
   }
-  CSettings::Get().SetLoaded();
+  CServiceBroker::GetSettings().SetLoaded();
 
   CreateProfileFolders();
 
-  CDatabaseManager::Get().Initialize();
-  CButtonTranslator::GetInstance().Load(true);
+  CServiceBroker::GetDatabaseManager().Initialize();
+  CServiceBroker::GetInputManager().LoadKeymaps();
 
-  CInputManager::Get().SetMouseEnabled(CSettings::Get().GetBool("input.enablemouse"));
+  CServiceBroker::GetInputManager().SetMouseEnabled(CServiceBroker::GetSettings().GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE));
 
-  g_infoManager.ResetCache();
-  g_infoManager.ResetLibraryBools();
+  CGUIComponent* gui = CServiceBroker::GetGUI();
+  if (gui)
+  {
+    CGUIInfoManager& infoMgr = gui->GetInfoManager();
+    infoMgr.ResetCache();
+    infoMgr.GetInfoProviders().GetGUIControlsInfoProvider().ResetContainerMovingCache();
+    infoMgr.GetInfoProviders().GetLibraryInfoProvider().ResetLibraryBools();
+  }
 
   if (m_currentProfile != 0)
   {
     CXBMCTinyXML doc;
     if (doc.LoadFile(URIUtils::AddFileToFolder(GetUserDataFolder(), "guisettings.xml")))
     {
-      CSettings::Get().LoadSetting(doc.RootElement(), "masterlock.maxretries");
-      CSettings::Get().LoadSetting(doc.RootElement(), "masterlock.startuplock");
+      CServiceBroker::GetSettings().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_MAXRETRIES);
+      CServiceBroker::GetSettings().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_STARTUPLOCK);
     }
   }
 
@@ -275,33 +357,129 @@ bool CProfilesManager::LoadProfile(size_t index)
 
   // init windows
   CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESET);
-  g_windowManager.SendMessage(msg);
+  CServiceBroker::GetGUI()->GetWindowManager().SendMessage(msg);
 
   CUtil::DeleteDirectoryCache();
   g_directoryCache.Clear();
 
+  lock.Leave();
+
+  UpdateCurrentProfileDate();
+  Save();
+  FinalizeLoadProfile();
+
   return true;
 }
 
-bool CProfilesManager::DeleteProfile(size_t index)
+void CProfilesManager::FinalizeLoadProfile()
+{
+  CContextMenuManager &contextMenuManager = CServiceBroker::GetContextMenuManager();
+  ADDON::CServiceAddonManager &serviceAddons = CServiceBroker::GetServiceAddons();
+  PVR::CPVRManager &pvrManager = CServiceBroker::GetPVRManager();
+  CNetworkBase &networkManager = CServiceBroker::GetNetwork();
+  ADDON::CAddonMgr &addonManager = CServiceBroker::GetAddonMgr();
+  CWeatherManager &weatherManager = CServiceBroker::GetWeatherManager();
+  CFavouritesService &favouritesManager = CServiceBroker::GetFavouritesService();
+  PLAYLIST::CPlayListPlayer &playlistManager = CServiceBroker::GetPlaylistPlayer();
+  CStereoscopicsManager &stereoscopicsManager = CServiceBroker::GetGUI()->GetStereoscopicsManager();
+
+  if (m_lastUsedProfile != m_currentProfile)
+  {
+    playlistManager.ClearPlaylist(PLAYLIST_VIDEO);
+    playlistManager.ClearPlaylist(PLAYLIST_MUSIC);
+    playlistManager.SetCurrentPlaylist(PLAYLIST_NONE);
+  }
+
+  networkManager.NetworkMessage(CNetworkBase::SERVICES_UP, 1);
+
+  // reload the add-ons, or we will first load all add-ons from the master account without checking disabled status
+  addonManager.ReInit();
+
+  // let CApplication know that we are logging into a new profile
+  g_application.SetLoggingIn(true);
+
+  if (!g_application.LoadLanguage(true))
+  {
+    CLog::Log(LOGFATAL, "Unable to load language for profile \"%s\"", GetCurrentProfile().getName().c_str());
+    return;
+  }
+
+  weatherManager.Refresh();
+
+  JSONRPC::CJSONRPC::Initialize();
+
+  // Restart context menu manager
+  contextMenuManager.Init();
+
+  // restart PVR services
+  pvrManager.Init();
+
+  favouritesManager.ReInit(GetProfileUserDataFolder());
+
+  serviceAddons.Start();
+
+  g_application.UpdateLibraries();
+
+  stereoscopicsManager.Initialize();
+
+  // Load initial window
+  int firstWindow = g_SkinInfo->GetFirstWindow();
+
+  // the startup window is considered part of the initialization as it most likely switches to the final window
+  bool uiInitializationFinished = firstWindow != WINDOW_STARTUP_ANIM;
+
+  CServiceBroker::GetGUI()->GetWindowManager().ChangeActiveWindow(firstWindow);
+
+  // if the user interfaces has been fully initialized let everyone know
+  if (uiInitializationFinished)
+  {
+    CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UI_READY);
+    CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg);
+  }
+}
+
+void CProfilesManager::LogOff()
+{
+  CNetworkBase &networkManager = CServiceBroker::GetNetwork();
+
+  g_application.StopPlaying();
+
+  if (g_application.IsMusicScanning())
+    g_application.StopMusicScan();
+
+  if (CVideoLibraryQueue::GetInstance().IsRunning())
+    CVideoLibraryQueue::GetInstance().CancelAllJobs();
+
+  networkManager.NetworkMessage(CNetwork::SERVICES_DOWN, 1);
+
+  LoadMasterProfileForLogin();
+
+  g_passwordManager.bMasterUser = false;
+
+  g_application.WakeUpScreenSaverAndDPMS();
+  CServiceBroker::GetGUI()->GetWindowManager().ActivateWindow(WINDOW_LOGIN_SCREEN, {}, false);
+
+  if (!CServiceBroker::GetNetwork().GetServices().StartEventServer()) // event server could be needed in some situations
+    CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Warning, g_localizeStrings.Get(33102), g_localizeStrings.Get(33100));
+}
+
+bool CProfilesManager::DeleteProfile(unsigned int index)
 {
   CSingleLock lock(m_critical);
   const CProfile *profile = GetProfile(index);
   if (profile == NULL)
     return false;
 
-  CGUIDialogYesNo* dlgYesNo = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
+  CGUIDialogYesNo* dlgYesNo = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogYesNo>(WINDOW_DIALOG_YES_NO);
   if (dlgYesNo == NULL)
     return false;
 
-  string message;
-  string str = g_localizeStrings.Get(13201);
-  message = StringUtils::Format(str.c_str(), profile->getName().c_str());
-  dlgYesNo->SetHeading(13200);
-  dlgYesNo->SetLine(0, message);
-  dlgYesNo->SetLine(1, "");
-  dlgYesNo->SetLine(2, "");
-  dlgYesNo->DoModal();
+  std::string str = g_localizeStrings.Get(13201);
+  dlgYesNo->SetHeading(CVariant{13200});
+  dlgYesNo->SetLine(0, CVariant{StringUtils::Format(str.c_str(), profile->getName().c_str())});
+  dlgYesNo->SetLine(1, CVariant{""});
+  dlgYesNo->SetLine(2, CVariant{""});
+  dlgYesNo->Open();
 
   if (!dlgYesNo->IsConfirmed())
     return false;
@@ -311,21 +489,24 @@ bool CProfilesManager::DeleteProfile(size_t index)
     m_autoLoginProfile = 0;
 
   // delete profile
-  string strDirectory = profile->getDirectory();
+  std::string strDirectory = profile->getDirectory();
   m_profiles.erase(m_profiles.begin() + index);
 
   // fall back to master profile if necessary
   if (index == m_currentProfile)
   {
     LoadProfile(0);
-    CSettings::Get().Save();
+    m_settings.Save();
   }
 
   CFileItemPtr item = CFileItemPtr(new CFileItem(URIUtils::AddFileToFolder(GetUserDataFolder(), strDirectory)));
   item->SetPath(URIUtils::AddFileToFolder(GetUserDataFolder(), strDirectory + "/"));
   item->m_bIsFolder = true;
   item->Select(true);
-  CFileUtils::DeleteItem(item);
+
+  CGUIComponent *gui = CServiceBroker::GetGUI();
+  if (gui && gui->ConfirmDelete(item->GetPath()))
+    CFileUtils::DeleteItem(item);
 
   return Save();
 }
@@ -340,6 +521,7 @@ void CProfilesManager::CreateProfileFolders()
   CDirectory::Create(GetThumbnailsFolder());
   CDirectory::Create(GetVideoThumbFolder());
   CDirectory::Create(GetBookmarksThumbFolder());
+  CDirectory::Create(GetSavestatesFolder());
   for (size_t hex = 0; hex < 16; hex++)
     CDirectory::Create(URIUtils::AddFileToFolder(GetThumbnailsFolder(), StringUtils::Format("%lx", hex)));
 
@@ -363,11 +545,11 @@ const CProfile& CProfilesManager::GetCurrentProfile() const
   if (m_currentProfile < m_profiles.size())
     return m_profiles[m_currentProfile];
 
-  CLog::Log(LOGERROR, "CProfilesManager: current profile index (%u) is outside of the valid range (%" PRIdS ")", m_currentProfile, m_profiles.size());
+  CLog::Log(LOGERROR, "CProfilesManager: current profile index ({0}) is outside of the valid range ({1})", m_currentProfile, m_profiles.size());
   return EmptyProfile;
 }
 
-const CProfile* CProfilesManager::GetProfile(size_t index) const
+const CProfile* CProfilesManager::GetProfile(unsigned int index) const
 {
   CSingleLock lock(m_critical);
   if (index < m_profiles.size())
@@ -376,7 +558,7 @@ const CProfile* CProfilesManager::GetProfile(size_t index) const
   return NULL;
 }
 
-CProfile* CProfilesManager::GetProfile(size_t index)
+CProfile* CProfilesManager::GetProfile(unsigned int index)
 {
   CSingleLock lock(m_critical);
   if (index < m_profiles.size())
@@ -388,7 +570,7 @@ CProfile* CProfilesManager::GetProfile(size_t index)
 int CProfilesManager::GetProfileIndex(const std::string &name) const
 {
   CSingleLock lock(m_critical);
-  for (size_t i = 0; i < m_profiles.size(); i++)
+  for (int i = 0; i < static_cast<int>(m_profiles.size()); i++)
   {
     if (StringUtils::EqualsNoCase(m_profiles[i].getName(), name))
       return i;
@@ -402,7 +584,7 @@ void CProfilesManager::AddProfile(const CProfile &profile)
   CSingleLock lock(m_critical);
   // data integrity check - covers off migration from old profiles.xml,
   // incrementing of the m_nextIdProfile,and bad data coming in
-  m_nextProfileId = max(m_nextProfileId, profile.getId() + 1);
+  m_nextProfileId = std::max(m_nextProfileId, profile.getId() + 1);
 
   m_profiles.push_back(profile);
 }
@@ -420,10 +602,15 @@ void CProfilesManager::LoadMasterProfileForLogin()
   // save the previous user
   m_lastUsedProfile = m_currentProfile;
   if (m_currentProfile != 0)
+  {
     LoadProfile(0);
+
+    // remember that the (master) profile has only been loaded for login
+    m_profileLoadedForLogin = true;
+  }
 }
 
-bool CProfilesManager::GetProfileName(const size_t profileId, std::string& name) const
+bool CProfilesManager::GetProfileName(const unsigned int profileId, std::string& name) const
 {
   CSingleLock lock(m_critical);
   const CProfile *profile = GetProfile(profileId);
@@ -486,6 +673,14 @@ std::string CProfilesManager::GetLibraryFolder() const
   return URIUtils::AddFileToFolder(GetUserDataFolder(), "library");
 }
 
+std::string CProfilesManager::GetSavestatesFolder() const
+{
+  if (GetCurrentProfile().hasDatabases())
+    return URIUtils::AddFileToFolder(GetProfileUserDataFolder(), "Savestates");
+
+  return URIUtils::AddFileToFolder(GetUserDataFolder(), "Savestates");
+}
+
 std::string CProfilesManager::GetSettingsFile() const
 {
   std::string settings;
@@ -509,7 +704,22 @@ std::string CProfilesManager::GetUserDataItem(const std::string& strFile) const
   return path;
 }
 
-void CProfilesManager::SetCurrentProfileId(size_t profileId)
+CEventLog& CProfilesManager::GetEventLog()
+{
+  return m_eventLogs->GetEventLog(GetCurrentProfileId());
+}
+
+void CProfilesManager::OnSettingAction(std::shared_ptr<const CSetting> setting)
+{
+  if (setting == nullptr)
+    return;
+
+  const std::string& settingId = setting->GetId();
+  if (settingId == CSettings::SETTING_EVENTLOG_SHOW)
+    GetEventLog().ShowFullEventLog();
+}
+
+void CProfilesManager::SetCurrentProfileId(unsigned int profileId)
 {
   CSingleLock lock(m_critical);
   m_currentProfile = profileId;

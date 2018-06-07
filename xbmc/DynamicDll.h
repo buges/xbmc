@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ public: \
 //
 //  LOAD_SYMBOLS
 //
-//  Tells the dllloader to load Debug symblos when possible
+//  Tells the dllloader to load Debug symbols when possible
 #define LOAD_SYMBOLS() \
   protected: \
     virtual bool LoadSymbols() { return true; }
@@ -134,7 +134,7 @@ public: \
       void*         m_##name##_ptr; \
     }; \
   public: \
-    virtual result name args \
+    virtual result name args override \
     { \
       return m_##name args2; \
     }
@@ -179,7 +179,7 @@ public: \
 //
 //  DEFINE_METHOD_FP
 //
-//  Defines a function for an export from a dll as a fuction pointer.
+//  Defines a function for an export from a dll as a function pointer.
 //  Use DEFINE_METHOD_FP for each function to be resolved. Functions
 //  defined like this are not listed by IntelliSence.
 //
@@ -233,7 +233,7 @@ public: \
 //
 //  Actual function call will expand to something like this
 //  this will align the stack (esp) at the point of function
-//  entry as required by gcc compiled dlls, it is abit abfuscated
+//  entry as required by gcc compiled dlls, it is a bit obfuscated
 //  to allow for different sized variables
 //
 //  int64_t test(int64_t p1, char p2, char p3)
@@ -354,7 +354,7 @@ public: \
 //
 #define BEGIN_METHOD_RESOLVE() \
   protected: \
-  virtual bool ResolveExports() \
+  virtual bool ResolveExports() override \
   {
 
 #define END_METHOD_RESOLVE() \
@@ -391,6 +391,7 @@ public: \
 //
 
 #define RESOLVE_METHOD_OPTIONAL(method) \
+   m_##method##_ptr = nullptr; \
    m_dll->ResolveExport( #method , & m_##method##_ptr );
 
 #define RESOLVE_METHOD_OPTIONAL_FP(method) \
@@ -520,7 +521,7 @@ class DllDynamic
 {
 public:
   DllDynamic();
-  DllDynamic(const std::string& strDllName);
+  explicit DllDynamic(const std::string& strDllName);
   virtual ~DllDynamic();
   virtual bool Load();
   virtual void Unload();

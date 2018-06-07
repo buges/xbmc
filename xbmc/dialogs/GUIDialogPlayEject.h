@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,12 +26,12 @@ class CGUIDialogPlayEject : public CGUIDialogYesNo
 {
 public:
   CGUIDialogPlayEject();
-  virtual ~CGUIDialogPlayEject();
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual void FrameMove();
+  ~CGUIDialogPlayEject() override;
+  bool OnMessage(CGUIMessage& message) override;
+  void FrameMove() override;
 
   static bool ShowAndGetInput(const CFileItem & item, unsigned int uiAutoCloseTime = 0);
 
 protected:
-  virtual void OnInitWindow();
+  void OnInitWindow() override;
 };

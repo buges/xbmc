@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2014 Team Kodi
- *      http://xbmc.org
+ *      Copyright (C) 2014-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,18 +17,14 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-#include "system.h"
-#ifdef HAS_ALSA
 
+#include "cores/AudioEngine/Engines/ActiveAE/ActiveAE.h"
 #include "ALSAHControlMonitor.h"
-
-#include "AEFactory.h"
-#include "linux/FDEventMonitor.h"
+#include "platform/linux/FDEventMonitor.h"
 #include "utils/log.h"
+#include "ServiceBroker.h"
 
-CALSAHControlMonitor::CALSAHControlMonitor()
-{
-}
+CALSAHControlMonitor::CALSAHControlMonitor() = default;
 
 CALSAHControlMonitor::~CALSAHControlMonitor()
 {
@@ -82,7 +78,7 @@ void CALSAHControlMonitor::Clear()
 
 void CALSAHControlMonitor::Start()
 {
-  assert(m_fdMonitorIds.size() == 0);
+  assert(m_fdMonitorIds.empty());
 
   std::vector<struct pollfd> pollfds;
   std::vector<CFDEventMonitor::MonitoredFD> monitoredFDs;
@@ -130,7 +126,7 @@ int CALSAHControlMonitor::HCTLCallback(snd_hctl_elem_t *elem, unsigned int mask)
      * Currently we just re-enumerate on any change.
      * Custom callbacks for handling other control monitoring may be implemented when needed.
      */
-    CAEFactory::DeviceChange();
+    CServiceBroker::GetActiveAE()->DeviceChange();
   }
 
   return 0;
@@ -178,6 +174,3 @@ void CALSAHControlMonitor::PutHandle(const std::string& ctlHandleName)
     m_ctlHandles.erase(ctlHandleName);
   }
 }
-
-
-#endif

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "Util.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
+#include "platform/Filesystem.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 
@@ -33,46 +34,27 @@
 #include <ctime>
 #endif
 
+#include <system_error>
+
+namespace fs = KODI::PLATFORM::FILESYSTEM;
+
 class CTempFile : public XFILE::CFile
 {
 public:
-  CTempFile(){};
+  CTempFile() = default;
   ~CTempFile()
   {
     Delete();
   }
   bool Create(const std::string &suffix)
   {
-    char tmp[MAX_PATH];
+    std::error_code ec;
+    m_ptempFilePath = fs::temp_file_path(suffix, ec);
+    if (ec)
+      return false;
 
-    m_ptempFileDirectory = CSpecialProtocol::TranslatePath("special://temp/");
-    m_ptempFilePath = m_ptempFileDirectory + "xbmctempfileXXXXXX";
-    m_ptempFilePath += suffix;
-    if (m_ptempFilePath.length() >= MAX_PATH)
-    {
-      m_ptempFilePath = "";
+    if (m_ptempFilePath.empty())
       return false;
-    }
-    strcpy(tmp, m_ptempFilePath.c_str());
-
-#ifdef TARGET_WINDOWS
-    if (!GetTempFileName(CSpecialProtocol::TranslatePath("special://temp/").c_str(),
-                         "xbmctempfile", 0, tmp))
-    {
-      m_ptempFilePath = "";
-      return false;
-    }
-    m_ptempFilePath = tmp;
-#else
-    int fd;
-    if ((fd = mkstemps(tmp, suffix.length())) < 0)
-    {
-      m_ptempFilePath = "";
-      return false;
-    }
-    close(fd);
-    m_ptempFilePath = tmp;
-#endif
 
     OpenForWrite(m_ptempFilePath.c_str(), true);
     return true;
@@ -88,11 +70,10 @@ public:
   }
   std::string getTempFileDirectory() const
   {
-    return m_ptempFileDirectory;
+    return URIUtils::GetDirectory(m_ptempFilePath);
   }
 private:
   std::string m_ptempFilePath;
-  std::string m_ptempFileDirectory;
 };
 
 CXBMCTestUtils::CXBMCTestUtils()
@@ -113,8 +94,7 @@ std::string CXBMCTestUtils::ReferenceFilePath(const std::string& path)
 
 bool CXBMCTestUtils::SetReferenceFileBasePath()
 {
-  std::string xbmcPath;
-  CUtil::GetHomePath(xbmcPath);
+  std::string xbmcPath = CUtil::GetHomePath();
   if (xbmcPath.empty())
     return false;
 
@@ -290,9 +270,8 @@ void CXBMCTestUtils::ParseArgs(int argc, char **argv)
     {
       arg = argv[++i];
       std::vector<std::string> urls = StringUtils::Split(arg, ",");
-      std::vector<std::string>::iterator it;
-      for (it = urls.begin(); it < urls.end(); ++it)
-        TestFileFactoryReadUrls.push_back(*it);
+      for (const auto& it : urls)
+        TestFileFactoryReadUrls.push_back(it);
     }
     else if (arg == "--add-testfilefactory-writeurl")
     {
@@ -302,9 +281,8 @@ void CXBMCTestUtils::ParseArgs(int argc, char **argv)
     {
       arg = argv[++i];
       std::vector<std::string> urls = StringUtils::Split(arg, ",");
-      std::vector<std::string>::iterator it;
-      for (it = urls.begin(); it < urls.end(); ++it)
-        TestFileFactoryWriteUrls.push_back(*it);
+      for (const auto& it : urls)
+        TestFileFactoryWriteUrls.push_back(it);
     }
     else if (arg == "--set-testfilefactory-writeinputfile")
     {
@@ -318,9 +296,8 @@ void CXBMCTestUtils::ParseArgs(int argc, char **argv)
     {
       arg = argv[++i];
       std::vector<std::string> urls = StringUtils::Split(arg, ",");
-      std::vector<std::string>::iterator it;
-      for (it = urls.begin(); it < urls.end(); ++it)
-        AdvancedSettingsFiles.push_back(*it);
+      for (const auto& it : urls)
+        AdvancedSettingsFiles.push_back(it);
     }
     else if (arg == "--add-guisettings-file")
     {
@@ -330,9 +307,8 @@ void CXBMCTestUtils::ParseArgs(int argc, char **argv)
     {
       arg = argv[++i];
       std::vector<std::string> urls = StringUtils::Split(arg, ",");
-      std::vector<std::string>::iterator it;
-      for (it = urls.begin(); it < urls.end(); ++it)
-        GUISettingsFiles.push_back(*it);
+      for (const auto& it : urls)
+        GUISettingsFiles.push_back(it);
     }
     else if (arg == "--set-probability")
     {

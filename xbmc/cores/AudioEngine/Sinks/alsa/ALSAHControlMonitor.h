@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team Kodi
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,9 +18,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-#include "system.h"
-#ifdef HAS_ALSA
 
 #include <string>
 #include <map>
@@ -56,7 +53,7 @@ private:
     snd_hctl_t *handle;
     int useCount;
 
-    CTLHandle(snd_hctl_t *handle_) : handle(handle_), useCount(0) {}
+    explicit CTLHandle(snd_hctl_t *handle_) : handle(handle_), useCount(0) {}
     CTLHandle() : handle(NULL), useCount(0) {}
   };
 
@@ -64,6 +61,3 @@ private:
 
   std::vector<int> m_fdMonitorIds;
 };
-
-#endif
-

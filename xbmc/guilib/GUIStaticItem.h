@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,8 +25,12 @@
  \brief
  */
 
-#include "GUIInfoTypes.h"
-#include "xbmc/FileItem.h"
+#include <utility>
+#include <vector>
+
+#include "GUIAction.h"
+#include "guiinfo/GUIInfoTypes.h"
+#include "FileItem.h"
 #include "GUIAction.h"
 
 class TiXmlElement;
@@ -58,9 +62,9 @@ public:
    \param contextWindow window context to use for any info labels
    */
   CGUIStaticItem(const TiXmlElement *element, int contextWindow);
-  CGUIStaticItem(const CFileItem &item); // for python
-  virtual ~CGUIStaticItem() {};
-  virtual CGUIListItem *Clone() const { return new CGUIStaticItem(*this); };
+  explicit CGUIStaticItem(const CFileItem &item); // for python
+  ~CGUIStaticItem() override = default;
+  CGUIListItem *Clone() const override { return new CGUIStaticItem(*this); };
   
   /*! \brief update any infolabels in the items properties
    Runs through all the items properties, updating any that should be
@@ -87,7 +91,7 @@ public:
 
   const CGUIAction &GetClickActions() const { return m_clickActions; };
 private:
-  typedef std::vector< std::pair<CGUIInfoLabel, std::string> > InfoVector;
+  typedef std::vector< std::pair<KODI::GUILIB::GUIINFO::CGUIInfoLabel, std::string> > InfoVector;
   InfoVector m_info;
   INFO::InfoPtr m_visCondition;
   bool m_visState;

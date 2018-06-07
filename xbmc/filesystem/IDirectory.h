@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "utils/Variant.h"
 
 class CFileItemList;
+class CProfilesManager;
 class CURL;
 
 namespace XFILE
@@ -59,13 +60,13 @@ namespace XFILE
 class IDirectory
 {
 public:
-  IDirectory(void);
+  IDirectory();
   virtual ~IDirectory(void);
   /*!
    \brief Get the \e items of the directory \e strPath.
    \param url Directory to read.
    \param items Retrieves the directory entries.
-   \return Returns \e true, if successfull.
+   \return Returns \e true, if successful.
    \sa CDirectoryFactory
    */
   virtual bool GetDirectory(const CURL& url, CFileItemList &items) = 0;
@@ -97,9 +98,16 @@ public:
   /*!
   \brief Removes the directory
   \param url Directory to remove.
-  \return Returns \e false if not succesfull
+  \return Returns \e false if not successful
   */
   virtual bool Remove(const CURL& url) { return false; }
+
+  /*!
+  \brief Recursively removes the directory
+  \param url Directory to remove.
+  \return Returns \e false if not succesful
+  */
+  virtual bool RemoveRecursive(const CURL& url) { return false; }
 
   /*!
   \brief Whether this file should be listed
@@ -142,7 +150,7 @@ protected:
    \return true if keyboard input has been received. False if it hasn't.
    \sa ProcessRequirements
    */
-  bool GetKeyboardInput(const CVariant &heading, std::string &input);
+  bool GetKeyboardInput(const CVariant &heading, std::string &input, bool hiddenInput = false);
 
   /*! \brief Show an error dialog on failure of GetDirectory call
    Call this method from the GetDirectory method to set an error message to be shown to the user
@@ -162,6 +170,9 @@ protected:
    \sa ProcessRequirements
    */
   void RequireAuthentication(const CURL& url);
+
+  // Construction parameters
+  const CProfilesManager &m_profileManager;
 
   std::string m_strFileMask;  ///< Holds the file mask specified by SetMask()
 

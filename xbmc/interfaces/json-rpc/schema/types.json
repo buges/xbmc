@@ -105,7 +105,7 @@
     "properties": {
       "method": { "type": "string", "default": "none",
         "enum": [ "none", "label", "date", "size", "file", "path", "drivetype", "title", "track", "time", "artist",
-                  "album", "albumtype", "genre", "country", "year", "rating", "votes", "top250", "programcount",
+                  "album", "albumtype", "genre", "country", "year", "rating", "userrating", "votes", "top250", "programcount",
                   "playlist", "episode", "season", "totalepisodes", "watchedepisodes", "tvshowstatus", "tvshowtitle",
                   "sorttitle", "productioncode", "mpaa", "studio", "dateadded", "lastplayed", "playcount", "listeners",
                   "bitrate", "random" ]
@@ -209,6 +209,17 @@
       "channels": { "type": "integer", "required": true }
     }
   },
+  "Player.Video.Stream": {
+    "type": "object",
+    "properties": {
+      "index": { "type": "integer", "minimum": 0, "required": true },
+      "name": { "type": "string", "required": true },
+      "language": { "type": "string", "required": true },
+      "codec": { "type": "string", "required": true },
+      "width": { "type": "integer", "required": true },
+      "height": { "type": "integer", "required": true }
+    }
+  },
   "Player.Subtitle": {
     "type": "object",
     "properties": {
@@ -223,7 +234,8 @@
               "totaltime", "playlistid", "position", "repeat", "shuffled",
               "canseek", "canchangespeed", "canmove", "canzoom", "canrotate",
               "canshuffle", "canrepeat", "currentaudiostream", "audiostreams",
-              "subtitleenabled", "currentsubtitle", "subtitles", "live" ]
+              "subtitleenabled", "currentsubtitle", "subtitles", "live",
+              "currentvideostream", "videostreams" ]
   },
   "Player.Property.Value": {
     "type": "object",
@@ -247,6 +259,8 @@
       "canrepeat": { "type": "boolean" },
       "currentaudiostream": { "$ref": "Player.Audio.Stream" },
       "audiostreams": { "type": "array", "items": { "$ref": "Player.Audio.Stream" } },
+      "currentvideostream": { "$ref": "Player.Video.Stream" },
+      "videostreams": { "type": "array", "items": { "$ref": "Player.Video.Stream" } },
       "subtitleenabled": { "type": "boolean" },
       "currentsubtitle": { "$ref": "Player.Subtitle" },
       "subtitles": { "type": "array", "items": { "$ref": "Player.Subtitle" } },
@@ -378,6 +392,30 @@
     },
     "additionalProperties": { "type": [ "null", { "$ref": "Global.String.NotEmpty", "required": true } ] }
   },
+  "Video.Rating": {
+    "type": "object",
+    "properties": {
+      "rating": { "type": "number", "required": true },
+      "votes": { "type": "integer" },
+      "default": { "type": "boolean" }
+    }
+  },
+  "Video.Ratings": {
+    "type": "object",
+    "additionalProperties": { "$ref": "Video.Rating" }
+  },
+  "Video.Ratings.Set": {
+    "type": "object",
+    "additionalProperties": { "type": [ "null", { "$ref": "Video.Rating", "required": true } ] }
+  },
+  "Media.UniqueID": {
+    "type": "object",
+    "additionalProperties": { "$ref": "Global.String.NotEmpty" }
+  },
+  "Media.UniqueID.Set": {
+    "type": "object",
+    "additionalProperties": { "type": [ "null", { "$ref": "Global.String.NotEmpty", "required": true } ] }
+  },
   "Library.Fields.Genre": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string", "enum": [ "title", "thumbnail" ] }
@@ -390,25 +428,51 @@
       "thumbnail": { "type": "string" }
     }
   },
+  "Library.Fields.Tag": {
+    "extends": "Item.Fields.Base",
+    "items": { "type": "string", "enum": [ "title" ] }
+  },
+  "Library.Details.Tag": {
+    "extends": "Item.Details.Base",
+    "properties": {
+      "tagid": { "$ref": "Library.Id", "required": true },
+      "title": { "type": "string" }
+    }
+  },
+  "Audio.Fields.Role": {
+    "extends": "Item.Fields.Base",
+    "items": { "type": "string", "enum": [ "title" ] }
+  },
+  "Audio.Details.Role": {
+    "extends": "Item.Details.Base",
+    "properties": {
+      "roleid": { "$ref": "Library.Id", "required": true },
+      "title": { "type": "string" }
+    }
+  },
   "Audio.Fields.Artist": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
+      "description": "Requesting the (song)genreid/genre, or roleid/role fields will result in increased response times",
       "enum": [ "instrument", "style", "mood", "born", "formed",
                 "description", "genre", "died", "disbanded",
                 "yearsactive", "musicbrainzartistid", "fanart",
-                "thumbnail", "compilationartist" ]
+                "thumbnail", "compilationartist", "dateadded",
+                "roles", "songgenres", "isalbumartist", 
+                "sortname", "type", "gender", "disambiguation", "art"]
     }
   },
   "Audio.Fields.Album": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "description": "Requesting the genreid and/or artistid field will result in increased response times",
+      "description": "Requesting the songgenres and/or artistid field will result in increased response times",
       "enum": [ "title", "description", "artist", "genre",
                 "theme", "mood", "style", "type", "albumlabel",
-                "rating", "year", "musicbrainzalbumid",
+                "rating", "votes", "userrating","year", "musicbrainzalbumid",
                 "musicbrainzalbumartistid", "fanart", "thumbnail",
-                "playcount", "genreid", "artistid", "displayartist",
-                "compilation", "releasetype" ]
+                "playcount", "artistid", "displayartist",
+                "compilation", "releasetype", "dateadded",
+                "sortartist", "musicbrainzreleasegroupid", "songgenres", "art"]
     }
   },
   "Audio.Fields.Song": {
@@ -416,12 +480,15 @@
     "items": { "type": "string",
       "description": "Requesting the genreid, artistid and/or albumartistid field will result in increased response times",
       "enum": [ "title", "artist", "albumartist", "genre", "year",
-                "rating", "album", "track", "duration", "comment",
+                "rating", "album", "track", "duration", "comment", 
                 "lyrics", "musicbrainztrackid", "musicbrainzartistid",
                 "musicbrainzalbumid", "musicbrainzalbumartistid",
                 "playcount", "fanart", "thumbnail", "file", "albumid",
                 "lastplayed", "disc", "genreid", "artistid", "displayartist",
-                "albumartistid", "albumreleasetype" ]
+                "albumartistid", "albumreleasetype", "dateadded", 
+                "votes", "userrating", "mood", "contributors",
+                "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist",
+                "sortartist", "art"]
     }
   },
   "Audio.Album.ReleaseType": {
@@ -429,10 +496,45 @@
     "enum": [ "album", "single" ],
     "default": "album"
   },
+  "Audio.Contributors": {
+    "type": "array",
+    "items": { "type": "object",
+      "description": "The artist and the role they contribute to a song",
+      "properties": {
+        "name": { "type": "string", "required": true },
+        "role": { "type": "string", "required": true },
+        "roleid": { "$ref": "Library.Id", "required": true },
+        "artistid": { "$ref": "Library.Id", "required": true }
+      },
+      "additionalProperties": false
+    }
+  },
+  "Audio.Artist.Roles": {
+    "type": "array",
+    "items": { "type": "object",
+      "description": "The various roles contributed by an artist to one or more songs",
+      "properties": {
+        "roleid": { "$ref": "Library.Id", "required": true },
+        "role": { "type": "string", "required": true }
+      },
+      "additionalProperties": false
+    }
+  },
+  "Audio.Details.Genres": {
+    "type": "array",
+    "items": { "type": "object",
+      "properties": {
+        "genreid": { "$ref": "Library.Id", "required": true },
+        "title": { "type": "string" }
+	  }
+    }
+  },
   "Audio.Details.Base": {
     "extends": "Media.Details.Base",
     "properties": {
-      "genre": { "$ref": "Array.String" }
+      "genre": { "$ref": "Array.String" },
+      "dateadded": { "type": "string" },
+      "art": { "$ref": "Media.Artwork" }
     }
   },
   "Audio.Details.Media": {
@@ -441,12 +543,13 @@
       "title": { "type": "string" },
       "artist": { "$ref": "Array.String" },
       "year": { "type": "integer" },
-      "rating": { "type": "integer" },
-      "musicbrainzalbumid": { "type": "string" },
-      "musicbrainzalbumartistid": { "type": "string" },
-      "genreid": { "$ref": "Array.Integer" },
+      "rating": { "type": "number" },
+      "musicbrainzalbumartistid": { "$ref": "Array.String" },
       "artistid": { "$ref": "Array.Integer" },
-      "displayartist": { "type" : "string" }
+      "displayartist": { "type" : "string" },
+      "votes": { "type": "integer" },
+      "userrating": { "type": "integer" },
+      "sortartist": { "type" : "string" }
     }
   },
   "Audio.Details.Artist": {
@@ -464,7 +567,14 @@
       "disbanded": { "type": "string" },
       "yearsactive": { "$ref": "Array.String" },
       "compilationartist": { "type": "boolean" },
-      "musicbrainzartistid": { "type": "string" }
+      "musicbrainzartistid": { "$ref": "Array.String" },
+      "roles": {"$ref": "Audio.Artist.Roles"},
+      "songgenres": {"$ref": "Audio.Details.Genres"},
+      "isalbumartist": { "type": "boolean" },
+      "sortname": { "type": "string" },
+      "type": { "type": "string" },
+      "gender": { "type": "string" },
+      "disambiguation": { "type": "string" }
     }
   },
   "Audio.Details.Album": {
@@ -479,7 +589,10 @@
       "albumlabel": { "type": "string" },
       "playcount": { "type": "integer" },
       "compilation": { "type": "boolean" },
-      "releasetype": { "$ref": "Audio.Album.ReleaseType" }
+      "releasetype": { "$ref": "Audio.Album.ReleaseType" },
+      "musicbrainzreleasegroupid": { "type": "string" },
+      "musicbrainzalbumid": { "type": "string" },
+      "songgenres": {"$ref": "Audio.Details.Genres"}
     }
   },
   "Audio.Details.Song": {
@@ -495,71 +608,92 @@
       "lyrics": { "type": "string" },
       "playcount": { "type": "integer" },
       "musicbrainztrackid": { "type": "string" },
-      "musicbrainzartistid": { "type": "string" },
+      "musicbrainzartistid": { "$ref": "Array.String" },
       "albumid": { "$ref": "Library.Id" },
       "lastplayed": { "type": "string" },
       "disc": { "type": "integer" },
       "albumartistid": { "$ref": "Array.Integer" },
-      "albumreleasetype": { "$ref": "Audio.Album.ReleaseType" }
+      "albumreleasetype": { "$ref": "Audio.Album.ReleaseType" },
+      "mood": { "type": "string"},
+      "contributors": { "$ref": "Audio.Contributors" },
+      "displaycomposer": { "type": "string"},
+      "displayconductor": { "type": "string"},
+      "displayorchestra": { "type": "string"},
+      "displaylyricist": { "type": "string"},
+      "genreid": { "$ref": "Array.Integer"}
+    }
+  },
+  "Audio.Property.Name": {
+    "type": "string",
+    "enum": [ "missingartistid" ]
+  },
+  "Audio.Property.Value": {
+    "type": "object",
+    "properties": {
+      "missingartistid": { "$ref": "Library.Id" }
     }
   },
   "Video.Fields.Movie": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "description": "Requesting the cast, showlink and/or tag field will result in increased response times",
+      "description": "Requesting the cast, ratings, showlink, streamdetails, uniqueid and/or tag field will result in increased response times",
       "enum": [ "title", "genre", "year", "rating", "director", "trailer",
                 "tagline", "plot", "plotoutline", "originaltitle", "lastplayed",
                 "playcount", "writer", "studio", "mpaa", "cast", "country",
                 "imdbnumber", "runtime", "set", "showlink", "streamdetails",
                 "top250", "votes", "fanart", "thumbnail", "file", "sorttitle",
-                "resume", "setid", "dateadded", "tag", "art" ]
+                "resume", "setid", "dateadded", "tag", "art", "userrating",  
+                "ratings", "premiered", "uniqueid" ]
     }
   },
   "Video.Fields.MovieSet": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "enum": [ "title", "playcount", "fanart", "thumbnail", "art" ]
+      "enum": [ "title", "playcount", "fanart", "thumbnail", "art", "plot" ]
     }
   },
   "Video.Fields.TVShow": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "description": "Requesting the cast field will result in increased response times",
+      "description": "Requesting the cast, ratings, uniqueid and/or tag field will result in increased response times",
       "enum": [ "title", "genre", "year", "rating", "plot",
                 "studio", "mpaa", "cast", "playcount", "episode",
                 "imdbnumber", "premiered", "votes", "lastplayed",
                 "fanart", "thumbnail", "file", "originaltitle",
                 "sorttitle", "episodeguide", "season", "watchedepisodes",
-                "dateadded", "tag", "art" ]
+                "dateadded", "tag", "art", "userrating", "ratings", 
+                "runtime", "uniqueid" ]
     }
   },
   "Video.Fields.Season": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
       "enum": [ "season", "showtitle", "playcount", "episode", "fanart", "thumbnail", "tvshowid",
-                "watchedepisodes", "art" ]
+                "watchedepisodes", "art", "userrating" ]
     }
   },
   "Video.Fields.Episode": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "description": "Requesting the cast field will result in increased response times",
+      "description": "Requesting the cast, ratings, streamdetails, uniqueid and/or tag field will result in increased response times",
       "enum": [ "title", "plot", "votes", "rating", "writer",
                 "firstaired", "playcount", "runtime", "director",
                 "productioncode", "season", "episode", "originaltitle",
                 "showtitle", "cast", "streamdetails", "lastplayed", "fanart",
                 "thumbnail", "file", "resume", "tvshowid", "dateadded",
-                "uniqueid", "art", "specialsortseason", "specialsortepisode" ]
+                "uniqueid", "art", "specialsortseason", "specialsortepisode", "userrating",
+                "seasonid", "ratings" ]
     }
   },
   "Video.Fields.MusicVideo": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
+      "description": "Requesting the streamdetails and/or tag field will result in increased response times",
       "enum": [ "title", "playcount", "runtime", "director",
                 "studio", "year", "plot", "album", "artist",
                 "genre", "track", "streamdetails", "lastplayed",
                 "fanart", "thumbnail", "file", "resume", "dateadded",
-                "tag", "art" ]
+                "tag", "art", "rating", "userrating", "premiered" ]
     }
   },
   "Video.Cast": {
@@ -672,13 +806,18 @@
       "top250": { "type": "integer" },
       "votes": { "type": "string" },
       "setid": { "$ref": "Library.Id" },
-      "tag": { "$ref": "Array.String" }
+      "tag": { "$ref": "Array.String" },
+      "userrating": { "type": "integer" },
+      "ratings": { "type": "Video.Ratings" },
+      "premiered": { "type": "string" },
+      "uniqueid": { "$ref": "Media.UniqueID" }
     }
   },
   "Video.Details.MovieSet": {
     "extends": "Video.Details.Media",
     "properties": {
-      "setid": { "$ref": "Library.Id", "required": true }
+      "setid": { "$ref": "Library.Id", "required": true },
+      "plot": { "type": "string" }
     }
   },
   "Video.Details.MovieSet.Extended": {
@@ -709,7 +848,11 @@
       "votes": { "type": "string" },
       "episodeguide": { "type": "string" },
       "season": { "type": "integer" },
-      "tag": { "$ref": "Array.String" }
+      "tag": { "$ref": "Array.String" },
+      "userrating": { "type": "integer" },
+      "ratings": { "type": "Video.Ratings" },
+      "runtime": { "type": "integer", "description": "Runtime in seconds" },
+      "uniqueid": { "$ref": "Media.UniqueID" }
     }
   },
   "Video.Details.Season": {
@@ -720,7 +863,8 @@
       "showtitle": { "type": "string" },
       "episode": { "type": "integer" },
       "watchedepisodes": { "type": "integer" },
-      "tvshowid": { "$ref": "Library.Id" }
+      "tvshowid": { "$ref": "Library.Id" },
+      "userrating": { "type": "integer" }
     }
   },
   "Video.Details.Episode": {
@@ -734,13 +878,16 @@
       "productioncode": { "type": "string" },
       "season": { "type": "integer" },
       "episode": { "type": "integer" },
-      "uniqueid": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } },
+      "uniqueid": { "$ref": "Media.UniqueID" },
       "originaltitle": { "type": "string" },
       "showtitle": { "type": "string" },
       "cast": { "$ref": "Video.Cast" },
       "tvshowid": { "$ref": "Library.Id" },
       "specialsortseason": { "type": "integer" },
-      "specialsortepisode": { "type": "integer" }
+      "specialsortepisode": { "type": "integer" },
+      "userrating": { "type": "integer" },
+      "seasonid": { "$ref": "Library.Id" },
+      "ratings": { "type": "Video.Ratings" }
     }
   },
   "Video.Details.MusicVideo": {
@@ -753,7 +900,10 @@
       "artist": { "$ref": "Array.String" },
       "genre": { "$ref": "Array.String" },
       "track": { "type": "integer" },
-      "tag": { "$ref": "Array.String" }
+      "tag": { "$ref": "Array.String" },
+      "rating": { "type": "number" },
+      "userrating": { "type": "integer" },
+      "premiered": { "type": "string" }
     }
   },
   "PVR.Property.Name": {
@@ -774,42 +924,6 @@
       { "type": "string", "enum": [ "alltv", "allradio" ], "required": true }
     ]
   },
-  "PVR.Fields.Channel": {
-    "extends": "Item.Fields.Base",
-    "items": { "type": "string",
-      "enum": [ "thumbnail", "channeltype", "hidden", "locked", "channel", "lastplayed", "broadcastnow", "broadcastnext" ]
-    }
-  },
-  "PVR.Details.Channel": {
-    "extends": "Item.Details.Base",
-    "properties": {
-      "channelid": { "$ref": "Library.Id", "required": true },
-      "channel": { "type": "string" },
-      "channeltype": { "$ref": "PVR.Channel.Type" },
-      "hidden": { "type": "boolean" },
-      "locked": { "type": "boolean" },
-      "thumbnail": { "type": "string" },
-      "lastplayed": { "type": "string" },
-      "broadcastnow": { "$ref": "PVR.Details.Broadcast" },
-      "broadcastnext": { "$ref": "PVR.Details.Broadcast" }
-    }
-  },
-  "PVR.Details.ChannelGroup": {
-    "extends": "Item.Details.Base",
-    "properties": {
-      "channelgroupid": { "$ref": "Library.Id", "required": true },
-      "channeltype": { "$ref": "PVR.Channel.Type", "required": true }
-    }
-  },
-  "PVR.Details.ChannelGroup.Extended": {
-    "extends": "PVR.Details.ChannelGroup",
-    "properties": {
-      "limits": { "$ref": "List.LimitsReturned", "required": true },
-      "channels": { "type": "array",
-        "items": { "$ref": "PVR.Details.Channel" }
-      }
-    }
-  },
   "PVR.Fields.Broadcast": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
@@ -817,7 +931,9 @@
                 "endtime", "runtime", "progress", "progresspercentage",
                 "genre", "episodename", "episodenum", "episodepart",
                 "firstaired", "hastimer", "isactive", "parentalrating",
-                "wasactive", "thumbnail", "rating" ]
+                "wasactive", "thumbnail", "rating", "originaltitle", "cast",
+                "director", "writer", "year", "imdbnumber", "hastimerrule",
+                "hasrecording", "recording", "isseries" ]
     }
   },
   "PVR.Details.Broadcast": {
@@ -842,22 +958,77 @@
       "parentalrating": { "type": "integer" },
       "wasactive": { "type": "boolean" },
       "thumbnail": { "type": "string" },
-      "rating": { "type": "integer" }
+      "rating": { "type": "integer" },
+      "originaltitle": { "type": "string" },
+      "cast": { "type": "string" },
+      "director": { "type": "string" },
+      "writer": { "type": "string" },
+      "year": { "type": "integer" },
+      "imdbnumber": { "type": "integer" },
+      "hastimerrule": { "type": "boolean" },
+      "hasrecording": { "type": "boolean" },
+      "recording": { "type": "string" },
+      "isseries": { "type": "boolean" }
+    }
+  },
+  "PVR.Fields.Channel": {
+    "extends": "Item.Fields.Base",
+    "items": { "type": "string",
+      "enum": [ "thumbnail", "channeltype", "hidden", "locked", "channel", "lastplayed",
+                "broadcastnow", "broadcastnext", "uniqueid", "icon", "channelnumber",
+                "subchannelnumber", "isrecording" ]
+    }
+  },
+  "PVR.Details.Channel": {
+    "extends": "Item.Details.Base",
+    "properties": {
+      "channelid": { "$ref": "Library.Id", "required": true },
+      "channel": { "type": "string" },
+      "channeltype": { "$ref": "PVR.Channel.Type" },
+      "hidden": { "type": "boolean" },
+      "locked": { "type": "boolean" },
+      "thumbnail": { "type": "string" },
+      "lastplayed": { "type": "string" },
+      "broadcastnow": { "$ref": "PVR.Details.Broadcast" },
+      "broadcastnext": { "$ref": "PVR.Details.Broadcast" },
+      "uniqueid": { "type": "integer", "required": true },
+      "icon": { "type": "string" },
+      "channelnumber": { "type": "integer" },
+      "subchannelnumber": { "type": "integer" },
+      "isrecording": { "type": "boolean" }
+    }
+  },
+  "PVR.Details.ChannelGroup": {
+    "extends": "Item.Details.Base",
+    "properties": {
+      "channelgroupid": { "$ref": "Library.Id", "required": true },
+      "channeltype": { "$ref": "PVR.Channel.Type", "required": true }
+    }
+  },
+  "PVR.Details.ChannelGroup.Extended": {
+    "extends": "PVR.Details.ChannelGroup",
+    "properties": {
+      "limits": { "$ref": "List.LimitsReturned", "required": true },
+      "channels": { "type": "array",
+        "items": { "$ref": "PVR.Details.Channel" }
+      }
     }
   },
   "PVR.TimerState": {
     "type": "string",
     "enum": [ "unknown", "new", "scheduled", "recording", "completed",
               "aborted", "cancelled", "conflict_ok", "conflict_notok",
-              "error" ]
+              "error", "disabled" ]
   },
   "PVR.Fields.Timer": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "enum": [ "title", "summary", "channelid", "isradio", "repeating",
+      "enum": [ "title", "summary", "channelid", "isradio", "istimerrule", "ismanual",
                 "starttime", "endtime", "runtime", "lifetime", "firstday",
                 "weekdays", "priority", "startmargin", "endmargin", "state",
-                "file", "directory" ]
+                "file", "directory", "preventduplicateepisodes", "startanytime",
+                "endanytime", "epgsearchstring", "fulltextepgsearch", "recordinggroup",
+                "maxrecordings", "epguid", "isreadonly" ]
     }
   },
   "PVR.Details.Timer": {
@@ -868,7 +1039,8 @@
       "summary": { "type": "string" },
       "channelid": { "$ref": "Library.Id" },
       "isradio": { "type": "boolean" },
-      "repeating": { "type": "boolean" },
+      "istimerrule": { "type": "boolean" },
+      "ismanual": { "type": "boolean" },
       "starttime": { "type": "string" },
       "endtime": { "type": "string" },
       "runtime": { "type": "integer" },
@@ -883,7 +1055,16 @@
       "endmargin": { "type": "integer" },
       "state": { "$ref": "PVR.TimerState" },
       "file": { "type": "string" },
-      "directory": { "type": "string" }
+      "directory": { "type": "string" },
+      "preventduplicateepisodes": { "type": "integer" },
+      "startanytime": { "type": "boolean" },
+      "endanytime": { "type": "boolean" },
+      "epgsearchstring": { "type": "string" },
+      "fulltextepgsearch": { "type": "boolean" },
+      "recordinggroup": { "type": "integer" },
+      "maxrecordings": { "type": "integer" },
+      "epguid": { "type": "integer" },
+      "isreadonly": { "type": "boolean" }
     }
   },
   "PVR.Fields.Recording": {
@@ -892,7 +1073,7 @@
       "enum": [ "title", "plot", "plotoutline", "genre", "playcount",
                 "resume", "channel", "starttime","endtime", "runtime",
                 "lifetime", "icon", "art", "streamurl", "file",
-                "directory" ]
+                "directory", "radio", "isdeleted", "epgeventid", "channeluid" ]
     }
   },
   "PVR.Details.Recording": {
@@ -914,7 +1095,11 @@
       "art": { "$ref": "Media.Artwork" },
       "streamurl": { "type": "string" },
       "file": { "type": "string" },
-      "directory": { "type": "string" }
+      "directory": { "type": "string" },
+      "radio": { "type": "boolean" },
+      "isdeleted": { "type": "boolean" },
+      "epgeventid": { "type": "integer" },
+      "channeluid": { "type": "integer" }
     }
   },
   "Textures.Details.Size": {
@@ -1202,7 +1387,7 @@
       "comment": { "type": "string" },
       "lyrics": { "type": "string" },
       "musicbrainztrackid": { "type": "string" },
-      "musicbrainzartistid": { "type": "string" },
+      "musicbrainzartistid": { "$ref": "Array.String" },
       "trailer": { "type": "string" },
       "tagline": { "type": "string" },
       "plotoutline": { "type": "string" },
@@ -1230,7 +1415,7 @@
       "disc": { "type": "integer" },
       "tag": { "$ref": "Array.String" },
       "albumartistid": { "$ref": "Array.Integer" },
-      "uniqueid": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } },
+      "uniqueid": { "$ref": "Media.UniqueID" },
       "episodeguide": { "type": "string" },
       "sorttitle": { "type": "string" },
       "description": { "type": "string" },
@@ -1242,7 +1427,12 @@
       "specialsortepisode": { "type": "integer" },
       "compilation": { "type": "boolean" },
       "releasetype": { "$ref": "Audio.Album.ReleaseType" },
-      "albumreleasetype": { "$ref": "Audio.Album.ReleaseType" }
+      "albumreleasetype": { "$ref": "Audio.Album.ReleaseType" },
+      "contributors": { "$ref": "Audio.Contributors" },
+      "displaycomposer": { "type": "string"},
+      "displayconductor": { "type": "string"},
+      "displayorchestra": { "type": "string"},
+      "displaylyricist": { "type": "string"}
     }
   },
   "List.Fields.All": {
@@ -1261,7 +1451,9 @@
                 "description", "theme", "mood", "style", "albumlabel", "sorttitle",
                 "episodeguide", "uniqueid", "dateadded", "channel", "channeltype", "hidden",
                 "locked", "channelnumber", "starttime", "endtime", "specialsortseason",
-                "specialsortepisode", "compilation", "releasetype", "albumreleasetype" ]
+                "specialsortepisode", "compilation", "releasetype", "albumreleasetype",
+                "contributors", "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist",
+                "userrating", "votes", "sortartist", "musicbrainzreleasegroupid"]
     }
   },
   "List.Item.All": {
@@ -1291,7 +1483,7 @@
                 "disc", "tag", "art", "genreid", "displayartist", "albumartistid",
                 "description", "theme", "mood", "style", "albumlabel", "sorttitle",
                 "episodeguide", "uniqueid", "dateadded", "size", "lastmodified", "mimetype",
-                "specialsortseason", "specialsortepisode" ]
+                "specialsortseason", "specialsortepisode", "sortartist", "musicbrainzreleasegroupid"]
     }
   },
   "List.Item.File": {
@@ -1322,7 +1514,7 @@
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
       "enum": [ "name", "version", "summary", "description", "path", "author", "thumbnail", "disclaimer", "fanart",
-                "dependencies", "broken", "extrainfo", "rating", "enabled" ]
+                "dependencies", "broken", "extrainfo", "rating", "enabled", "installed" ]
     }
   },
   "Addon.Details": {
@@ -1358,7 +1550,15 @@
         }
       },
       "rating": { "type": "integer" },
-      "enabled": { "type": "boolean" }
+      "enabled": { "type": "boolean" },
+      "installed": { "type": "boolean" }
+    }
+  },
+  "GUI.Stereoscopy.Mode": {
+    "type": "object",
+    "properties": {
+      "mode": { "type": "string", "required": true, "enum": [ "off", "split_vertical", "split_horizontal", "row_interleaved", "hardware_based", "anaglyph_cyan_red", "anaglyph_green_magenta", "anaglyph_yellow_blue", "monoscopic" ] },
+      "label": { "type": "string", "required": true }
     }
   },
   "GUI.Property.Name": {
@@ -1387,13 +1587,6 @@
       },
       "fullscreen": { "type": "boolean" },
       "stereoscopicmode": { "$ref": "GUI.Stereoscopy.Mode" }
-    }
-  },
-  "GUI.Stereoscopy.Mode": {
-    "type": "object",
-    "properties": {
-      "mode": { "type": "string", "required": true, "enum": [ "off", "split_vertical", "split_horizontal", "row_interleaved", "hardware_based", "anaglyph_cyan_red", "anaglyph_green_magenta", "anaglyph_yellow_blue", "monoscopic" ] },
-      "label": { "type": "string", "required": true }
     }
   },
   "System.Property.Name": {
@@ -1456,7 +1649,7 @@
     "type": "string",
     "enum": [
       "boolean", "integer", "number", "string", "action", "list",
-      "path", "addon"
+      "path", "addon", "date", "time"
     ]
   },
   "Setting.Level": {
@@ -1550,6 +1743,13 @@
       "formatvalue": { "type": "string", "required": true }
     }
   },
+  "Setting.Details.ControlLabel": {
+    "extends": "Setting.Details.ControlBase",
+    "properties": {
+      "type": { "type": "string", "required": true, "enum": [ "label" ] },
+      "format": { "type": "string", "required": true, "enum": [ "string" ] }
+    }
+  },
   "Setting.Details.Control": {
     "type": [
       { "$ref": "Setting.Details.ControlCheckmark", "required": true },
@@ -1558,7 +1758,8 @@
       { "$ref": "Setting.Details.ControlButton", "required": true },
       { "$ref": "Setting.Details.ControlList", "required": true },
       { "$ref": "Setting.Details.ControlSlider", "required": true },
-      { "$ref": "Setting.Details.ControlRange", "required": true }
+      { "$ref": "Setting.Details.ControlRange", "required": true },
+      { "$ref": "Setting.Details.ControlLabel", "required": true }
     ]
   },
   "Setting.Details.Base": {
@@ -1574,7 +1775,7 @@
     "properties": {
       "type": { "$ref": "Setting.Type", "required": true },
       "enabled": { "type": "boolean", "required": true },
-      "level": { "type": "integer", "required": true },
+      "level": { "$ref": "Setting.Level", "required": true },
       "parent": { "type": "string" },
       "control": { "$ref": "Setting.Details.Control" }
     },
@@ -1636,6 +1837,9 @@
   },
   "Setting.Details.SettingAction": {
     "extends": "Setting.Details.SettingBase",
+    "properties": {
+      "data": { "type": "string", "required": true }
+    },
     "additionalProperties": false
   },
   "Setting.Details.SettingList": {
@@ -1666,6 +1870,14 @@
     },
     "additionalProperties": false
   },
+  "Setting.Details.SettingDate": {
+    "extends": "Setting.Details.SettingString",
+    "additionalProperties": false
+  },
+  "Setting.Details.SettingTime": {
+    "extends": "Setting.Details.SettingString",
+    "additionalProperties": false
+  },
   "Setting.Details.Setting": {
     "type": [
       { "$ref": "Setting.Details.SettingBool", "required": true },
@@ -1675,7 +1887,9 @@
       { "$ref": "Setting.Details.SettingAction", "required": true },
       { "$ref": "Setting.Details.SettingList", "required": true },
       { "$ref": "Setting.Details.SettingPath", "required": true },
-      { "$ref": "Setting.Details.SettingAddon", "required": true }
+      { "$ref": "Setting.Details.SettingAddon", "required": true },
+      { "$ref": "Setting.Details.SettingDate", "required": true },
+      { "$ref": "Setting.Details.SettingTime", "required": true }
     ]
   },
   "Setting.Details.Group": {

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,18 +18,13 @@
  *
  */
 
-#include "system.h"
 #include "Texture.h"
-#include "windowing/WindowingFactory.h"
 #include "utils/log.h"
 #include "utils/GLUtils.h"
 #include "guilib/TextureManager.h"
 #include "utils/URIUtils.h"
 
-#if defined(HAS_OMXPLAYER)
 #include "cores/omxplayer/OMXImage.h"
-
-using namespace std;
 
 /************************************************************************/
 /*    CPiTexture                                                       */
@@ -95,6 +90,10 @@ void CPiTexture::LoadToGPU()
     // Bind the texture object
     glBindTexture(GL_TEXTURE_2D, m_texture);
 
+    if (IsMipmapped()) {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+      glGenerateMipmap(GL_TEXTURE_2D);
+    }
     m_loadedToGPU = true;
     return;
   }
@@ -112,7 +111,7 @@ void CPiTexture::Update(unsigned int width, unsigned int height, unsigned int pi
   CGLTexture::Update(width, height, pitch, format, pixels, loadToGPU);
 }
 
-bool CPiTexture::LoadFromFileInternal(const std::string& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool autoRotate, bool requirePixels, const std::string& strMimeType)
+bool CPiTexture::LoadFromFileInternal(const std::string& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool requirePixels, const std::string& strMimeType)
 {
   if (URIUtils::HasExtension(texturePath, ".jpg|.tbn"))
   {
@@ -142,13 +141,10 @@ bool CPiTexture::LoadFromFileInternal(const std::string& texturePath, unsigned i
       if (okay)
       {
         m_hasAlpha = false;
-        if (autoRotate)
-          m_orientation = orientation;
+        m_orientation = orientation;
         return true;
       }
     }
   }
-  return CGLTexture::LoadFromFileInternal(texturePath, maxWidth, maxHeight, autoRotate, requirePixels);
+  return CGLTexture::LoadFromFileInternal(texturePath, maxWidth, maxHeight, requirePixels);
 }
-
-#endif

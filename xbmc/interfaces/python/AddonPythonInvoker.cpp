@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,25 +18,22 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
-
 // python.h should always be included first before any other includes
 #include <Python.h>
 #include <osdefs.h>
 
-#include "system.h"
 #include "AddonPythonInvoker.h"
+
+#include <utility>
 
 #define MODULE "xbmc"
 
-#define RUNSCRIPT_PRAMBLE \
+#define RUNSCRIPT_PREAMBLE \
         "" \
         "import " MODULE "\n" \
         "xbmc.abortRequested = False\n" \
         "class xbmcout:\n" \
-        "  def __init__(self, loglevel=" MODULE ".LOGNOTICE):\n" \
+        "  def __init__(self, loglevel=" MODULE ".LOGDEBUG):\n" \
         "    self.ll=loglevel\n" \
         "  def write(self, data):\n" \
         "    " MODULE ".log(data,self.ll)\n" \
@@ -63,22 +60,23 @@
   ""
 
 #define RUNSCRIPT_POSTSCRIPT \
-        "print '-->Python Interpreter Initialized<--'\n" \
+        "print('-->Python Interpreter Initialized<--')\n" \
         ""
 
 #if defined(TARGET_ANDROID)
 
 #define RUNSCRIPT_COMPLIANT \
-  RUNSCRIPT_PRAMBLE RUNSCRIPT_SETUPTOOLS_HACK RUNSCRIPT_POSTSCRIPT
+  RUNSCRIPT_PREAMBLE RUNSCRIPT_SETUPTOOLS_HACK RUNSCRIPT_POSTSCRIPT
 
 #else
 
 #define RUNSCRIPT_COMPLIANT \
-  RUNSCRIPT_PRAMBLE RUNSCRIPT_POSTSCRIPT
+  RUNSCRIPT_PREAMBLE RUNSCRIPT_POSTSCRIPT
 
 #endif
 
 namespace PythonBindings {
+  void initModule_xbmcdrm(void);
   void initModule_xbmcgui(void);
   void initModule_xbmc(void);
   void initModule_xbmcplugin(void);
@@ -86,7 +84,6 @@ namespace PythonBindings {
   void initModule_xbmcvfs(void);
 }
 
-using namespace std;
 using namespace PythonBindings;
 
 typedef struct
@@ -97,6 +94,7 @@ typedef struct
 
 static PythonModule PythonModules[] =
   {
+    { "xbmcdrm",    initModule_xbmcdrm    },
     { "xbmcgui",    initModule_xbmcgui    },
     { "xbmc",       initModule_xbmc       },
     { "xbmcplugin", initModule_xbmcplugin },
@@ -110,8 +108,7 @@ CAddonPythonInvoker::CAddonPythonInvoker(ILanguageInvocationHandler *invocationH
   : CPythonInvoker(invocationHandler)
 { }
 
-CAddonPythonInvoker::~CAddonPythonInvoker()
-{ }
+CAddonPythonInvoker::~CAddonPythonInvoker() = default;
 
 std::map<std::string, CPythonInvoker::PythonModuleInitialization> CAddonPythonInvoker::getModules() const
 {
@@ -119,7 +116,7 @@ std::map<std::string, CPythonInvoker::PythonModuleInitialization> CAddonPythonIn
   if (modules.empty())
   {
     for (size_t i = 0; i < PythonModulesSize; i++)
-      modules.insert(make_pair(PythonModules[i].name, PythonModules[i].initialization));
+      modules.insert(std::make_pair(PythonModules[i].name, PythonModules[i].initialization));
   }
 
   return modules;

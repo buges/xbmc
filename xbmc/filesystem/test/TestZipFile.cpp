@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  *
  */
 
+#include "ServiceBroker.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "utils/StringUtils.h"
@@ -39,21 +40,22 @@ protected:
     /* Add default settings for locale.
      * Settings here are taken from CGUISettings::Initialize()
      */
-    /* TODO
-    CSettingsCategory *loc = CSettings::Get().AddCategory(7, "locale", 14090);
-    CSettings::Get().AddString(loc, "locale.language",248,"english",
+    //! @todo implement
+    /*
+    CSettingsCategory *loc = CServiceBroker::GetSettings().AddCategory(7, "locale", 14090);
+    CServiceBroker::GetSettings().AddString(loc, CSettings::SETTING_LOCALE_LANGUAGE,248,"english",
                             SPIN_CONTROL_TEXT);
-    CSettings::Get().AddString(loc, "locale.country", 20026, "USA",
+    CServiceBroker::GetSettings().AddString(loc, CSettings::SETTING_LOCALE_COUNTRY, 20026, "USA",
                             SPIN_CONTROL_TEXT);
-    CSettings::Get().AddString(loc, "locale.charset", 14091, "DEFAULT",
+    CServiceBroker::GetSettings().AddString(loc, CSettings::SETTING_LOCALE_CHARSET, 14091, "DEFAULT",
                             SPIN_CONTROL_TEXT); // charset is set by the
                                                 // language file
     */
   }
 
-  ~TestZipFile()
+  ~TestZipFile() override
   {
-    CSettings::Get().Unload();
+    CServiceBroker::GetSettings().Unload();
   }
 };
 
@@ -75,7 +77,7 @@ TEST_F(TestZipFile, Read)
   ASSERT_TRUE(file.Open(strpathinzip));
   EXPECT_EQ(0, file.GetPosition());
   EXPECT_EQ(1616, file.GetLength());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  EXPECT_EQ(sizeof(buf), static_cast<size_t>(file.Read(buf, sizeof(buf))));
   file.Flush();
   EXPECT_EQ(20, file.GetPosition());
   EXPECT_TRUE(!memcmp("About\n-----\nXBMC is ", buf, sizeof(buf) - 1));
@@ -84,26 +86,26 @@ TEST_F(TestZipFile, Read)
   EXPECT_STREQ("an award-winning fr", buf);
   EXPECT_EQ(100, file.Seek(100));
   EXPECT_EQ(100, file.GetPosition());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  EXPECT_EQ(sizeof(buf), static_cast<size_t>(file.Read(buf, sizeof(buf))));
   file.Flush();
   EXPECT_EQ(120, file.GetPosition());
   EXPECT_TRUE(!memcmp("ent hub for digital ", buf, sizeof(buf) - 1));
   EXPECT_EQ(220, file.Seek(100, SEEK_CUR));
   EXPECT_EQ(220, file.GetPosition());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  EXPECT_EQ(sizeof(buf), static_cast<size_t>(file.Read(buf, sizeof(buf))));
   file.Flush();
   EXPECT_EQ(240, file.GetPosition());
   EXPECT_TRUE(!memcmp("rs, XBMC is a non-pr", buf, sizeof(buf) - 1));
   EXPECT_EQ(1596, file.Seek(-(int64_t)sizeof(buf), SEEK_END));
   EXPECT_EQ(1596, file.GetPosition());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  EXPECT_EQ(sizeof(buf), static_cast<size_t>(file.Read(buf, sizeof(buf))));
   file.Flush();
   EXPECT_EQ(1616, file.GetPosition());
   EXPECT_TRUE(!memcmp("multimedia jukebox.\n", buf, sizeof(buf) - 1));
   EXPECT_EQ(-1, file.Seek(100, SEEK_CUR));
   EXPECT_EQ(1616, file.GetPosition());
   EXPECT_EQ(0, file.Seek(0, SEEK_SET));
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  EXPECT_EQ(sizeof(buf), static_cast<size_t>(file.Read(buf, sizeof(buf))));
   file.Flush();
   EXPECT_EQ(20, file.GetPosition());
   EXPECT_TRUE(!memcmp("About\n-----\nXBMC is ", buf, sizeof(buf) - 1));
@@ -193,7 +195,7 @@ TEST_F(TestZipFile, CorruptedFile)
   std::cout << "File contents:" << std::endl;
   while ((size = file->Read(buf, sizeof(buf))) > 0)
   {
-    str = StringUtils::Format("  %08X", count);
+    str = StringUtils::Format("  %08llX", count);
     std::cout << str << "  ";
     count += size;
     for (i = 0; i < size; i++)

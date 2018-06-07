@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,15 +26,9 @@
 using namespace PLAYLIST;
 using namespace XFILE;
 
-CPlaylistDirectory::CPlaylistDirectory()
-{
+CPlaylistDirectory::CPlaylistDirectory() = default;
 
-}
-
-CPlaylistDirectory::~CPlaylistDirectory()
-{
-
-}
+CPlaylistDirectory::~CPlaylistDirectory() = default;
 
 bool CPlaylistDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -47,7 +41,7 @@ bool CPlaylistDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   if (playlistTyp==PLAYLIST_NONE)
     return false;
 
-  CPlayList& playlist = g_playlistPlayer.GetPlaylist(playlistTyp);
+  CPlayList& playlist = CServiceBroker::GetPlaylistPlayer().GetPlaylist(playlistTyp);
   items.Reserve(playlist.size());
 
   for (int i = 0; i < playlist.size(); ++i)

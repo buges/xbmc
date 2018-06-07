@@ -1,9 +1,8 @@
-#ifndef _ENCODER_H
-#define _ENCODER_H
+#pragma once
 
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2005-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -34,7 +33,7 @@ namespace XFILE { class CFile; }
 class CEncoder
 {
 public:
-  CEncoder(std::shared_ptr<IEncoder> encoder);
+  explicit CEncoder(std::shared_ptr<IEncoder> encoder);
   virtual ~CEncoder();
   virtual bool Init(const char* strFile, int iInChannels, int iInRate, int iInBits);
   virtual int Encode(int nNumBytesRead, uint8_t* pbtStream);
@@ -59,7 +58,7 @@ protected:
   int WriteStream(const void *pBuffer, uint32_t iBytes);
   int FlushStream();
 
-  static int WriteCallback(void *opaque, uint8_t *data, int size);
+  static int WriteCallback(void *opaque, const uint8_t *data, int size);
   static int64_t SeekCallback(void *opaque, int64_t offset, int whence);
 
   std::shared_ptr<IEncoder> m_impl;
@@ -69,6 +68,4 @@ protected:
   uint8_t m_btWriteBuffer[WRITEBUFFER_SIZE]; // 128k buffer for writing to disc
   uint32_t m_dwWriteBufferPointer;
 };
-
-#endif // _ENCODER_H
 

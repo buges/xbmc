@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2014 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,11 +27,11 @@ class COverrideDirectory : public IDirectory
 {
 public:
   COverrideDirectory();
-  virtual ~COverrideDirectory();
+  ~COverrideDirectory() override;
 
-  virtual bool Create(const CURL& url);
-  virtual bool Exists(const CURL& url);
-  virtual bool Remove(const CURL& url);
+  bool Create(const CURL& url) override;
+  bool Exists(const CURL& url) override;
+  bool Remove(const CURL& url) override;
 
 protected:
   virtual std::string TranslatePath(const CURL &url) = 0;

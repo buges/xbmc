@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,18 +20,13 @@
 
 #pragma once
 
-#ifndef WINDOW_EVENTS_IOS_H
-#define WINDOW_EVENTS_IOS_H
-
 #include "windowing/WinEvents.h"
 
 class CWinEventsIOS : public IWinEvents
 {
 public:
-  void MessagePush(XBMC_Event *newEvent);
-  bool MessagePump();
-  virtual size_t  GetQueueSize();
+  bool MessagePump() override;
+private:
+  size_t GetQueueSize();
 };
-
-#endif // WINDOW_EVENTS_IOS_H
 

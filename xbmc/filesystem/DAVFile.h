@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,16 +27,16 @@ namespace XFILE
   {
   public:
     CDAVFile(void);
-    virtual ~CDAVFile(void);
+    ~CDAVFile(void) override;
 
     virtual bool Execute(const CURL& url);
 
-    virtual bool Delete(const CURL& url);
-    virtual bool Rename(const CURL& url, const CURL& urlnew);
+    bool Delete(const CURL& url) override;
+    bool Rename(const CURL& url, const CURL& urlnew) override;
 
-    virtual int GetLastResponseCode() { return lastResponseCode; }
+    virtual int GetLastResponseCode() { return m_lastResponseCode; }
 
   private:
-    int lastResponseCode;
+    int m_lastResponseCode;
   };
 }

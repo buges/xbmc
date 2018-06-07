@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,10 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 class CGUIControl;
+class CGUIListItem; typedef std::shared_ptr<CGUIListItem> CGUIListItemPtr;
 
 /**
  * Class containing vector of condition->(action/navigation route) pairs and handling its execution.
@@ -31,12 +33,12 @@ class CGUIAction
 {
 public:
   CGUIAction();
-  CGUIAction(int controlID);
+  explicit CGUIAction(int controlID);
 
   /**
    * Execute actions (no navigation paths), if action is paired with condition - evaluate condition first
    */
-  bool ExecuteActions(int controlID, int parentID) const;
+  bool ExecuteActions(int controlID, int parentID, const CGUIListItemPtr &item = NULL) const;
   /**
    * Check if there is any action that meet its condition
    */

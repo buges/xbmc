@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,12 +26,11 @@
 #include "utils/StringUtils.h"
 
 using namespace XFILE::VIDEODATABASEDIRECTORY;
-using namespace std;
 
 Node MovieChildren[] = {
                         { NODE_TYPE_GENRE,        "genres",     135 },
-                        { NODE_TYPE_TITLE_MOVIES, "titles",     369 },
-                        { NODE_TYPE_YEAR,         "years",      562 },
+                        { NODE_TYPE_TITLE_MOVIES, "titles",     10024 },
+                        { NODE_TYPE_YEAR,         "years",      652 },
                         { NODE_TYPE_ACTOR,        "actors",     344 },
                         { NODE_TYPE_DIRECTOR,     "directors",  20348 },
                         { NODE_TYPE_STUDIO,       "studios",    20388 },

@@ -1,7 +1,7 @@
 #pragma once
 /*
 *      Copyright (C) 2013-2014 Team XBMC
-*      http://xbmc.org
+*      http://kodi.tv
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -96,8 +96,8 @@ namespace XUTILS
     void* detach(void);
 
   private:
-    auto_buffer(const auto_buffer& other); // disallow copy constructor
-    auto_buffer& operator=(const auto_buffer& other); // disallow assignment
+    auto_buffer(const auto_buffer& other) = delete; // disallow copy constructor
+    auto_buffer& operator=(const auto_buffer& other) = delete; // disallow assignment
 
     void* p;
     size_t s;

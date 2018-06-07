@@ -1,7 +1,7 @@
 #pragma once
 /*
  *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,11 +25,10 @@
 class ImageFactory
 {
 public:
-  ImageFactory() {}
-  virtual ~ImageFactory() {}
+  ImageFactory() = default;
+  virtual ~ImageFactory() = default;
 
   static IImage* CreateLoader(const std::string& strFileName);
   static IImage* CreateLoader(const CURL& url);
   static IImage* CreateLoaderFromMimeType(const std::string& strMimeType);
-  static IImage* CreateFallbackLoader(const std::string& strMimeType);
 };

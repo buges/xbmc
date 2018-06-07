@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,9 @@
  *
  */
 
+#include <string>
+#include <vector>
+
 #include "guilib/GUIDialog.h"
 #include "filesystem/VirtualDirectory.h"
 #include "filesystem/DirectoryHistory.h"
@@ -33,13 +36,13 @@ class CGUIDialogFileBrowser : public CGUIDialog, public IBackgroundLoaderObserve
 {
 public:
   CGUIDialogFileBrowser(void);
-  virtual ~CGUIDialogFileBrowser(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
-  virtual bool OnBack(int actionID);
-  virtual void FrameMove();
-  virtual void OnWindowLoaded();
-  virtual void OnWindowUnload();
+  ~CGUIDialogFileBrowser(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
+  bool OnBack(int actionID) override;
+  void FrameMove() override;
+  void OnWindowLoaded() override;
+  void OnWindowUnload() override;
   bool IsConfirmed() { return m_bConfirmed; };
   void SetHeading(const std::string &heading);
 
@@ -54,11 +57,11 @@ public:
 
   void SetSources(const VECSOURCES &shares);
 
-  virtual void OnItemLoaded(CFileItem *item) {};
+  void OnItemLoaded(CFileItem *item) override {};
 
-  virtual bool HasListItems() const { return true; };
-  virtual CFileItemPtr GetCurrentListItem(int offset = 0);
-  int GetViewContainerID() const { return m_viewControl.GetCurrentControl(); };
+  bool HasListItems() const override { return true; };
+  CFileItemPtr GetCurrentListItem(int offset = 0) override;
+  int GetViewContainerID() const override { return m_viewControl.GetCurrentControl(); };
 
 protected:
   void GoParentFolder();
@@ -71,7 +74,7 @@ protected:
   void OnAddNetworkLocation();
   void OnAddMediaSource();
   void OnEditMediaSource(CFileItem* pItem);
-  CGUIControl *GetFirstFocusableControl(int id);
+  CGUIControl *GetFirstFocusableControl(int id) override;
 
   VECSOURCES m_shares;
   XFILE::CVirtualDirectory m_rootDir;

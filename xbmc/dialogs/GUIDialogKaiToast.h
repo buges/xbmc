@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ class CGUIDialogKaiToast: public CGUIDialog
 {
 public:
   CGUIDialogKaiToast(void);
-  virtual ~CGUIDialogKaiToast(void);
+  ~CGUIDialogKaiToast(void) override;
 
   enum eMessageType { Default = 0, Info, Warning, Error };
 
@@ -53,9 +53,8 @@ public:
   static void QueueNotification(const std::string& aImageFile, const std::string& aCaption, const std::string& aDescription, unsigned int displayTime = TOAST_DISPLAY_TIME, bool withSound = true, unsigned int messageTime = TOAST_MESSAGE_TIME);
   bool DoWork();
 
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual void OnWindowLoaded();
-  virtual void FrameMove();
+  bool OnMessage(CGUIMessage& message) override;
+  void FrameMove() override;
   void ResetTimer();
 
 protected:
@@ -65,8 +64,6 @@ protected:
 
   unsigned int m_toastDisplayTime;
   unsigned int m_toastMessageTime;
-
-  std::string m_defaultIcon;
   
   static TOASTQUEUE m_notifications;
   static CCriticalSection m_critical;

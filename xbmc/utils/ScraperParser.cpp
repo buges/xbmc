@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *      Copyright (C) 2012-2015 Team Kodi
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
+ *  along with Kodi; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -21,6 +21,7 @@
 #include "ScraperParser.h"
 
 #include "addons/AddonManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "RegExp.h"
 #include "HTMLUtil.h"
 #include "addons/Scraper.h"
@@ -28,12 +29,13 @@
 #include "utils/StringUtils.h"
 #include "log.h"
 #include "CharsetConverter.h"
+#ifdef HAVE_LIBXSLT
 #include "utils/XSLTUtils.h"
+#endif
 #include "utils/XMLUtils.h"
 #include <sstream>
 #include <cstring>
 
-using namespace std;
 using namespace ADDON;
 using namespace XFILE;
 
@@ -181,7 +183,7 @@ void CScraperParser::ReplaceBuffers(std::string& strDest)
     std::string strInfo = strDest.substr(iIndex+10, iEnd - iIndex - 10);
     std::string strReplace;
     if (m_scraper)
-      strReplace = m_scraper->GetString(strtol(strInfo.c_str(),NULL,10));
+      strReplace = g_localizeStrings.GetAddonString(m_scraper->ID(), strtol(strInfo.c_str(),NULL,10));
     strDest.replace(strDest.begin()+iIndex,strDest.begin()+iEnd+1,strReplace);
     iIndex += strReplace.length();
   }
@@ -272,7 +274,7 @@ void CScraperParser::ParseExpression(const std::string& input, std::string& dest
         InsertToken(strOutput,iBuf+1,"!!!ENCODE!!!");
     }
     int i = reg.RegFind(curInput.c_str());
-    while (i > -1 && (i < (int)curInput.size() || curInput.size() == 0))
+    while (i > -1 && (i < (int)curInput.size() || curInput.empty()))
     {
       if (!bAppend)
       {
@@ -339,6 +341,7 @@ void CScraperParser::ParseExpression(const std::string& input, std::string& dest
 
 void CScraperParser::ParseXSLT(const std::string& input, std::string& dest, TiXmlElement* element, bool bAppend)
 {
+#ifdef HAVE_LIBXSLT
   TiXmlElement* pSheet = element->FirstChildElement();
   if (pSheet)
   {
@@ -355,13 +358,18 @@ void CScraperParser::ParseXSLT(const std::string& input, std::string& dest, TiXm
 
     xsltUtils.XSLTTransform(dest);
   }
+#endif
 }
 
 TiXmlElement *FirstChildScraperElement(TiXmlElement *element)
 {
   for (TiXmlElement *child = element->FirstChildElement(); child; child = child->NextSiblingElement())
   {
-    if (child->ValueStr() == "RegExp" || child->ValueStr() == "XSLT")
+#ifdef HAVE_LIBXSLT
+    if (child->ValueStr() == "XSLT")
+      return child;
+#endif
+    if (child->ValueStr() == "RegExp")
       return child;
   }
   return NULL;
@@ -371,7 +379,11 @@ TiXmlElement *NextSiblingScraperElement(TiXmlElement *element)
 {
   for (TiXmlElement *next = element->NextSiblingElement(); next; next = next->NextSiblingElement())
   {
-    if (next->ValueStr() == "RegExp" || next->ValueStr() == "XSLT")
+#ifdef HAVE_LIBXSLT
+    if (next->ValueStr() == "XSLT")
+      return next;
+#endif
+    if (next->ValueStr() == "RegExp")
       return next;
   }
   return NULL;
@@ -433,9 +445,11 @@ void CScraperParser::ParseNext(TiXmlElement* element)
     {
       if (iDest-1 < MAX_SCRAPER_BUFFERS && iDest-1 > -1)
       {
+#ifdef HAVE_LIBXSLT
         if (pReg->ValueStr() == "XSLT")
           ParseXSLT(strInput, m_param[iDest - 1], pReg, bAppend);
         else
+#endif
           ParseExpression(strInput, m_param[iDest - 1],pReg,bAppend);
       }
       else
@@ -575,10 +589,10 @@ void CScraperParser::ClearBuffers()
 void CScraperParser::GetBufferParams(bool* result, const char* attribute, bool defvalue)
 {
   for (int iBuf=0;iBuf<MAX_SCRAPER_BUFFERS;++iBuf)
-    result[iBuf] = defvalue;;
+    result[iBuf] = defvalue;
   if (attribute)
   {
-    vector<std::string> vecBufs;
+    std::vector<std::string> vecBufs;
     StringUtils::Tokenize(attribute,vecBufs,",");
     for (size_t nToken=0; nToken < vecBufs.size(); nToken++)
     {

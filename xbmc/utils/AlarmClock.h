@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ class CAlarmClock : public CThread
 {
 public:
   CAlarmClock();
-  ~CAlarmClock();
+  ~CAlarmClock() override;
   void Start(const std::string& strName, float n_secs, const std::string& strCommand, bool bSilent = false, bool bLoop = false);
   inline bool IsRunning() const
   {
@@ -67,7 +67,7 @@ public:
   }
 
   void Stop(const std::string& strName, bool bSilent = false);
-  virtual void Process();
+  void Process() override;
 private:
   std::map<std::string,SAlarmClockEvent> m_event;
   CCriticalSection m_events;

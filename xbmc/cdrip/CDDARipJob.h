@@ -1,7 +1,7 @@
 #pragma once
 /*
 *      Copyright (C) 2012-2013 Team XBMC
-*      http://xbmc.org
+*      http://kodi.tv
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -46,11 +46,11 @@ public:
               bool eject=false, unsigned int rate=44100,
               unsigned int channels=2, unsigned int bps=16);
 
-  virtual ~CCDDARipJob();
+  ~CCDDARipJob() override;
 
-  virtual const char* GetType() const { return "cdrip"; };
-  virtual bool operator==(const CJob *job) const;
-  virtual bool DoWork();
+  const char* GetType() const override { return "cdrip"; };
+  bool operator==(const CJob *job) const override;
+  bool DoWork() override;
   std::string GetOutput() const { return m_output; }
 protected:
   //! \brief Setup the audio encoder
