@@ -47,6 +47,9 @@ void CQueryParams::SetQueryParam(NODE_TYPE NodeType, const std::string& strNodeN
   case NODE_TYPE_ARTIST:
     m_idArtist=idDb;
     break;
+  case NODE_TYPE_SINGLES:
+    m_idArtist=idDb;
+    break;
   case NODE_TYPE_ALBUM_RECENTLY_PLAYED:
   case NODE_TYPE_ALBUM_RECENTLY_ADDED:
   case NODE_TYPE_ALBUM_COMPILATIONS:

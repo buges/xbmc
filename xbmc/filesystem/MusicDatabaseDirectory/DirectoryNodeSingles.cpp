@@ -19,25 +19,42 @@
  */
 
 #include "DirectoryNodeSingles.h"
+#include "QueryParams.h"
 #include "music/MusicDatabase.h"
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
 CDirectoryNodeSingles::CDirectoryNodeSingles(const std::string& strName, CDirectoryNode* pParent)
-  : CDirectoryNode(NODE_TYPE_SINGLES, strName, pParent)
+: CDirectoryNode(NODE_TYPE_SINGLES, strName, pParent)
 {
+    
+}
 
+NODE_TYPE CDirectoryNodeSingles::GetChildType() const
+{
+    return NODE_TYPE_SONG;
+}
+
+std::string CDirectoryNodeSingles::GetLocalizedName() const
+{
+    CMusicDatabase db;
+    if (db.Open())
+        return db.GetArtistById(GetID());
+    return "";
 }
 
 bool CDirectoryNodeSingles::GetContent(CFileItemList& items) const
 {
-  CMusicDatabase musicdatabase;
-  if (!musicdatabase.Open())
-    return false;
-
-  bool bSuccess = musicdatabase.GetSongsFullByWhere(BuildPath(), CDatabase::Filter(), items, SortDescription(), true);
-
-  musicdatabase.Close();
-
-  return bSuccess;
+    CMusicDatabase musicdatabase;
+    if (!musicdatabase.Open())
+        return false;
+    
+    CQueryParams params;
+    CollectQueryParams(params);
+    
+    bool bSuccess = musicdatabase.GetArtistsNav(BuildPath(), items, params.GetGenreId());
+    
+    musicdatabase.Close();
+    
+    return bSuccess;
 }
