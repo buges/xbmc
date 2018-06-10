@@ -480,7 +480,14 @@ bool CPVRClients::IsPlaying(void) const
 
 bool CPVRClients::GetPlayingClient(CPVRClientPtr &client) const
 {
-  return GetCreatedClient(GetPlayingClientID(), client);
+  return GetCreatedClient(m_playingClientId, client);
+}
+
+bool CPVRClients::GetPlayingClient(CPVRClientPtr &client, bool &bPlayingRecording) const
+{
+  CSingleLock lock(m_critSection);
+  bPlayingRecording = m_bIsPlayingRecording;
+  return GetCreatedClient(m_playingClientId, client);
 }
 
 int CPVRClients::GetPlayingClientID(void) const
@@ -550,6 +557,26 @@ std::string CPVRClients::GetBackendHostnameByClientId(int iClientId) const
     return PVR_ERROR_NO_ERROR;
   });
   return name;
+}
+
+int CPVRClients::GetStreamReadChunkSize(const CFileItem &item)
+{
+  int iChunkSize = 0;
+  int iClientID = PVR_INVALID_CLIENT_ID;
+
+  if (item.HasPVRChannelInfoTag())
+    iClientID = item.GetPVRChannelInfoTag()->ClientID();
+  else if (item.HasPVRRecordingInfoTag())
+    iClientID = item.GetPVRRecordingInfoTag()->m_iClientId;
+
+  if (iClientID != PVR_INVALID_CLIENT_ID)
+  {
+    ForCreatedClient(__FUNCTION__, iClientID, [&iChunkSize](const CPVRClientPtr &client) {
+      return client->GetStreamReadChunkSize(iChunkSize);
+    });
+  }
+
+  return iChunkSize;
 }
 
 bool CPVRClients::OpenStream(const CPVRChannelPtr &channel)

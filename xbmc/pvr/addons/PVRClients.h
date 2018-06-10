@@ -208,6 +208,14 @@ namespace PVR
     bool GetPlayingClient(CPVRClientPtr &client) const;
 
     /*!
+     * @brief Get the instance of the playing client, if there is one.
+     * @param client Will be filled with requested client on success, null otherwise.
+     * @param bPlayingRecording is set to true if the client is currently playing a recording, false otherwise.
+     * @return True on success, false otherwise.
+     */
+    bool GetPlayingClient(CPVRClientPtr &client, bool &bPlayingRecording) const;
+
+    /*!
      * @brief Get the ID of the playing client, if there is one.
      * @return The ID or -1 if no client is playing.
      */
@@ -264,6 +272,13 @@ namespace PVR
      * @brief Close the stream on the currently playing client, if any.
      */
     void CloseStream(void);
+
+    /*!
+     * @brief Return the read chunk size to use when playing a stream.
+     * @param item The item providing the stream (channel or recording).
+     * @return The chunk size in bytes or 0 in case of an error.
+     */
+    int GetStreamReadChunkSize(const CFileItem &item);
 
     /*!
      * @brief Read from an open stream.

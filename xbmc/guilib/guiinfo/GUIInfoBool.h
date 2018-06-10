@@ -1,3 +1,10 @@
+/*!
+\file GUIInfoBool.h
+\brief
+*/
+
+#pragma once
+
 /*
  *      Copyright (C) 2005-2013 Team XBMC
  *      http://kodi.tv
@@ -18,23 +25,34 @@
  *
  */
 
-#pragma once
+#include "interfaces/info/InfoBool.h"
 
-#include "DRMUtils.h"
+#include <string>
 
-class CDRMLegacy : public CDRMUtils
+class CGUIListItem;
+
+namespace KODI
+{
+namespace GUILIB
+{
+namespace GUIINFO
+{
+
+class CGUIInfoBool
 {
 public:
-  CDRMLegacy() = default;
-  ~CDRMLegacy() { DestroyDrm(); };
-  virtual void FlipPage(struct gbm_bo *bo, bool rendered, bool videoLayer) override;
-  virtual bool SetVideoMode(const RESOLUTION_INFO& res, struct gbm_bo *bo) override;
-  virtual bool SetActive(bool active) override;
-  virtual bool InitDrm() override;
+  explicit CGUIInfoBool(bool value = false);
+  ~CGUIInfoBool();
 
+  operator bool() const { return m_value; };
+
+  void Update(const CGUIListItem *item = NULL);
+  void Parse(const std::string &expression, int context);
 private:
-  bool WaitingForFlip();
-  bool QueueFlip(struct gbm_bo *bo);
-  static void PageFlipHandler(int fd, unsigned int frame, unsigned int sec,
-                              unsigned int usec, void *data);
+  INFO::InfoPtr m_info;
+  bool m_value;
 };
+
+} // namespace GUIINFO
+} // namespace GUILIB
+} // namespace KODI

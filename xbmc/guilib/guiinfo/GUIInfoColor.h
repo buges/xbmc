@@ -1,3 +1,10 @@
+/*!
+\file GUIInfoColor.h
+\brief
+*/
+
+#pragma once
+
 /*
  *      Copyright (C) 2005-2013 Team XBMC
  *      http://kodi.tv
@@ -18,23 +25,34 @@
  *
  */
 
-#pragma once
+#include "utils/Color.h"
 
-#include "DRMUtils.h"
+#include <string>
 
-class CDRMLegacy : public CDRMUtils
+class CGUIListItem;
+
+namespace KODI
+{
+namespace GUILIB
+{
+namespace GUIINFO
+{
+
+class CGUIInfoColor
 {
 public:
-  CDRMLegacy() = default;
-  ~CDRMLegacy() { DestroyDrm(); };
-  virtual void FlipPage(struct gbm_bo *bo, bool rendered, bool videoLayer) override;
-  virtual bool SetVideoMode(const RESOLUTION_INFO& res, struct gbm_bo *bo) override;
-  virtual bool SetActive(bool active) override;
-  virtual bool InitDrm() override;
+  constexpr CGUIInfoColor(UTILS::Color color = 0):m_color(color) {}
+
+  constexpr operator UTILS::Color() const { return m_color; };
+
+  bool Update();
+  void Parse(const std::string &label, int context);
 
 private:
-  bool WaitingForFlip();
-  bool QueueFlip(struct gbm_bo *bo);
-  static void PageFlipHandler(int fd, unsigned int frame, unsigned int sec,
-                              unsigned int usec, void *data);
+  int m_info = 0;
+  UTILS::Color m_color;
 };
+
+} // namespace GUIINFO
+} // namespace GUILIB
+} // namespace KODI

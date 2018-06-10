@@ -21,7 +21,7 @@
 
 #include <string>
 #include <vector>
-#include "guilib/guiinfo/GUIInfoTypes.h"
+#include "guilib/guiinfo/GUIInfoLabel.h"
 #include "interfaces/info/InfoBool.h"
 
 class TiXmlElement;
