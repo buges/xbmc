@@ -1,5 +1,3 @@
-#pragma once
-
 /*
  *      Copyright (C) 2005-2015 Team Kodi
  *      http://kodi.tv
@@ -19,6 +17,8 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#pragma once
 
 #include "xbmc_addon_dll.h"
 #include "xbmc_pvr_types.h"
@@ -117,7 +117,7 @@ extern "C"
    *          Return PVR_ERROR_NOT_IMPLEMENTED if this add-on won't provide this function.
    */
   PVR_ERROR IsEPGTagPlayable(const EPG_TAG* tag, bool* bIsPlayable);
-  
+
   /*!
    * Retrieve the edit decision list (EDL) of an EPG tag on the backend.
    * @param epgTag The EPG tag.

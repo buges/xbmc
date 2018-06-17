@@ -3345,6 +3345,7 @@ msgctxt "#743"
 msgid "Yellow"
 msgstr ""
 
+#: system/library/music/files.xml
 #: xbmc/dialogs/GUIDialogMediaSource.cpp
 msgctxt "#744"
 msgid "Files"
@@ -5082,7 +5083,11 @@ msgctxt "#10126"
 msgid "File browser"
 msgstr ""
 
-#empty string with id 10127
+#. Audio Channel count
+#: xbmc/video/dialogs/GUIDialogAudioSettings.cpp
+msgctxt "#10127"
+msgid "channels"
+msgstr ""
 
 #: xbmc/guilib/WindowIDs.h
 msgctxt "#10128"
@@ -6333,6 +6338,7 @@ msgstr ""
 #: xbmc/pvr/PVRGUIInfo.cpp
 #: xbmc/video/dialogs/GUIDialogAudioSubtitleSettings.cpp
 #: xbmc/video/PlayerController.cpp
+#: xbmc/video/dialogs/GUIDialogAudioSettings.cpp
 msgctxt "#13205"
 msgid "Unknown"
 msgstr ""
@@ -17322,7 +17328,49 @@ msgctxt "#35225"
 msgid "Video filter"
 msgstr ""
 
-#empty strings from id 35226 to 35249
+#. Label of button in the in-game menu for advanced settings
+#: addons/skin.estuary/xml/Custom_1101_SettingsList.xml
+msgctxt "#35226"
+msgid "Advanced settings"
+msgstr ""
+
+#. Label of button in the in-game menu for changing the video rotation
+#: addons/skin.estuary/xml/Custom_1101_SettingsList.xml
+msgctxt "#35227"
+msgid "Rotation"
+msgstr ""
+
+#. Label of the thumbnail for when the video is not rotated and is displayed normally
+#: xbmc/games/dialogs/osd/DialogGameVideoRotation.cpp
+msgctxt "#35228"
+msgid "0°"
+msgstr ""
+
+#. Label of the thumbnail for when the video is rotated to the right
+#: xbmc/games/dialogs/osd/DialogGameVideoRotation.cpp
+msgctxt "#35229"
+msgid "90°"
+msgstr ""
+
+#. Label of the thumbnail for when the video is rotated upside down
+#: xbmc/games/dialogs/osd/DialogGameVideoRotation.cpp
+msgctxt "#35230"
+msgid "180°"
+msgstr ""
+
+#. Label of the thumbnail for when the video is rotated to the left
+#: xbmc/games/dialogs/osd/DialogGameVideoRotation.cpp
+msgctxt "#35231"
+msgid "270°"
+msgstr ""
+
+#. Label of thumbnail in the in-game menu for stretching the video to fullscreen
+#: xbmc/games/dialogs/osd/DialogGameViewMode.h
+msgctxt "#35232"
+msgid "Fullscreen"
+msgstr ""
+
+#empty strings from id 35233 to 35249
 
 #: xbmc/windows/GUIMediaWindow.cpp
 msgctxt "#35250"
@@ -20665,6 +20713,7 @@ msgstr ""
 
 #: xbmc/dialogs/GUIDialogSmartPlaylistRule.cpp
 #: xbmc/playlists/SmartPlaylist.cpp
+#: xbmc/filesystem/MusicDatabaseDirectory/DirectoryNodeOverview.cpp
 msgctxt "#38033"
 msgid "Role"
 msgstr ""
@@ -21255,7 +21304,24 @@ msgctxt "#39027"
 msgid "Sortname"
 msgstr ""
 
-#empty strings from id 39028 to 39099
+#empty strings from id 39028 to 39029
+
+#. Media source, a filter and smart playlist rule option 
+#: xbmc/dialogs/GUIDialogMediaFilter.cpp
+#: xbmc/dialogs/GUIDialogSmartPlaylistRule.cpp
+#: xbmc/playlists/SmartPlaylist.cpp
+msgctxt "#39030"
+msgid "Source"
+msgstr ""
+
+#. Node title, plural of #39030
+#: system/library/music/files.xml
+#: xbmc/filesystem/MusicDatabaseDirectory/DirectoryNodeOverview.cpp
+msgctxt "#39031"
+msgid "Sources"
+msgstr ""
+
+#empty strings from id 39032 to 39099
 
 #: system/settings/settings.xml
 msgctxt "#39100"

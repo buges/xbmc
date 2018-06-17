@@ -17,6 +17,7 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
 #pragma once
 
 #include "IRenderManager.h"
@@ -103,8 +104,8 @@ namespace RETRO
     void ClearBackground() override;
 
     // Implementation of IRenderCallback
-    bool SupportsRenderFeature(ERENDERFEATURE feature) const override;
-    bool SupportsScalingMethod(ESCALINGMETHOD method) const override;
+    bool SupportsRenderFeature(RENDERFEATURE feature) const override;
+    bool SupportsScalingMethod(SCALINGMETHOD method) const override;
 
   private:
     /*!

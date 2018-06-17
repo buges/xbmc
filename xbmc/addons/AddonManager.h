@@ -1,4 +1,3 @@
-#pragma once
 /*
  *      Copyright (C) 2005-2013 Team XBMC
  *      http://kodi.tv
@@ -18,6 +17,8 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#pragma once
 
 #include "Addon.h"
 #include "AddonDatabase.h"
@@ -149,7 +150,7 @@ namespace ADDON
     bool FindInstallableById(const std::string& addonId, AddonPtr& addon);
 
     void AddToUpdateableAddons(AddonPtr &pAddon);
-    void RemoveFromUpdateableAddons(AddonPtr &pAddon);    
+    void RemoveFromUpdateableAddons(AddonPtr &pAddon);
     bool ReloadSettings(const std::string &id);
 
     /*! Get addons with available updates */

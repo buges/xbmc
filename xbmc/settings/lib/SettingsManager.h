@@ -1,4 +1,3 @@
-#pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
  *      http://kodi.tv
@@ -18,6 +17,8 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#pragma once
 
 #include <map>
 #include <set>
@@ -224,7 +225,7 @@ public:
    When a setting control definition for a registered custom setting control
    type is found its ISettingControlCreator implementation is called to create
    and deserialize the setting control definition.
-   
+
    \param controlType String representation of the custom setting control type
    \param settingControlCreator ISettingControlCreator implementation
    */

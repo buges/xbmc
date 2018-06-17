@@ -33,7 +33,7 @@
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
 #include "filesystem/Directory.h"
-#include "messaging/helpers/DialogOKHelper.h" 
+#include "messaging/helpers/DialogOKHelper.h"
 #include "settings/lib/SettingSection.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -95,8 +95,30 @@ std::string CAddonDll::GetDllPath(const std::string &libPath)
 
   /* Check if lib being loaded exists, else check in XBMC binary location */
 #if defined(TARGET_ANDROID)
-  // Android libs MUST live in this path, else multi-arch will break.
-  // The usual soname requirements apply. no subdirs, and filename is ^lib.*\.so$
+  if (XFILE::CFile::Exists(strFileName))
+  {
+    bool doCopy = true;
+    std::string dstfile = URIUtils::AddFileToFolder(CSpecialProtocol::TranslatePath("special://xbmcaltbinaddons/"), strLibName);
+
+    struct __stat64 dstFileStat;
+    if (XFILE::CFile::Stat(dstfile, &dstFileStat) == 0)
+    {
+      struct __stat64 srcFileStat;
+      if (XFILE::CFile::Stat(strFileName, &srcFileStat) == 0)
+      {
+        if (dstFileStat.st_size == srcFileStat.st_size && dstFileStat.st_mtime > srcFileStat.st_mtime)
+          doCopy = false;
+      }
+    }
+
+    if (doCopy)
+    {
+      CLog::Log(LOGDEBUG, "ADDON: caching %s to %s", strFileName.c_str(), dstfile.c_str());
+      XFILE::CFile::Copy(strFileName, dstfile);
+    }
+
+    strFileName = dstfile;
+  }
   if (!XFILE::CFile::Exists(strFileName))
   {
     std::string tempbin = getenv("KODI_ANDROID_LIBS");
@@ -457,7 +479,7 @@ bool CAddonDll::CheckAPIVersion(int type)
   /* If a instance (not global) version becomes checked must be the version
    * present.
    */
-  if (kodiMinVersion > addonVersion || 
+  if (kodiMinVersion > addonVersion ||
       addonVersion > AddonVersion(kodi::addon::GetTypeVersion(type)))
   {
     CLog::Log(LOGERROR, "Add-on '%s' is using an incompatible API version for type '%s'. Kodi API min version = '%s', add-on API version '%s'",
@@ -564,7 +586,7 @@ void CAddonDll::DeInitInterface()
 }
 
 char* CAddonDll::get_addon_path(void* kodiBase)
-{ 
+{
   CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
   if (addon == nullptr)
   {
@@ -576,7 +598,7 @@ char* CAddonDll::get_addon_path(void* kodiBase)
 }
 
 char* CAddonDll::get_base_user_path(void* kodiBase)
-{ 
+{
   CAddonDll* addon = static_cast<CAddonDll*>(kodiBase);
   if (addon == nullptr)
   {
